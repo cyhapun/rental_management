@@ -10,3 +10,4 @@ cryptography
 reportlab
 mangum
 python-dotenv
+python-multipart
