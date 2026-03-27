@@ -76,7 +76,7 @@ async def auth_middleware(request: Request, call_next):
 @app.on_event("startup")
 async def on_startup():
     # Strict startup checks for security-critical configuration
-    from app.security import _get_fernet
+    from security import _get_fernet
 
     if _get_fernet() is None:
         # DATA_ENCRYPTION_KEY must be set in production (raises to avoid insecure fallback)
@@ -102,7 +102,7 @@ async def on_startup():
     try:
         existing = await db.accounts.find_one({})
         if not existing:
-            from app.security import hash_password
+            from security import hash_password
 
             default_username = "chauhuynhphuc"
             default_password = "cyhapun"
