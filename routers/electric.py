@@ -1,13 +1,13 @@
 from fastapi import APIRouter, Request, Form, HTTPException
 from fastapi.responses import RedirectResponse, HTMLResponse, JSONResponse
-from app.deps import get_db
+from deps import get_db
 from bson import ObjectId
 import os
 import datetime
 from jinja2 import Environment, FileSystemLoader
 
-from app.security import decrypt_value, mask_cccd
-from app.flash import redirect_with_flash
+from security import decrypt_value, mask_cccd
+from flash import redirect_with_flash
 
 router = APIRouter(prefix="/electric", tags=["electric"])
 

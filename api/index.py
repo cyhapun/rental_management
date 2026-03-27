@@ -1,17 +1,17 @@
 import os
 import sys
 
-api_dir = os.path.dirname(os.path.abspath(__file__))
-proj_root = os.path.dirname(api_dir) 
+# Lấy đường dẫn thư mục hiện tại (thư mục api)
+current_dir = os.path.dirname(os.path.abspath(__file__))
+# Lấy đường dẫn thư mục cha (thư mục gốc chứa main.py)
+parent_dir = os.path.dirname(current_dir)
 
-if proj_root not in sys.path:
-    sys.path.insert(0, proj_root)
+# Thêm thư mục gốc vào hệ thống để Python tìm thấy main.py
+if parent_dir not in sys.path:
+    sys.path.insert(0, parent_dir)
 
+from main import app  # Import trực tiếp từ main.py
 from mangum import Mangum
 
-try:
-    from main import app 
-except ImportError:
-    from app.main import app
-
+# Handler cho Vercel
 handler = Mangum(app)

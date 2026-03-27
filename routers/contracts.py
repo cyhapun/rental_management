@@ -1,15 +1,15 @@
 from fastapi import APIRouter, Request, Form, HTTPException
 from fastapi.responses import RedirectResponse, HTMLResponse
-from app.deps import get_db
+from deps import get_db
 from bson import ObjectId
 import datetime
 import os
 from jinja2 import Environment, FileSystemLoader
 
-from app.security import decrypt_value, mask_cccd
-from app.template_filters import money
-from app.security import hash_value
-from app.flash import redirect_with_flash
+from security import decrypt_value, mask_cccd
+from template_filters import money
+from security import hash_value
+from flash import redirect_with_flash
 
 router = APIRouter(prefix="/contracts", tags=["contracts"])
 

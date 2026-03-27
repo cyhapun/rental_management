@@ -1,13 +1,13 @@
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import HTMLResponse, StreamingResponse
-from app.deps import get_db
+from deps import get_db
 import os
 from jinja2 import Environment, FileSystemLoader
 import io
 
-from app.security import decrypt_value
-from app.template_filters import money
-from app.constants import WATER_FEE
+from security import decrypt_value
+from template_filters import money
+from constants import WATER_FEE
 
 router = APIRouter(prefix="/invoice", tags=["invoice"])
 

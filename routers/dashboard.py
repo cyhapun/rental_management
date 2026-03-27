@@ -2,9 +2,9 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 import os
 from jinja2 import Environment, FileSystemLoader
-from app.deps import get_db
+from deps import get_db
 
-from app.template_filters import money
+from template_filters import money
 
 router = APIRouter(tags=["dashboard"]) 
 

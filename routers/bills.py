@@ -1,14 +1,14 @@
 from fastapi import APIRouter, Request, Form, HTTPException
 from fastapi.responses import RedirectResponse, HTMLResponse
-from app.deps import get_db
+from deps import get_db
 from bson import ObjectId
 import datetime
 import os
 from jinja2 import Environment, FileSystemLoader
 
-from app.template_filters import money
-from app.constants import WATER_FEE
-from app.flash import redirect_with_flash
+from template_filters import money
+from constants import WATER_FEE
+from flash import redirect_with_flash
 
 router = APIRouter(prefix="/bills", tags=["bills"])
 

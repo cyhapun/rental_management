@@ -3,9 +3,9 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse, JSONResponse
 import os
 
-from app.routers import rooms, tenants, contracts, bills, electric, dashboard, invoice, auth
-from app.security import decrypt_value
-from app.deps import get_db
+from routers import rooms, tenants, contracts, bills, electric, dashboard, invoice, auth
+from security import decrypt_value
+from deps import get_db
 from datetime import datetime
 import logging
 import asyncio
