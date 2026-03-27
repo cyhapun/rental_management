@@ -9,3 +9,4 @@ weasyprint
 cryptography
 reportlab
 mangum
+dotenv
