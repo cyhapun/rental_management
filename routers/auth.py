@@ -15,12 +15,22 @@ async def login_get(request: Request):
 
 @router.post('/login')
 async def login_post(response: Response, username: str = Form(...), password: str = Form(...)):
-    # simple auth from env
-    u = os.getenv('ADMIN_USER', 'admin')
-    p = os.getenv('ADMIN_PASS', 'password')
-    if username == u and password == p:
+    # Role-based auth from env
+    admin_user = os.getenv('ADMIN_USER', 'admin')
+    admin_pass = os.getenv('ADMIN_PASS', 'password')
+    guest_user = os.getenv('GUEST_USER', 'guest')
+    guest_pass = os.getenv('GUEST_PASS', 'guest')
+
+    role = None
+    if username == admin_user and password == admin_pass:
+        role = "admin"
+    elif username == guest_user and password == guest_pass:
+        role = "guest"
+
+    if role:
         response = RedirectResponse(url='/dashboard', status_code=303)
-        response.set_cookie('rental_admin', '1')
+        response.set_cookie('rental_auth', '1', httponly=True, samesite='lax')
+        response.set_cookie('rental_role', role, httponly=True, samesite='lax')
         return response
     return RedirectResponse(url='/login', status_code=303)
 
@@ -28,5 +38,6 @@ async def login_post(response: Response, username: str = Form(...), password: st
 @router.get('/logout')
 async def logout():
     response = RedirectResponse(url='/login')
-    response.delete_cookie('rental_admin')
+    response.delete_cookie('rental_auth')
+    response.delete_cookie('rental_role')
     return response

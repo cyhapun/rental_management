@@ -64,7 +64,7 @@
       <div class="modal-header"><h5 class="modal-title">Thêm phòng</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
       <form action="/rooms/create" method="post">
         <div class="modal-body">
-          <div class="mb-2"><input class="form-control" name="room_number" placeholder="Số phòng" required></div>
+          <div class="mb-2"><input class="form-control" name="room_number" placeholder="Số phòng" type="number" min="1" required></div>
           <div class="mb-2"><input class="form-control" name="price" placeholder="Giá" type="number" required></div>
           <div class="mb-2"><input class="form-control" name="current_electric_index" placeholder="Chỉ số điện hiện tại" type="number" min="0" value="0"></div>
         </div>
@@ -84,7 +84,7 @@
       <div class="modal-header"><h5 class="modal-title">Sửa phòng</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
       <form id="editRoomForm" method="post">
         <div class="modal-body">
-          <div class="mb-2"><input class="form-control" id="edit_room_number" name="room_number" placeholder="Số phòng" required></div>
+          <div class="mb-2"><input class="form-control" id="edit_room_number" name="room_number" placeholder="Số phòng" type="number" min="1" required></div>
           <div class="mb-2"><input class="form-control" id="edit_room_price" name="price" placeholder="Giá" type="number" required></div>
           <div class="mb-2"><input class="form-control" id="edit_room_electric_index" name="current_electric_index" placeholder="Chỉ số điện hiện tại" type="number" min="0" required></div>
           <div class="mb-2">

@@ -14,6 +14,22 @@ TEMPLATES_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "t
 env = Environment(loader=FileSystemLoader(TEMPLATES_DIR))
 
 
+async def _find_room_by_number(db, room_number_value):
+    if room_number_value is None:
+        return None
+    room_str = str(room_number_value).strip()
+    candidates = [room_str]
+    try:
+        candidates.append(int(room_str))
+    except Exception:
+        pass
+    for c in candidates:
+        room_doc = await db.rooms.find_one({"room_number": c})
+        if room_doc:
+            return room_doc
+    return None
+
+
 def _contract_order_key(contract_doc):
     import datetime
     try:
@@ -31,7 +47,7 @@ async def _normalize_room_id_to_oid_str(db, room_id_value):
         ObjectId(rid_str)
         return rid_str
     except Exception:
-        room_doc = await db.rooms.find_one({"room_number": rid_str})
+        room_doc = await _find_room_by_number(db, rid_str)
         if room_doc:
             return str(room_doc.get("_id"))
     return None
@@ -226,7 +242,7 @@ async def get_tenant(tenant_id: str):
                 try:
                     room_doc = await db.rooms.find_one({"_id": ObjectId(room_id)})
                 except Exception:
-                    room_doc = await db.rooms.find_one({"room_number": room_id})
+                    room_doc = await _find_room_by_number(db, room_id)
                 if room_doc:
                     room_doc["id"] = str(room_doc.get("_id"))
                     room_info = {"room_number": room_doc.get("room_number"), "id": room_doc.get("id"), "price": room_doc.get("price"), "status": room_doc.get("status")}

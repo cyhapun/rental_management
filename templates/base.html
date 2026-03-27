@@ -15,6 +15,7 @@
   </head>
   <body>
     {% set current_path = request.url.path if request and request.url else '' %}
+    {% set user_role = request.state.user_role if request and request.state and request.state.user_role else 'guest' %}
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
       <div class="container-fluid">
         <button class="btn btn-link text-white d-md-none me-2" data-bs-toggle="offcanvas" data-bs-target="#offcanvasNav" aria-controls="offcanvasNav"><i class="fa-solid fa-bars"></i></button>
@@ -28,6 +29,13 @@
         <div class="collapse navbar-collapse" id="navbarNav">
           
           <ul class="navbar-nav">
+            <li class="nav-item d-flex align-items-center me-2">
+              {% if user_role == 'admin' %}
+                <span class="badge bg-light text-dark">Admin</span>
+              {% else %}
+                <span class="badge bg-warning text-dark">Guest</span>
+              {% endif %}
+            </li>
             <li class="nav-item dropdown">
               <a class="nav-link dropdown-toggle" href="#" id="userMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                 <i class="fa-solid fa-user"></i>

@@ -4,6 +4,11 @@
   <h1 class="h3">Tổng quan</h1>
   <div class="text-muted">Tổng quan nhà trọ</div>
 </div>
+{% if readonly_guest %}
+<div class="alert alert-warning">
+  Bạn không có quyền hạn để thấy dữ liệu chi tiết. Vui lòng đăng nhập bằng tài khoản quản trị.
+</div>
+{% endif %}
 
 <div class="row g-3 mb-3">
   <div class="col-sm-6 col-md-3">

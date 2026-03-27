@@ -28,10 +28,22 @@ async def list_rooms(request: Request, q: str = ""):
     db = get_db()
     query = {}
     if q:
-        query = {"room_number": {"$regex": q, "$options": "i"}}
+        try:
+            query = {"room_number": int(str(q).strip())}
+        except Exception:
+            query = {"room_number": -999999999}
     cursor = db.rooms.find(query)
     rooms = []
     async for r in cursor:
+        # Normalize legacy room_number string -> int for consistent schema.
+        room_num = r.get("room_number")
+        if isinstance(room_num, str):
+            try:
+                parsed_room_num = int(room_num.strip())
+                await db.rooms.update_one({"_id": r.get("_id")}, {"$set": {"room_number": parsed_room_num}})
+                r["room_number"] = parsed_room_num
+            except Exception:
+                pass
         # Keep backward compatibility for old rooms without this field.
         r["current_electric_index"] = r.get("current_electric_index", 0)
         rooms.append(_fix_id(r))
@@ -41,9 +53,10 @@ async def list_rooms(request: Request, q: str = ""):
 
 
 @router.post("/create")
-async def create_room(room_number: str = Form(...), price: int = Form(...), current_electric_index: int = Form(0)):
+async def create_room(room_number: int = Form(...), price: int = Form(...), current_electric_index: int = Form(0)):
     db = get_db()
     try:
+        room_number = int(room_number)
         existing = await db.rooms.find_one({"room_number": room_number})
         if existing:
             return redirect_with_flash("/rooms/", "Phòng đã tồn tại.", "danger")
@@ -63,13 +76,14 @@ async def create_room(room_number: str = Form(...), price: int = Form(...), curr
 @router.post("/{room_id}/update")
 async def update_room(
     room_id: str,
-    room_number: str = Form(...),
+    room_number: int = Form(...),
     price: int = Form(...),
     status: str = Form("available"),
     current_electric_index: int = Form(0),
 ):
     db = get_db()
     try:
+        room_number = int(room_number)
         await db.rooms.update_one(
             {"_id": ObjectId(room_id)},
             {

@@ -2,11 +2,14 @@
 {% block content %}
 <div class="d-flex justify-content-center align-items-center" style="height:60vh">
   <div class="card p-4" style="max-width:420px;width:100%">
-    <h3 class="mb-3">Admin Login</h3>
+    <h3 class="mb-2">Đăng nhập</h3>
+    <div class="text-muted small mb-3">
+      Admin: xem/chỉnh sửa/cấu hình dữ liệu. Guest: chỉ xem tổng quan và không có quyền truy cập dữ liệu chi tiết.
+    </div>
     <form action="/login" method="post">
-      <div class="mb-2"><input class="form-control" name="username" placeholder="Username" required /></div>
-      <div class="mb-3"><input class="form-control" name="password" placeholder="Password" type="password" required /></div>
-      <button class="btn btn-primary w-100" type="submit">Login</button>
+      <div class="mb-2"><input class="form-control" name="username" placeholder="Tài khoản" required /></div>
+      <div class="mb-3"><input class="form-control" name="password" placeholder="Mật khẩu" type="password" required /></div>
+      <button class="btn btn-primary w-100" type="submit">Đăng nhập</button>
     </form>
   </div>
 </div>

@@ -15,12 +15,28 @@ TEMPLATES_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "t
 env = Environment(loader=FileSystemLoader(TEMPLATES_DIR))
 
 
+async def _find_room_by_number(db, room_number_value):
+    if room_number_value is None:
+        return None
+    room_str = str(room_number_value).strip()
+    candidates = [room_str]
+    try:
+        candidates.append(int(room_str))
+    except Exception:
+        pass
+    for c in candidates:
+        room_doc = await db.rooms.find_one({"room_number": c})
+        if room_doc:
+            return room_doc
+    return None
+
+
 async def _sync_room_current_index(db, room_id_value: str):
     room_doc = None
     try:
         room_doc = await db.rooms.find_one({"_id": ObjectId(room_id_value)})
     except Exception:
-        room_doc = await db.rooms.find_one({"room_number": room_id_value})
+        room_doc = await _find_room_by_number(db, room_id_value)
     if not room_doc:
         return
 
@@ -51,7 +67,7 @@ async def list_readings(request: Request):
             try:
                 room_doc = await db.rooms.find_one({"_id": ObjectId(room_id)})
             except Exception:
-                room_doc = await db.rooms.find_one({"room_number": room_id})
+                room_doc = await _find_room_by_number(db, room_id)
             if room_doc:
                 room_doc["id"] = str(room_doc.get("_id"))
                 r["room"] = {
