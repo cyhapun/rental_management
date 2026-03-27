@@ -1,6 +1,6 @@
 import os
 import sys
-
+from main import app
 api_dir = os.path.dirname(os.path.abspath(__file__))
 
 # Find a directory that contains the `app` package by walking upwards from the
