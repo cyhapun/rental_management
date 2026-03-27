@@ -4,6 +4,14 @@ from fastapi.responses import RedirectResponse, JSONResponse
 import os
 
 from app.routers import rooms, tenants, contracts, bills, electric, dashboard, invoice, auth
+from app.security import decrypt_value
+from app.deps import get_db
+from datetime import datetime
+import logging
+import asyncio
+
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Rental Management Dashboard")
 
@@ -29,12 +37,29 @@ async def auth_middleware(request: Request, call_next):
     if path.startswith(public_prefixes):
         return await call_next(request)
 
-    auth_cookie = request.cookies.get("rental_auth")
-    role_cookie = request.cookies.get("rental_role", "")
-    if auth_cookie != "1":
+    # Use an encrypted session cookie which maps to a server-side session record.
+    session_cookie = request.cookies.get("rental_session")
+    if not session_cookie:
         return RedirectResponse(url="/login", status_code=303)
 
-    request.state.user_role = role_cookie or "guest"
+    try:
+        session_id = decrypt_value(session_cookie)
+    except Exception:
+        return RedirectResponse(url="/login", status_code=303)
+
+    db = get_db()
+    now = datetime.utcnow()
+    session_doc = await db.sessions.find_one({"_id": session_id, "expires_at": {"$gt": now}})
+    if not session_doc:
+        return RedirectResponse(url="/login", status_code=303)
+
+    account = await db.accounts.find_one({"_id": session_doc.get("user_id")})
+    if not account:
+        return RedirectResponse(url="/login", status_code=303)
+
+    # Keep backward-compatible `user_role` for templates that expect it.
+    request.state.user = account
+    request.state.user_role = account.get("role", "user")
 
     admin_only_prefixes = ("/rooms", "/tenants", "/contracts", "/electric", "/bills", "/invoice")
     if path.startswith(admin_only_prefixes) and request.state.user_role != "admin":
@@ -46,6 +71,53 @@ async def auth_middleware(request: Request, call_next):
         )
 
     return await call_next(request)
+
+
+@app.on_event("startup")
+async def on_startup():
+    # Strict startup checks for security-critical configuration
+    from app.security import _get_fernet
+
+    if _get_fernet() is None:
+        # DATA_ENCRYPTION_KEY must be set in production (raises to avoid insecure fallback)
+        msg = "DATA_ENCRYPTION_KEY is not configured or cryptography missing. Exiting for security."
+        logger.error(msg)
+        raise RuntimeError(msg)
+
+    # Ensure sessions collection has a TTL index on expires_at
+    try:
+        db = get_db()
+        # expire documents at the time in `expires_at`
+        await db.sessions.create_index(
+            [("expires_at", 1)],
+            expireAfterSeconds=0,
+            name="sessions_expires_at_ttl",
+        )
+        logger.info("Ensured TTL index on sessions.expires_at")
+    except Exception as e:
+        logger.exception("Failed to ensure sessions TTL index: %s", e)
+        # Not critical enough to stop startup, but we log it.
+
+    # Auto-create an initial admin account if none exists (convenience for first-run).
+    try:
+        existing = await db.accounts.find_one({})
+        if not existing:
+            from app.security import hash_password
+
+            default_username = "chauhuynhphuc"
+            default_password = "cyhapun"
+            pw_hash = hash_password(default_password)
+            acct = {
+                "username": default_username,
+                "password": pw_hash,
+                "role": "admin",
+                "created_at": datetime.utcnow(),
+            }
+            await db.accounts.insert_one(acct)
+            logger.warning("Created initial admin account: %s", default_username)
+            logger.warning("Please delete or change this account after first login.")
+    except Exception:
+        logger.exception("Failed to auto-create initial account")
 
 
 @app.get("/")

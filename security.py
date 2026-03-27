@@ -31,6 +31,13 @@ def _get_fernet() -> Optional[Any]:
     return Fernet(key.encode("utf-8"))
 
 
+def require_fernet():
+    f = _get_fernet()
+    if f is None:
+        raise RuntimeError("DATA_ENCRYPTION_KEY not configured or cryptography not available")
+    return f
+
+
 def hash_value(value: Optional[str]) -> Optional[str]:
     if value is None:
         return None
@@ -38,6 +45,32 @@ def hash_value(value: Optional[str]) -> Optional[str]:
     if not norm:
         return None
     return hashlib.sha256(norm.encode("utf-8")).hexdigest()
+
+
+def generate_salt(length: int = 16) -> str:
+    return os.urandom(length).hex()
+
+
+def hash_password(password: str, salt: Optional[str] = None) -> str:
+    if salt is None:
+        salt = generate_salt()
+    dk = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt.encode("utf-8"), 100_000)
+    return f"{salt}${dk.hex()}"
+
+
+def verify_password(stored: str, provided: str) -> bool:
+    try:
+        salt, hash_hex = stored.split("$", 1)
+    except Exception:
+        return False
+    dk = hashlib.pbkdf2_hmac("sha256", provided.encode("utf-8"), salt.encode("utf-8"), 100_000)
+    return dk.hex() == hash_hex
+
+
+def generate_session_id() -> str:
+    import uuid
+
+    return uuid.uuid4().hex
 
 
 def encrypt_value(value: Optional[str], *, require_key: bool = False) -> Optional[str]:

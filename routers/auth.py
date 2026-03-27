@@ -1,6 +1,10 @@
 from fastapi import APIRouter, Request, Form, Response
 from fastapi.responses import RedirectResponse
 import os
+from datetime import datetime, timedelta
+
+from app.deps import get_db
+from app.security import encrypt_value, verify_password, generate_session_id
 
 router = APIRouter()
 
@@ -15,29 +19,69 @@ async def login_get(request: Request):
 
 @router.post('/login')
 async def login_post(response: Response, username: str = Form(...), password: str = Form(...)):
-    # Role-based auth from env
-    admin_user = os.getenv('ADMIN_USER', 'admin')
-    admin_pass = os.getenv('ADMIN_PASS', 'password')
-    guest_user = os.getenv('GUEST_USER', 'guest')
-    guest_pass = os.getenv('GUEST_PASS', 'guest')
+    # Authenticate against `account` collection in DB.
+    db = get_db()
+    acct = await db.accounts.find_one({"username": username})
+    if not acct:
+        return RedirectResponse(url='/login', status_code=303)
 
-    role = None
-    if username == admin_user and password == admin_pass:
-        role = "admin"
-    elif username == guest_user and password == guest_pass:
-        role = "guest"
+    stored_password = acct.get("password") or ""
+    if not verify_password(stored_password, password):
+        return RedirectResponse(url='/login', status_code=303)
 
-    if role:
-        response = RedirectResponse(url='/dashboard', status_code=303)
-        response.set_cookie('rental_auth', '1', httponly=True, samesite='lax')
-        response.set_cookie('rental_role', role, httponly=True, samesite='lax')
-        return response
-    return RedirectResponse(url='/login', status_code=303)
+    # Create a server-side session and set an encrypted session cookie.
+    session_id = generate_session_id()
+    now = datetime.utcnow()
+    expires = now + timedelta(hours=8)
+    session_doc = {
+        "_id": session_id,
+        "user_id": acct.get("_id"),
+        "created_at": now,
+        "expires_at": expires,
+    }
+    await db.sessions.insert_one(session_doc)
+
+    try:
+        token = encrypt_value(session_id, require_key=True)
+    except RuntimeError:
+        # Encryption key missing; fail safe.
+        return RedirectResponse(url='/login', status_code=303)
+
+    # Cookie security settings - use strict SameSite and secure in production.
+    cookie_name = os.getenv("SESSION_COOKIE_NAME", "rental_session")
+    cookie_secure = os.getenv("COOKIE_SECURE", "1") in ("1", "true", "True")
+    cookie_samesite = os.getenv("COOKIE_SAMESITE", "strict")
+
+    response = RedirectResponse(url='/dashboard', status_code=303)
+    response.set_cookie(
+        cookie_name,
+        token,
+        httponly=True,
+        secure=cookie_secure,
+        samesite=cookie_samesite,
+        max_age=8 * 3600,
+        path='/',
+    )
+    return response
 
 
 @router.get('/logout')
-async def logout():
+async def logout(request: Request):
+    # Remove server-side session and clear cookie
+    db = get_db()
+    cookie_name = os.getenv("SESSION_COOKIE_NAME", "rental_session")
+    session_cookie = request.cookies.get(cookie_name)
+    if session_cookie:
+        from app.security import decrypt_value
+
+        try:
+            session_id = decrypt_value(session_cookie)
+        except Exception:
+            session_id = None
+
+        if session_id:
+            await db.sessions.delete_one({"_id": session_id})
+
     response = RedirectResponse(url='/login')
-    response.delete_cookie('rental_auth')
-    response.delete_cookie('rental_role')
+    response.delete_cookie(cookie_name)
     return response

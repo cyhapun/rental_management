@@ -15,7 +15,8 @@
   </head>
   <body>
     {% set current_path = request.url.path if request and request.url else '' %}
-    {% set user_role = request.state.user_role if request and request.state and request.state.user_role else 'guest' %}
+    {% set user_role = request.state.user_role if request and request.state and request.state.user_role else None %}
+    {% set is_login_page = (current_path == '/login') %}
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
       <div class="container-fluid">
         <button class="btn btn-link text-white d-md-none me-2" data-bs-toggle="offcanvas" data-bs-target="#offcanvasNav" aria-controls="offcanvasNav"><i class="fa-solid fa-bars"></i></button>
@@ -27,11 +28,12 @@
           <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="navbarNav">
-          
           <ul class="navbar-nav">
             <li class="nav-item d-flex align-items-center me-2">
               {% if user_role == 'admin' %}
                 <span class="badge bg-light text-dark">Admin</span>
+              {% elif user_role %}
+                <span class="badge bg-secondary text-white">{{ user_role|capitalize }}</span>
               {% else %}
                 <span class="badge bg-warning text-dark">Guest</span>
               {% endif %}
@@ -41,8 +43,11 @@
                 <i class="fa-solid fa-user"></i>
               </a>
               <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
-                <li><a class="dropdown-item" href="/login">Đăng nhập</a></li>
-                <li><a class="dropdown-item" href="/logout">Đăng xuất</a></li>
+                {% if not user_role %}
+                  <li><a class="dropdown-item" href="/login">Đăng nhập</a></li>
+                {% else %}
+                  <li><a class="dropdown-item" href="/logout">Đăng xuất</a></li>
+                {% endif %}
               </ul>
             </li>
           </ul>
@@ -52,6 +57,7 @@
 
     <div class="container-fluid">
       <div class="row">
+        {% if not is_login_page %}
         <aside class="col-md-2 d-none d-md-block bg-light sidebar py-3">
           <div class="nav flex-column">
             <a class="nav-link {% if current_path.startswith('/dashboard') %}active{% endif %}" href="/dashboard"><i class="fa-solid fa-chart-line me-2"></i>Tổng quan</a>
@@ -62,7 +68,9 @@
             <a class="nav-link {% if current_path.startswith('/bills') %}active{% endif %}" href="/bills/"><i class="fa-solid fa-file-invoice me-2"></i>Hóa đơn</a>
           </div>
         </aside>
+        {% endif %}
         <!-- Offcanvas nav for small screens -->
+        {% if not is_login_page %}
         <div class="offcanvas offcanvas-start" tabindex="-1" id="offcanvasNav" aria-labelledby="offcanvasNavLabel">
           <div class="offcanvas-header">
             <h5 class="offcanvas-title" id="offcanvasNavLabel">Menu</h5>
@@ -79,8 +87,9 @@
             </div>
           </div>
         </div>
+        {% endif %}
 
-        <main class="col-md-10 ms-sm-auto px-4 py-4">
+        <main class="{% if is_login_page %}col-12{% else %}col-md-10 ms-sm-auto{% endif %} px-4 py-4" style="min-height:calc(100vh - 80px);">
           {% set flash_msg = request.query_params.get('flash') if request else None %}
           {% if flash_msg %}
             {% set level = request.query_params.get('level', 'success') %}
