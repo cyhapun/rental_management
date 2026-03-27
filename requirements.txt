@@ -8,3 +8,4 @@ pymongo
 weasyprint
 cryptography
 reportlab
+mangum

@@ -10,7 +10,7 @@ async def login_get(request: Request):
     from fastapi.templating import Jinja2Templates
     import os as _os
     templates = Jinja2Templates(directory=_os.path.join(_os.path.dirname(__file__), '..', 'templates'))
-    return templates.TemplateResponse('login.html', {'request': request})
+    return templates.TemplateResponse(request=request, name='login.html', context={})
 
 
 @router.post('/login')
