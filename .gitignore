@@ -1,0 +1,41 @@
+# Các file hệ thống
+.DS_Store
+Thumbs.db
+
+# Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.env
+
+# Java
+*.class
+*.jar
+*.war
+*.ear
+*.iml
+*.log
+
+# C#
+bin/
+obj/
+*.user
+*.suo
+*.cache
+
+# IDEs
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Các file tạm khác
+*.swp
+*.tmp
+*.bak

@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" href="/static/images/logo.svg" type="image/svg+xml">
+    <title>Quản lý nhà trọ</title>
+    <!-- Google Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css?v=20260327-1" />
+  </head>
+  <body>
+    {% set current_path = request.url.path if request and request.url else '' %}
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+      <div class="container-fluid">
+        <button class="btn btn-link text-white d-md-none me-2" data-bs-toggle="offcanvas" data-bs-target="#offcanvasNav" aria-controls="offcanvasNav"><i class="fa-solid fa-bars"></i></button>
+        <a class="navbar-brand d-flex align-items-center" href="/dashboard">
+          <img src="/static/images/logo.svg" alt="Logo" style="height: 60px; margin-right: 4px;">
+          Quản lý nhà trọ
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+          
+          <ul class="navbar-nav">
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" href="#" id="userMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="fa-solid fa-user"></i>
+              </a>
+              <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
+                <li><a class="dropdown-item" href="/login">Đăng nhập</a></li>
+                <li><a class="dropdown-item" href="/logout">Đăng xuất</a></li>
+              </ul>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    <div class="container-fluid">
+      <div class="row">
+        <aside class="col-md-2 d-none d-md-block bg-light sidebar py-3">
+          <div class="nav flex-column">
+            <a class="nav-link {% if current_path.startswith('/dashboard') %}active{% endif %}" href="/dashboard"><i class="fa-solid fa-chart-line me-2"></i>Tổng quan</a>
+            <a class="nav-link {% if current_path.startswith('/rooms') %}active{% endif %}" href="/rooms/"><i class="fa-solid fa-door-closed me-2"></i>Phòng</a>
+            <a class="nav-link {% if current_path.startswith('/tenants') %}active{% endif %}" href="/tenants/"><i class="fa-solid fa-users me-2"></i>Người thuê</a>
+            <a class="nav-link {% if current_path.startswith('/contracts') %}active{% endif %}" href="/contracts/"><i class="fa-solid fa-file-contract me-2"></i>Hợp đồng</a>
+            <a class="nav-link {% if current_path.startswith('/electric') %}active{% endif %}" href="/electric/"><i class="fa-solid fa-bolt me-2"></i>Điện</a>
+            <a class="nav-link {% if current_path.startswith('/bills') %}active{% endif %}" href="/bills/"><i class="fa-solid fa-file-invoice me-2"></i>Hóa đơn</a>
+          </div>
+        </aside>
+        <!-- Offcanvas nav for small screens -->
+        <div class="offcanvas offcanvas-start" tabindex="-1" id="offcanvasNav" aria-labelledby="offcanvasNavLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="offcanvasNavLabel">Menu</h5>
+            <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <div class="list-group">
+              <a class="list-group-item list-group-item-action {% if current_path.startswith('/dashboard') %}active{% endif %}" href="/dashboard">Tổng quan</a>
+              <a class="list-group-item list-group-item-action {% if current_path.startswith('/rooms') %}active{% endif %}" href="/rooms/">Phòng</a>
+              <a class="list-group-item list-group-item-action {% if current_path.startswith('/tenants') %}active{% endif %}" href="/tenants/">Người thuê</a>
+              <a class="list-group-item list-group-item-action {% if current_path.startswith('/contracts') %}active{% endif %}" href="/contracts/">Hợp đồng</a>
+              <a class="list-group-item list-group-item-action {% if current_path.startswith('/electric') %}active{% endif %}" href="/electric/">Điện</a>
+              <a class="list-group-item list-group-item-action {% if current_path.startswith('/bills') %}active{% endif %}" href="/bills/">Hóa đơn</a>
+            </div>
+          </div>
+        </div>
+
+        <main class="col-md-10 ms-sm-auto px-4 py-4">
+          {% set flash_msg = request.query_params.get('flash') if request else None %}
+          {% if flash_msg %}
+            {% set level = request.query_params.get('level', 'success') %}
+            {% set toast_bg = 'danger' if level == 'danger' else ('warning' if level == 'warning' else 'success') %}
+            <div class="toast align-items-center text-bg-{{ toast_bg }} border-0 show flash-toast"
+                 role="alert" aria-live="assertive" aria-atomic="true"
+                 style="position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); z-index:1080; min-width:280px;"
+                 data-bs-autohide="true" data-bs-delay="2200">
+              <div class="d-flex">
+                <div class="toast-body">
+                  {{ flash_msg }}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+              </div>
+            </div>
+            <script>
+              window.addEventListener('load', function () {
+                try {
+                  const el = document.querySelector('.flash-toast');
+                  if (!el) return;
+                  const toast = bootstrap.Toast.getOrCreateInstance(el);
+                  toast.show();
+                  setTimeout(()=>toast.hide(), 2300);
+                } catch (e) {}
+              });
+            </script>
+          {% endif %}
+          {% block content %}{% endblock %}
+        </main>
+      </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>

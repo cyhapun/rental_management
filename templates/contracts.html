@@ -1,0 +1,229 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h4">Hợp đồng</h1>
+  <form class="row g-2" action="/contracts/create" method="post">
+    <div class="col-auto">
+      <select class="form-select" name="room_id" required>
+        <option value="" selected disabled>Chọn phòng</option>
+        {% for r in rooms %}
+          <option value="{{ r.id }}" {% if r.id in active_room_ids %}disabled{% endif %}>
+            {{ r.room_number }}
+            {% if r.id in active_room_ids %} - Đã có hợp đồng{% else %} - Trống{% endif %}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-auto">
+      <select class="form-select" name="tenant_id" required>
+        <option value="" selected disabled>Chọn người thuê</option>
+        {% for t in tenants %}
+          <option value="{{ t.id }}">
+            {{ t.full_name }}{% if t.phone %} - {{ t.phone }}{% endif %}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-auto"><input class="form-control" name="start_date" type="date" value="{{ today }}" required /></div>
+    <div class="col-auto"><input class="form-control" name="end_date" type="date" value="{{ today }}" /></div>
+    <div class="col-auto"><input class="form-control" name="contract_type" placeholder="Loại hợp đồng" value="6 tháng" /></div>
+    <div class="col-auto"><input class="form-control" name="deposit" placeholder="Tiền cọc" type="number" value="800000" /></div>
+    <div class="col-auto"><button class="btn btn-primary" type="submit">Tạo</button></div>
+  </form>
+</div>
+
+<div class="input-group mb-2" style="max-width:420px;">
+  <input class="form-control form-control-sm" id="contractSearch" placeholder="Tìm theo người thuê / phòng..." />
+  <button class="btn btn-sm btn-light" type="button" onclick="filterContracts()"><i class="fa-solid fa-magnifying-glass"></i></button>
+</div>
+
+<div class="alert alert-info py-2">
+  Đang có hợp đồng (còn hiệu lực): <strong>{{ active_room_ids|length }}</strong> phòng, <strong>{{ active_tenant_ids|length }}</strong> người thuê.
+</div>
+
+<h2>Danh sách hợp đồng</h2>
+{% if warnings %}
+<div class="alert alert-warning">
+  <strong>Nhắc đóng tiền (còn 1 ngày):</strong>
+  <ul class="mb-0 mt-1">
+    {% for w in warnings %}
+      <li>Phòng {{ w.room_number }} - {{ w.tenant_name }} (hạn: {{ w.due_date }})</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+<div class="d-flex gap-2 mb-2">
+  <select class="form-select form-select-sm" id="contractPaymentFilter" style="max-width:180px;">
+    <option value="">Lọc tiền phòng</option>
+    <option value="Đã đóng">Đã đóng</option>
+    <option value="Chưa đóng">Chưa đóng</option>
+    <option value="Chưa có hóa đơn">Chưa có hóa đơn</option>
+  </select>
+  <select class="form-select form-select-sm" id="contractSort" style="max-width:220px;">
+    <option value="default">Sắp xếp mặc định</option>
+    <option value="start_desc">Ngày bắt đầu: mới nhất</option>
+    <option value="start_asc">Ngày bắt đầu: cũ nhất</option>
+    <option value="room_asc">Phòng: tăng dần</option>
+    <option value="room_desc">Phòng: giảm dần</option>
+  </select>
+</div>
+<div class="table-responsive">
+  <table class="table table-bordered">
+    <thead>
+      <tr>
+        <th>Người thuê</th>
+        <th>Phòng</th>
+        <th>Số điện hiện tại (kWh)</th>
+        <th>Số điện đã dùng (kWh)</th>
+        <th>Tiền phòng</th>
+        <th>Ngày bắt đầu</th>
+        <th>Ngày kết thúc</th>
+        <th>Thao tác</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for c in contracts %}
+    <tr data-contract-id="{{ c.id }}" data-tenant-id="{{ c.tenant_id }}" data-room-id="{{ c.room_id }}" data-start-date="{{ c.start_date }}" data-end-date="{{ c.end_date }}" data-contract-type="{{ c.contract_type }}" data-deposit="{{ c.deposit }}" class="{% if c.is_active %}row-active-contract{% endif %}">
+      <td>
+        {% if c.tenant %}
+          {{ c.tenant.full_name }}
+        {% else %}
+          {{ c.tenant_id }}
+        {% endif %}
+      </td>
+      <td>
+        {% if c.room %}
+          {{ c.room.room_number }}
+        {% else %}
+          {{ c.room_id }}
+        {% endif %}
+      </td>
+      <td>
+        {% if c.electric %}
+          {{ c.electric.current_kwh }}
+        {% else %}
+          0
+        {% endif %}
+      </td>
+      <td>
+        {% if c.electric %}
+          {{ c.electric.used_kwh }}
+        {% else %}
+          0
+        {% endif %}
+      </td>
+      <td>
+        {% if c.rent_payment_status == 'paid' %}
+          <span class="badge bg-success">Đã đóng</span>
+        {% elif c.rent_payment_status == 'unpaid' %}
+          <span class="badge bg-warning text-dark">Chưa đóng</span>
+        {% elif c.rent_payment_status == 'no_bill' %}
+          <span class="badge bg-secondary">Chưa có hóa đơn</span>
+        {% else %}
+          <span class="badge bg-danger">Không xác định</span>
+        {% endif %}
+      </td>
+      <td>{{ c.start_date }}</td>
+      <td>{{ c.end_date }}</td>
+      <td>
+        <button class="btn btn-sm btn-outline-primary me-2" type="button" onclick="openEditContract(this)">Sửa</button>
+        <form action="/contracts/{{ c.id }}/delete" method="post" style="display:inline" onsubmit="return confirm('Xóa hợp đồng này?');">
+          <button class="btn btn-sm btn-outline-danger" type="submit">Xóa</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Modal sửa hợp đồng -->
+<div class="modal fade" id="editContractModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Sửa hợp đồng</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <form id="editContractForm" method="post">
+        <div class="modal-body">
+          <div class="mb-2">
+            <select class="form-select" id="edit_contract_room" name="room_id" required>
+              {% for r in rooms %}
+                <option value="{{ r.id }}" {% if r.id in active_room_ids %}data-busy="1"{% endif %}>{{ r.room_number }}{% if r.id in active_room_ids %} - Đang có hợp đồng{% endif %}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-2">
+            <select class="form-select" id="edit_contract_tenant" name="tenant_id" required>
+              {% for t in tenants %}
+                <option value="{{ t.id }}">{{ t.full_name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-2"><input class="form-control" id="edit_contract_start" name="start_date" type="date" required /></div>
+          <div class="mb-2"><input class="form-control" id="edit_contract_end" name="end_date" type="date" /></div>
+          <div class="mb-2"><input class="form-control" id="edit_contract_type" name="contract_type" placeholder="Loại hợp đồng" /></div>
+          <div class="mb-2"><input class="form-control" id="edit_contract_deposit" name="deposit" type="number" placeholder="Tiền cọc" /></div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" data-bs-dismiss="modal" type="button">Hủy</button>
+          <button class="btn btn-primary" type="submit">Lưu</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+function openEditContract(btn){
+  const row = btn.closest('tr');
+  const id = row.dataset.contractId;
+  document.getElementById('edit_contract_room').value = row.dataset.roomId || '';
+  document.getElementById('edit_contract_tenant').value = row.dataset.tenantId || '';
+  document.getElementById('edit_contract_start').value = row.dataset.startDate || '';
+  document.getElementById('edit_contract_end').value = row.dataset.endDate || '';
+  document.getElementById('edit_contract_type').value = row.dataset.contractType || '';
+  document.getElementById('edit_contract_deposit').value = row.dataset.deposit || 0;
+  const form = document.getElementById('editContractForm');
+  form.action = `/contracts/${id}/update`;
+  const modal = new bootstrap.Modal(document.getElementById('editContractModal'));
+  modal.show();
+}
+
+function filterContracts(){
+  const q = (document.getElementById('contractSearch').value || '').toLowerCase();
+  const payFilter = (document.getElementById('contractPaymentFilter').value || '').toLowerCase();
+  const rows = document.querySelectorAll('table tbody tr');
+  rows.forEach(r=>{
+    const text = r.innerText.toLowerCase();
+    const okSearch = text.includes(q);
+    const okPay = !payFilter || text.includes(payFilter);
+    r.style.display = (okSearch && okPay) ? '' : 'none';
+  });
+}
+
+function sortContracts(){
+  const sortVal = document.getElementById('contractSort').value;
+  const tbody = document.querySelector('table tbody');
+  const rows = Array.from(tbody.querySelectorAll('tr'));
+  const getDate = (row, idx) => new Date((row.children[idx].innerText || '').trim() || '1900-01-01');
+  const getRoom = (row) => (row.children[1].innerText || '').trim();
+  rows.sort((a,b)=>{
+    if (sortVal === 'start_desc') return getDate(b,5) - getDate(a,5);
+    if (sortVal === 'start_asc') return getDate(a,5) - getDate(b,5);
+    if (sortVal === 'room_asc') return getRoom(a).localeCompare(getRoom(b), 'vi');
+    if (sortVal === 'room_desc') return getRoom(b).localeCompare(getRoom(a), 'vi');
+    return 0;
+  });
+  rows.forEach(r=>tbody.appendChild(r));
+}
+
+document.addEventListener('DOMContentLoaded', function(){
+  const input = document.getElementById('contractSearch');
+  if (input) input.addEventListener('input', filterContracts);
+  const p = document.getElementById('contractPaymentFilter');
+  if (p) p.addEventListener('change', filterContracts);
+  const s = document.getElementById('contractSort');
+  if (s) s.addEventListener('change', sortContracts);
+});
+</script>
+{% endblock %}

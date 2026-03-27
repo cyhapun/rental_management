@@ -1,0 +1,8 @@
+from .rooms import router as rooms
+from .tenants import router as tenants
+from .contracts import router as contracts
+from .bills import router as bills
+from .electric import router as electric
+from .dashboard import router as dashboard
+from .invoice import router as invoice
+from .auth import router as auth

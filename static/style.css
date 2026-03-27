@@ -1,0 +1,39 @@
+
+body{font-family:Inter,Arial,Helvetica,sans-serif;margin:0;background:linear-gradient(180deg,#f6f8fc 0%,#eef2f9 100%)}
+.sidebar{min-height:100vh}
+.sidebar .nav-link{color:#333;display:block;padding:10px 12px;margin:2px 6px}
+.sidebar .nav-link.active{background:rgba(13,110,253,0.14);color:#0d6efd}
+.sidebar .nav-link.active i{color:#0d6efd}
+.navbar-brand{font-weight:600}
+.card-metric{background:#fff;padding:16px;border-radius:12px;box-shadow:0 8px 24px rgba(31,38,135,.08)}
+.cards{display:flex;gap:12px}
+.table-responsive{margin-top:12px}
+.form-control{max-width:420px}
+.btn-primary{min-width:120px}
+
+/* Accent styles */
+.navbar{background: linear-gradient(90deg,#0d6efd 0%, #6610f2 100%)}
+.navbar .navbar-brand{color:#fff}
+.card-metric{border-left:6px solid rgba(13,110,253,0.85)}
+.metric-small{color:#6c757d}
+.bg-panel{background: linear-gradient(180deg,#ffffff,#f7f9fc);padding:18px;border-radius:12px;box-shadow:0 6px 20px rgba(17,24,39,.06)}
+
+/* invoice print */
+.invoice { background: #fff; padding: 24px; border-radius: 8px; box-shadow: 0 6px 22px rgba(0,0,0,0.08)}
+.invoice h2{margin-bottom:6px}
+.text-muted-small{color:#6c757d;font-size:0.9rem}
+
+/* UI polish */
+.table { background: #fff; border-radius: 12px; overflow: hidden; box-shadow:0 4px 14px rgba(17,24,39,.06); }
+.table thead th { background: #f3f5f9; border-bottom: 1px solid #e9ecef; font-weight: 600; }
+.table td, .table th { vertical-align: middle; }
+.table tbody tr:hover { background:#f7faff; }
+.btn { border-radius: 10px; font-weight:500; }
+.form-control, .form-select { border-radius: 10px; }
+.badge { border-radius: 999px; padding: .35em .6em; }
+.modal-content { border-radius: 14px; box-shadow:0 18px 40px rgba(17,24,39,.2); }
+.nav-link.active, .nav-link:hover { background: rgba(13,110,253,0.12); border-radius: 10px; font-weight:600; }
+.nav-link.active{box-shadow: inset 3px 0 0 rgba(13,110,253,0.9)}
+.list-group-item.active { border-color:#0d6efd; background:#0d6efd; }
+.row-active-contract td { background: #fffdf2; }
+.form-select option[disabled] { color:#9aa3b2; }

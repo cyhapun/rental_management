@@ -1,0 +1,156 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h4">Chỉ số điện</h1>
+  <form class="d-flex" action="/electric/add" method="post">
+    <select class="form-select me-2" name="room_id" id="roomSelect" required>
+      <option value="" selected disabled>Chọn phòng</option>
+      {% for r in rooms %}
+        <option value="{{ r.id }}">{{ r.room_number }}{% if r.status %} ({{ r.status }}){% endif %}</option>
+      {% endfor %}
+    </select>
+    <input class="form-control me-2" name="month" type="month" value="{{ default_month }}" required />
+    <input class="form-control me-2" name="old_index" id="oldIndex" placeholder="Chỉ số cũ" type="number" readonly />
+    <input class="form-control me-2" name="new_index" placeholder="Chỉ số mới" type="number" required />
+    <input class="form-control me-2" name="price_per_kwh" placeholder="Giá/kWh" value="3000" />
+    <button class="btn btn-primary" type="submit">Thêm</button>
+  </form>
+</div>
+
+<div class="input-group mb-2" style="max-width:420px;">
+  <input class="form-control form-control-sm" id="electricSearch" placeholder="Tìm theo phòng / tháng..." />
+  <button class="btn btn-sm btn-light" type="button" onclick="filterElectric()"><i class="fa-solid fa-magnifying-glass"></i></button>
+</div>
+<div class="d-flex gap-2 mb-2">
+  <select class="form-select form-select-sm" id="electricSort" style="max-width:230px;">
+    <option value="default">Sắp xếp mặc định</option>
+    <option value="month_desc">Tháng: mới nhất</option>
+    <option value="month_asc">Tháng: cũ nhất</option>
+    <option value="usage_desc">Đã dùng: cao -> thấp</option>
+    <option value="usage_asc">Đã dùng: thấp -> cao</option>
+  </select>
+</div>
+
+<div class="table-responsive">
+  <table class="table table-sm table-striped">
+    <thead><tr><th>Phòng</th><th>Tháng</th><th>Cũ</th><th>Mới</th><th>Đã dùng</th><th>Thao tác</th></tr></thead>
+    <tbody>
+    {% for r in readings %}
+    <tr data-reading-id="{{ r.id }}" data-month="{{ r.month }}" data-old-index="{{ r.old_index }}" data-new-index="{{ r.new_index }}" data-price="{{ r.price_per_kwh }}">
+      <td>
+        {% if r.room %}
+          {{ r.room.room_number }}
+        {% else %}
+          {{ r.room_id }}
+        {% endif %}
+      </td>
+      <td>{{ r.month }}</td>
+      <td>{{ r.old_index }}</td>
+      <td>{{ r.new_index }}</td>
+      <td>{{ r.usage }}</td>
+      <td>
+        <button class="btn btn-sm btn-outline-primary me-2" type="button" onclick="openEditReading(this)">Sửa</button>
+        <form action="/electric/{{ r.id }}/delete" method="post" style="display:inline" onsubmit="return confirm('Xóa chỉ số điện này?');">
+          <button class="btn btn-sm btn-outline-danger" type="submit">Xóa</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Modal sửa chỉ số điện -->
+<div class="modal fade" id="editReadingModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Sửa chỉ số điện</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <form id="editReadingForm" method="post">
+        <div class="modal-body">
+          <div class="mb-2"><input class="form-control" id="edit_month" name="month" type="month" required></div>
+          <div class="mb-2"><input class="form-control" id="edit_old_index" name="old_index" type="number" required></div>
+          <div class="mb-2"><input class="form-control" id="edit_new_index" name="new_index" type="number" required></div>
+          <div class="mb-2"><input class="form-control" id="edit_price" name="price_per_kwh" type="number" required></div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" data-bs-dismiss="modal" type="button">Hủy</button>
+          <button class="btn btn-primary" type="submit">Lưu</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const roomSelect = document.getElementById('roomSelect');
+  const oldIndexInput = document.getElementById('oldIndex');
+
+  async function loadOldIndex(roomId) {
+    if (!roomId) {
+      oldIndexInput.value = '';
+      return;
+    }
+    try {
+      const res = await fetch(`/electric/last/${roomId}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      oldIndexInput.value = data.old_index ?? 0;
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  if (roomSelect) {
+    roomSelect.addEventListener('change', function () {
+      loadOldIndex(this.value);
+    });
+  }
+});
+
+function openEditReading(btn){
+  const row = btn.closest('tr');
+  const id = row.dataset.readingId;
+  document.getElementById('edit_month').value = row.dataset.month || '';
+  document.getElementById('edit_old_index').value = row.dataset.oldIndex || 0;
+  document.getElementById('edit_new_index').value = row.dataset.newIndex || 0;
+  document.getElementById('edit_price').value = row.dataset.price || 2000;
+  const form = document.getElementById('editReadingForm');
+  form.action = `/electric/${id}/update`;
+  const modal = new bootstrap.Modal(document.getElementById('editReadingModal'));
+  modal.show();
+}
+
+function filterElectric(){
+  const q = (document.getElementById('electricSearch').value || '').toLowerCase();
+  const rows = document.querySelectorAll('table tbody tr');
+  rows.forEach(r=>{
+    r.style.display = r.innerText.toLowerCase().includes(q) ? '' : 'none';
+  });
+}
+
+function sortElectric(){
+  const sortVal = document.getElementById('electricSort').value;
+  const tbody = document.querySelector('table tbody');
+  const rows = Array.from(tbody.querySelectorAll('tr'));
+  const monthVal = (r)=> (r.children[1].innerText || '').trim();
+  const usageVal = (r)=> parseInt((r.children[4].innerText||'0').trim(),10) || 0;
+  rows.sort((a,b)=>{
+    if (sortVal==='month_desc') return monthVal(b).localeCompare(monthVal(a));
+    if (sortVal==='month_asc') return monthVal(a).localeCompare(monthVal(b));
+    if (sortVal==='usage_desc') return usageVal(b)-usageVal(a);
+    if (sortVal==='usage_asc') return usageVal(a)-usageVal(b);
+    return 0;
+  });
+  rows.forEach(r=>tbody.appendChild(r));
+}
+
+document.addEventListener('DOMContentLoaded', function(){
+  const input = document.getElementById('electricSearch');
+  if (input) input.addEventListener('input', filterElectric);
+  const s = document.getElementById('electricSort');
+  if (s) s.addEventListener('change', sortElectric);
+});
+</script>
+
+{% endblock %}

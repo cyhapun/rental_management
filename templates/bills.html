@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h4">Hóa đơn</h1>
+  <form class="d-flex" action="/bills/generate" method="post">
+    <input class="form-control me-2" name="month" type="month" value="{{ default_month }}" required />
+    <button class="btn btn-primary" type="submit">Tạo hóa đơn theo tháng</button>
+  </form>
+</div>
+
+<div class="d-flex align-items-center mb-2 gap-2 flex-wrap">
+  <div class="btn-group" role="group" aria-label="Bộ lọc trạng thái">
+    <a class="btn btn-outline-secondary {% if status=='paid' %}active{% endif %}" href="/bills/?status=paid">Đã đóng</a>
+    <a class="btn btn-outline-secondary {% if status=='unpaid' %}active{% endif %}" href="/bills/?status=unpaid">Chưa đóng</a>
+  </div>
+  <span class="text-muted small">Sắp xếp:</span>
+  <select class="form-select form-select-sm" id="billSort" style="max-width:260px;">
+    <option value="default">Mặc định</option>
+    <option value="month_desc">Tháng: mới nhất</option>
+    <option value="month_asc">Tháng: cũ nhất</option>
+    <option value="total_desc">Tổng tiền: cao -> thấp</option>
+    <option value="total_asc">Tổng tiền: thấp -> cao</option>
+  </select>
+  <div class="input-group ms-auto" style="max-width:360px;">
+    <input class="form-control form-control-sm" id="billSearch" placeholder="Tìm theo tên / phòng / tháng..." />
+    <button class="btn btn-sm btn-light" type="button" onclick="filterBills()"><i class="fa-solid fa-magnifying-glass"></i></button>
+  </div>
+</div>
+
+<div class="table-responsive">
+  <table class="table table-hover">
+    <thead><tr><th>Người thuê / Phòng</th><th>Tháng</th><th>Tổng</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+    <tbody>
+    {% for b in bills %}
+    <tr>
+      <td>
+        {% if b.contract_display and (b.contract_display.tenant_name or b.contract_display.room_number) %}
+          {{ b.contract_display.tenant_name or '' }}{% if b.contract_display.room_number %} - Phòng {{ b.contract_display.room_number }}{% endif %}
+        {% else %}
+          {{ b.contract_id }}
+        {% endif %}
+      </td>
+      <td>{{ b.month }}</td>
+      <td>{{ b.total | money }}</td>
+      <td>
+        {% if b.status == 'paid' %}
+          <span class="badge bg-success">Đã đóng</span>
+        {% elif b.status == 'unpaid' %}
+          <span class="badge bg-warning text-dark">Chưa đóng</span>
+        {% else %}
+          <span class="badge bg-secondary">{{ b.status }}</span>
+        {% endif %}
+      </td>
+      <td>
+        <form action="/bills/{{ b.id }}/pay" method="post" class="d-inline">
+          <input class="form-control form-control-sm d-inline-block me-2" name="amount" placeholder="Số tiền" required style="width:120px;" />
+          <input class="form-control form-control-sm d-inline-block me-2" name="method" placeholder="Hình thức" style="width:120px;" />
+          <button class="btn btn-sm btn-success" type="submit">Thanh toán</button>
+        </form>
+        <button class="btn btn-sm btn-outline-secondary ms-2" type="button" onclick="showBill('{{ b.id }}')">Hiển thị</button>
+        <form action="/bills/{{ b.id }}/delete" method="post" class="d-inline" onsubmit="return confirm('Xóa hóa đơn này?');">
+          <button class="btn btn-sm btn-outline-danger ms-2" type="submit">Xóa</button>
+        </form>
+        <a class="btn btn-sm btn-outline-secondary ms-1" href="/invoice/pdf/{{ b.id }}" target="_blank">PDF</a>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Modal hiển thị hóa đơn -->
+<div class="modal fade" id="billViewModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Hóa đơn</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-0" style="height:80vh;">
+        <iframe id="billViewFrame" src="" style="border:0;width:100%;height:100%;"></iframe>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function showBill(billId){
+  const frame = document.getElementById('billViewFrame');
+  frame.src = `/invoice/print/${billId}`;
+  const modal = new bootstrap.Modal(document.getElementById('billViewModal'));
+  modal.show();
+}
+
+function filterBills(){
+  const q = (document.getElementById('billSearch').value || '').toLowerCase();
+  const rows = document.querySelectorAll('table tbody tr');
+  rows.forEach(r=>{
+    r.style.display = r.innerText.toLowerCase().includes(q) ? '' : 'none';
+  });
+}
+
+function sortBills(){
+  const sortVal = document.getElementById('billSort').value;
+  const tbody = document.querySelector('table tbody');
+  const rows = Array.from(tbody.querySelectorAll('tr'));
+  const monthVal = (r)=> (r.children[1].innerText || '').trim();
+  const totalVal = (r)=> parseInt((r.children[2].innerText || '0').replace(/[^\d]/g,''),10) || 0;
+  rows.sort((a,b)=>{
+    if (sortVal==='month_desc') return monthVal(b).localeCompare(monthVal(a));
+    if (sortVal==='month_asc') return monthVal(a).localeCompare(monthVal(b));
+    if (sortVal==='total_desc') return totalVal(b)-totalVal(a);
+    if (sortVal==='total_asc') return totalVal(a)-totalVal(b);
+    return 0;
+  });
+  rows.forEach(r=>tbody.appendChild(r));
+}
+
+document.addEventListener('DOMContentLoaded', function(){
+  const input = document.getElementById('billSearch');
+  if (input) input.addEventListener('input', filterBills);
+  const s = document.getElementById('billSort');
+  if (s) s.addEventListener('change', sortBills);
+});
+</script>
+
+{% endblock %}

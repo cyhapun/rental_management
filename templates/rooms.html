@@ -1,0 +1,160 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h4">Phòng</h1>
+  <div>
+    <button class="btn btn-outline-primary me-2" data-bs-toggle="modal" data-bs-target="#createRoomModal"><i class="fa-solid fa-plus me-1"></i>Thêm phòng</button>
+    <a class="btn btn-outline-secondary" href="/rooms/?q="><i class="fa-solid fa-filter me-1"></i>Lọc</a>
+  </div>
+</div>
+
+<div class="table-toolbar mb-2 d-flex justify-content-between">
+  <div class="input-group w-50">
+    <input class="form-control form-control-sm" placeholder="Tìm số phòng..." id="roomSearch" value="{{ q }}">
+    <button class="btn btn-sm btn-light" onclick="filterRooms()"><i class="fa-solid fa-magnifying-glass"></i></button>
+  </div>
+</div>
+<div class="d-flex gap-2 mb-2">
+  <select class="form-select form-select-sm" id="roomStatusFilter" style="max-width:170px;">
+    <option value="">Lọc trạng thái</option>
+    <option value="Đang thuê">Đang thuê</option>
+    <option value="Trống">Trống</option>
+  </select>
+  <select class="form-select form-select-sm" id="roomSort" style="max-width:220px;">
+    <option value="default">Sắp xếp mặc định</option>
+    <option value="room_asc">Phòng: tăng dần</option>
+    <option value="room_desc">Phòng: giảm dần</option>
+    <option value="price_asc">Giá: thấp đến cao</option>
+    <option value="price_desc">Giá: cao đến thấp</option>
+  </select>
+</div>
+
+<div class="table-responsive">
+  <table class="table table-striped" id="roomsTable">
+    <thead><tr><th>Phòng</th><th>Giá</th><th>Chỉ số điện hiện tại</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+    <tbody>
+    {% for r in rooms %}
+    <tr data-room-id="{{ r.id }}" data-room-number="{{ r.room_number }}" data-room-price="{{ r.price }}" data-room-electric-index="{{ r.current_electric_index or 0 }}" data-room-status="{{ r.status }}">
+      <td>{{ r.room_number }}</td>
+      <td>{{ r.price | money }}</td>
+      <td>{{ r.current_electric_index or 0 }}</td>
+      <td>
+        {% if r.status == 'occupied' %}
+          <span class="badge bg-warning text-dark">Đang thuê</span>
+        {% else %}
+          <span class="badge bg-success">Trống</span>
+        {% endif %}
+      </td>
+      <td>
+        <button type="button" class="btn btn-sm btn-outline-primary me-2" onclick="openEditRoom(this)">Sửa</button>
+        <form action="/rooms/{{ r.id }}/delete" method="post" style="display:inline">
+          <button class="btn btn-sm btn-outline-danger">Xóa</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Create Room Modal -->
+<div class="modal fade" id="createRoomModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Thêm phòng</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <form action="/rooms/create" method="post">
+        <div class="modal-body">
+          <div class="mb-2"><input class="form-control" name="room_number" placeholder="Số phòng" required></div>
+          <div class="mb-2"><input class="form-control" name="price" placeholder="Giá" type="number" required></div>
+          <div class="mb-2"><input class="form-control" name="current_electric_index" placeholder="Chỉ số điện hiện tại" type="number" min="0" value="0"></div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" data-bs-dismiss="modal" type="button">Hủy</button>
+          <button class="btn btn-primary" type="submit">Tạo</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Room Modal -->
+<div class="modal fade" id="editRoomModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Sửa phòng</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <form id="editRoomForm" method="post">
+        <div class="modal-body">
+          <div class="mb-2"><input class="form-control" id="edit_room_number" name="room_number" placeholder="Số phòng" required></div>
+          <div class="mb-2"><input class="form-control" id="edit_room_price" name="price" placeholder="Giá" type="number" required></div>
+          <div class="mb-2"><input class="form-control" id="edit_room_electric_index" name="current_electric_index" placeholder="Chỉ số điện hiện tại" type="number" min="0" required></div>
+          <div class="mb-2">
+            <select class="form-select" id="edit_room_status" name="status">
+              <option value="available">available</option>
+              <option value="occupied">occupied</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" data-bs-dismiss="modal" type="button">Hủy</button>
+          <button class="btn btn-primary" type="submit">Lưu</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+function filterRooms(){
+  const q = document.getElementById('roomSearch').value.toLowerCase();
+  const status = (document.getElementById('roomStatusFilter').value || '').toLowerCase();
+  const rows = document.querySelectorAll('#roomsTable tbody tr');
+  rows.forEach(r=>{
+    const room = r.cells[0].innerText.toLowerCase();
+    const st = r.cells[3].innerText.toLowerCase();
+    r.style.display = (room.includes(q) && (!status || st.includes(status))) ? '' : 'none';
+  });
+}
+
+function sortRooms(){
+  const sortVal = document.getElementById('roomSort').value;
+  const tbody = document.querySelector('#roomsTable tbody');
+  const rows = Array.from(tbody.querySelectorAll('tr'));
+  const roomNo = (r)=> parseInt((r.cells[0].innerText||'0').trim(),10) || 0;
+  const price = (r)=> parseInt((r.dataset.roomPrice||'0').replace(/[^\d]/g,''),10) || 0;
+  rows.sort((a,b)=>{
+    if (sortVal==='room_asc') return roomNo(a)-roomNo(b);
+    if (sortVal==='room_desc') return roomNo(b)-roomNo(a);
+    if (sortVal==='price_asc') return price(a)-price(b);
+    if (sortVal==='price_desc') return price(b)-price(a);
+    return 0;
+  });
+  rows.forEach(r=>tbody.appendChild(r));
+}
+
+document.addEventListener('DOMContentLoaded', function(){
+  const input = document.getElementById('roomSearch');
+  if (input){
+    input.addEventListener('input', filterRooms);
+    input.addEventListener('keydown', (e)=>{ if (e.key === 'Enter'){ e.preventDefault(); filterRooms(); }});
+  }
+  const st = document.getElementById('roomStatusFilter');
+  if (st) st.addEventListener('change', filterRooms);
+  const sort = document.getElementById('roomSort');
+  if (sort) sort.addEventListener('change', sortRooms);
+});
+
+function openEditRoom(btn){
+  const row = btn.closest('tr');
+  const roomId = row.dataset.roomId;
+  document.getElementById('edit_room_number').value = row.dataset.roomNumber || '';
+  document.getElementById('edit_room_price').value = row.dataset.roomPrice || '';
+  document.getElementById('edit_room_electric_index').value = row.dataset.roomElectricIndex || '0';
+  document.getElementById('edit_room_status').value = row.dataset.roomStatus || 'available';
+  const form = document.getElementById('editRoomForm');
+  form.action = `/rooms/${roomId}/update`;
+  const modal = new bootstrap.Modal(document.getElementById('editRoomModal'));
+  modal.show();
+}
+</script>
+
+{% endblock %}

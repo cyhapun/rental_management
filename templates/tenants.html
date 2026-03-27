@@ -1,0 +1,212 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h4">Người thuê</h1>
+  <div>
+    <button class="btn btn-outline-primary me-2" data-bs-toggle="modal" data-bs-target="#createTenantModal"><i class="fa-solid fa-plus me-1"></i>Thêm người thuê</button>
+    <a class="btn btn-outline-secondary" href="/tenants/?q="><i class="fa-solid fa-filter me-1"></i>Lọc</a>
+  </div>
+</div>
+
+<div class="table-toolbar mb-2 d-flex justify-content-between">
+  <div class="input-group w-50">
+    <input class="form-control form-control-sm" placeholder="Tìm kiếm..." id="tenantSearch" value="{{ q }}">
+    <button class="btn btn-sm btn-light" onclick="filterTenants()"><i class="fa-solid fa-magnifying-glass"></i></button>
+  </div>
+</div>
+<div class="d-flex gap-2 mb-2">
+  <select class="form-select form-select-sm" id="tenantGenderFilter" style="max-width:160px;">
+    <option value="">Lọc giới tính</option>
+    <option value="nam">Nam</option>
+    <option value="nữ">Nữ</option>
+  </select>
+  <select class="form-select form-select-sm" id="tenantStatusFilter" style="max-width:180px;">
+    <option value="">Lọc tình trạng</option>
+    <option value="đang thuê">Đang thuê</option>
+    <option value="đã kết thúc">Đã kết thúc</option>
+  </select>
+  <select class="form-select form-select-sm" id="tenantSort" style="max-width:220px;">
+    <option value="default">Sắp xếp mặc định</option>
+    <option value="name_asc">Tên: A-Z</option>
+    <option value="name_desc">Tên: Z-A</option>
+    <option value="year_asc">Năm sinh: tăng dần</option>
+    <option value="year_desc">Năm sinh: giảm dần</option>
+  </select>
+</div>
+
+<div class="table-responsive">
+  <table class="table table-hover" id="tenantsTable">
+    <thead><tr><th>Họ tên</th><th>SĐT</th><th>Giới tính</th><th>Năm sinh</th><th>Tình trạng</th><th>CCCD</th><th>Thao tác</th></tr></thead>
+    <tbody>
+      {% for t in tenants %}
+      <tr data-tenant-id="{{ t.id }}" data-full-name="{{ t.full_name }}" data-phone="{{ t.phone }}" data-gender="{{ t.gender }}" data-birth-year="{{ t.birth_year }}" data-rental-status="{{ t.rental_status }}" data-cccd-full="{{ t.cccd_full }}" data-cccd-masked="{{ t.cccd }}">
+        <td>{{ t.full_name }}</td>
+        <td>{{ t.phone }}</td>
+        <td>{{ t.gender }}</td>
+        <td>{{ t.birth_year }}</td>
+        <td>
+          {% if t.rental_status == "Đang thuê" %}
+            <span class="badge bg-warning text-dark">Đang thuê</span>
+          {% else %}
+            <span class="badge bg-secondary">Đã kết thúc</span>
+          {% endif %}
+        </td>
+        <td>
+          <span class="cccd-masked">{{ t.cccd }}</span>
+          <span class="cccd-full" style="display:none;">{{ t.cccd_full }}</span>
+          <button type="button" class="btn btn-sm btn-outline-secondary ms-2" onclick="toggleCccd(this)">Hiện</button>
+        </td>
+        <td>
+          <button type="button" class="btn btn-sm btn-outline-primary me-2" onclick="openEditTenant(this)">Sửa</button>
+          <form action="/tenants/{{ t.id }}/delete" method="post" style="display:inline" onsubmit="return confirm('Xóa người thuê này?');">
+            <button class="btn btn-sm btn-outline-danger">Xóa</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Create Tenant Modal -->
+<div class="modal fade" id="createTenantModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Thêm / Cập nhật người thuê</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <form action="/tenants/create" method="post">
+        <div class="modal-body">
+          <div class="mb-2"><input class="form-control" name="full_name" placeholder="Họ và tên" required></div>
+          <div class="mb-2"><input class="form-control" name="cccd" placeholder="CCCD" required></div>
+          <div class="mb-2"><input class="form-control" name="gender" placeholder="Giới tính"></div>
+          <div class="mb-2"><input class="form-control" name="birth_year" placeholder="Năm sinh" type="number"></div>
+          <div class="mb-2"><input class="form-control" name="phone" placeholder="Số điện thoại"></div>
+          <div class="mb-2">
+            <select class="form-select" name="rental_status">
+              <option value="Đang thuê">Đang thuê</option>
+              <option value="Đã kết thúc" selected>Đã kết thúc</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" data-bs-dismiss="modal" type="button">Hủy</button>
+          <button class="btn btn-primary" type="submit">Lưu</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Tenant Modal -->
+<div class="modal fade" id="editTenantModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Sửa người thuê</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <form id="editTenantForm" method="post">
+        <div class="modal-body">
+          <div class="mb-2"><input class="form-control" id="edit_full_name" name="full_name" placeholder="Họ và tên" required></div>
+          <div class="mb-2"><input class="form-control" id="edit_cccd" name="cccd" placeholder="CCCD" required></div>
+          <div class="mb-2"><input class="form-control" id="edit_gender" name="gender" placeholder="Giới tính"></div>
+          <div class="mb-2"><input class="form-control" id="edit_birth_year" name="birth_year" placeholder="Năm sinh" type="number"></div>
+          <div class="mb-2"><input class="form-control" id="edit_phone" name="phone" placeholder="Số điện thoại"></div>
+          <div class="mb-2">
+            <select class="form-select" id="edit_rental_status" name="rental_status">
+              <option value="Đang thuê">Đang thuê</option>
+              <option value="Đã kết thúc">Đã kết thúc</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" data-bs-dismiss="modal" type="button">Hủy</button>
+          <button class="btn btn-primary" type="submit">Lưu</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+function filterTenants(){
+  const q = document.getElementById('tenantSearch').value.toLowerCase();
+  const genderFilter = (document.getElementById('tenantGenderFilter').value || '').toLowerCase();
+  const statusFilter = (document.getElementById('tenantStatusFilter').value || '').toLowerCase();
+  const rows = document.querySelectorAll('#tenantsTable tbody tr');
+  rows.forEach(r=>{
+    const name = (r.cells[0].innerText || '').toLowerCase();
+    const phone = (r.cells[1].innerText || '').toLowerCase();
+    const gender = (r.cells[2].innerText || '').toLowerCase();
+    const birthYear = (r.cells[3].innerText || '').toLowerCase();
+    const rentalStatus = (r.cells[4].innerText || '').toLowerCase();
+    const cccdFull = (r.dataset.cccdFull || '').toLowerCase();
+    const cccdMasked = (r.dataset.cccdMasked || '').toLowerCase();
+    const okSearch = (name.includes(q) || phone.includes(q) || gender.includes(q) || birthYear.includes(q) || rentalStatus.includes(q) || cccdFull.includes(q) || cccdMasked.includes(q));
+    const okGender = !genderFilter || gender.includes(genderFilter);
+    const okStatus = !statusFilter || rentalStatus.includes(statusFilter);
+    r.style.display = (okSearch && okGender && okStatus) ? '' : 'none';
+  });
+}
+
+function sortTenants(){
+  const sortVal = document.getElementById('tenantSort').value;
+  const tbody = document.querySelector('#tenantsTable tbody');
+  const rows = Array.from(tbody.querySelectorAll('tr'));
+  rows.sort((a,b)=>{
+    const nameA = (a.cells[0].innerText || '').trim();
+    const nameB = (b.cells[0].innerText || '').trim();
+    const yA = parseInt((a.cells[3].innerText || '0').trim(),10) || 0;
+    const yB = parseInt((b.cells[3].innerText || '0').trim(),10) || 0;
+    if (sortVal==='name_asc') return nameA.localeCompare(nameB,'vi');
+    if (sortVal==='name_desc') return nameB.localeCompare(nameA,'vi');
+    if (sortVal==='year_asc') return yA-yB;
+    if (sortVal==='year_desc') return yB-yA;
+    return 0;
+  });
+  rows.forEach(r=>tbody.appendChild(r));
+}
+
+function toggleCccd(btn){
+  const row = btn.closest('tr');
+  const masked = row.querySelector('.cccd-masked');
+  const full = row.querySelector('.cccd-full');
+  const isFullShown = full.style.display !== 'none';
+  if (isFullShown){
+    full.style.display = 'none';
+    masked.style.display = '';
+    btn.textContent = 'Hiện';
+  } else {
+    full.style.display = '';
+    masked.style.display = 'none';
+    btn.textContent = 'Ẩn';
+  }
+}
+
+document.addEventListener('DOMContentLoaded', function(){
+  const input = document.getElementById('tenantSearch');
+  if (input){
+    input.addEventListener('input', filterTenants);
+    input.addEventListener('keydown', (e)=>{ if (e.key === 'Enter'){ e.preventDefault(); filterTenants(); }});
+  }
+  const g = document.getElementById('tenantGenderFilter');
+  if (g) g.addEventListener('change', filterTenants);
+  const st = document.getElementById('tenantStatusFilter');
+  if (st) st.addEventListener('change', filterTenants);
+  const s = document.getElementById('tenantSort');
+  if (s) s.addEventListener('change', sortTenants);
+});
+
+function openEditTenant(btn){
+  const row = btn.closest('tr');
+  const id = row.dataset.tenantId;
+  document.getElementById('edit_full_name').value = row.dataset.fullName || '';
+  document.getElementById('edit_phone').value = row.dataset.phone || '';
+  document.getElementById('edit_gender').value = row.dataset.gender || '';
+  document.getElementById('edit_birth_year').value = row.dataset.birthYear || '';
+  document.getElementById('edit_cccd').value = row.dataset.cccdFull || '';
+  document.getElementById('edit_rental_status').value = row.dataset.rentalStatus || 'Đã kết thúc';
+  const form = document.getElementById('editTenantForm');
+  form.action = `/tenants/${id}/update`;
+  const modal = new bootstrap.Modal(document.getElementById('editTenantModal'));
+  modal.show();
+}
+</script>
+
+{% endblock %}

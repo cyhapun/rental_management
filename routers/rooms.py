@@ -1,0 +1,129 @@
+from fastapi import APIRouter, Request, HTTPException, Form
+from fastapi.responses import HTMLResponse
+from app.deps import get_db
+from bson import ObjectId
+import os
+from jinja2 import Environment, FileSystemLoader
+
+from app.security import decrypt_value
+from app.template_filters import money
+from app.flash import redirect_with_flash
+
+router = APIRouter(prefix="/rooms", tags=["rooms"])
+
+TEMPLATES_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "templates"))
+env = Environment(loader=FileSystemLoader(TEMPLATES_DIR))
+env.filters["money"] = money
+
+
+def _fix_id(doc):
+    if not doc:
+        return None
+    doc["id"] = str(doc.get("_id"))
+    return doc
+
+
+@router.get("/", response_class=HTMLResponse)
+async def list_rooms(request: Request, q: str = ""):
+    db = get_db()
+    query = {}
+    if q:
+        query = {"room_number": {"$regex": q, "$options": "i"}}
+    cursor = db.rooms.find(query)
+    rooms = []
+    async for r in cursor:
+        # Keep backward compatibility for old rooms without this field.
+        r["current_electric_index"] = r.get("current_electric_index", 0)
+        rooms.append(_fix_id(r))
+    tpl = env.get_template("rooms.html")
+    html = tpl.render(request=request, rooms=rooms, q=q or "")
+    return HTMLResponse(content=html)
+
+
+@router.post("/create")
+async def create_room(room_number: str = Form(...), price: int = Form(...), current_electric_index: int = Form(0)):
+    db = get_db()
+    try:
+        existing = await db.rooms.find_one({"room_number": room_number})
+        if existing:
+            return redirect_with_flash("/rooms/", "Phòng đã tồn tại.", "danger")
+        await db.rooms.insert_one(
+            {
+                "room_number": room_number,
+                "price": price,
+                "status": "available",
+                "current_electric_index": max(0, int(current_electric_index)),
+            }
+        )
+        return redirect_with_flash("/rooms/", "Thêm phòng thành công.")
+    except Exception:
+        return redirect_with_flash("/rooms/", "Thêm phòng thất bại.", "danger")
+
+
+@router.post("/{room_id}/update")
+async def update_room(
+    room_id: str,
+    room_number: str = Form(...),
+    price: int = Form(...),
+    status: str = Form("available"),
+    current_electric_index: int = Form(0),
+):
+    db = get_db()
+    try:
+        await db.rooms.update_one(
+            {"_id": ObjectId(room_id)},
+            {
+                "$set": {
+                    "room_number": room_number,
+                    "price": price,
+                    "status": status,
+                    "current_electric_index": max(0, int(current_electric_index)),
+                }
+            },
+        )
+        return redirect_with_flash("/rooms/", "Cập nhật phòng thành công.")
+    except Exception:
+        return redirect_with_flash("/rooms/", "Cập nhật phòng thất bại.", "danger")
+
+
+@router.get("/{room_id}")
+async def get_room(room_id: str):
+    db = get_db()
+    doc = await db.rooms.find_one({"_id": ObjectId(room_id)})
+    if not doc:
+        raise HTTPException(404)
+    result = _fix_id(doc)
+    # attach current contract and tenant if exists
+    try:
+        # contracts may store room_id as string of ObjectId
+        contract = await db.contracts.find_one({"room_id": str(doc.get("_id"))})
+        if contract:
+            contract["id"] = str(contract.get("_id"))
+            tenant = None
+            try:
+                tenant_id = contract.get("tenant_id")
+                if tenant_id:
+                    tenant = await db.tenants.find_one({"_id": ObjectId(tenant_id)})
+            except Exception:
+                tenant = None
+            if tenant:
+                tenant["id"] = str(tenant.get("_id"))
+                result["current_contract"] = {
+                    "contract_id": contract.get("id"),
+                    "tenant": {"id": tenant.get("id"), "full_name": tenant.get("full_name"), "phone": decrypt_value(tenant.get("phone"))},
+                    "start_date": contract.get("start_date"),
+                    "end_date": contract.get("end_date"),
+                }
+    except Exception:
+        pass
+    return result
+
+
+@router.post("/{room_id}/delete")
+async def delete_room(room_id: str):
+    db = get_db()
+    try:
+        await db.rooms.delete_one({"_id": ObjectId(room_id)})
+        return redirect_with_flash("/rooms/", "Xóa phòng thành công.")
+    except Exception:
+        return redirect_with_flash("/rooms/", "Xóa phòng thất bại.", "danger")

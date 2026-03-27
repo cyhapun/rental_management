@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+motor
+jinja2
+pandas
+openpyxl
+pymongo
+weasyprint
+cryptography
+reportlab

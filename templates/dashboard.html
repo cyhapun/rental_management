@@ -1,0 +1,187 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h3">Tổng quan</h1>
+  <div class="text-muted">Tổng quan nhà trọ</div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-sm-6 col-md-3">
+    <div class="card-metric p-3">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <div class="metric-small">Tổng số phòng</div>
+          <strong class="h4">{{ total_rooms }}</strong>
+        </div>
+        <div><i class="fa-solid fa-house fa-2x text-primary"></i></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-md-3">
+    <div class="card-metric p-3">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <div class="metric-small">Đang thuê</div>
+          <strong class="h4">{{ occupied }}</strong>
+        </div>
+        <div><i class="fa-solid fa-users fa-2x text-success"></i></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-md-3">
+    <div class="card-metric p-3">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <div class="metric-small">Hóa đơn chưa đóng</div>
+          <strong class="h4">{{ unpaid }}</strong>
+        </div>
+        <div><i class="fa-solid fa-file-invoice-dollar fa-2x text-warning"></i></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-md-3">
+    <div class="card-metric p-3">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <div class="metric-small">Doanh thu tháng này</div>
+          <strong class="h4">{{ revenue | money }}</strong>
+        </div>
+        <div><i class="fa-solid fa-coins fa-2x text-info"></i></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-lg-8">
+    <div class="bg-panel">
+      <h5>Doanh thu (6 tháng gần nhất)</h5>
+      <canvas id="revenueChart" height="120"></canvas>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="bg-panel">
+      <h5>Thao tác nhanh</h5>
+      <div class="d-grid gap-2">
+        <a class="btn btn-outline-primary" href="/rooms/">Quản lý phòng</a>
+        <a class="btn btn-outline-secondary" href="/tenants/">Quản lý người thuê</a>
+        <a class="btn btn-outline-success" href="/bills/">Tạo hóa đơn</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row mt-3 g-3">
+  <div class="col-lg-4">
+    <div class="bg-panel">
+      <h5>Tỷ lệ phòng</h5>
+      <canvas id="roomStatusChart" height="180"></canvas>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="bg-panel">
+      <h5>Trạng thái hóa đơn</h5>
+      <canvas id="billStatusChart" height="180"></canvas>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="bg-panel">
+      <h5>Tình trạng người thuê</h5>
+      <canvas id="tenantStatusChart" height="180"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="row mt-3">
+  <div class="col-12">
+    <div class="bg-panel">
+      <h5>Top phòng tiêu thụ điện (kWh)</h5>
+      <canvas id="topElectricChart" height="120"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const labels = {{ revenue_labels|tojson | safe }};
+const data = {{ revenue_series|tojson | safe }};
+const ctx = document.getElementById('revenueChart').getContext('2d');
+new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: labels,
+        datasets: [{
+            label: 'Doanh thu',
+            data: data,
+            borderColor: 'rgba(13,110,253,0.9)',
+            backgroundColor: 'rgba(13,110,253,0.15)',
+            tension: 0.3,
+            fill: true
+        }]
+    },
+    options: {responsive:true, plugins:{legend:{display:false}}}
+});
+
+const roomStatusCtx = document.getElementById('roomStatusChart').getContext('2d');
+new Chart(roomStatusCtx, {
+  type: 'doughnut',
+  data: {
+    labels: ['Đang thuê', 'Trống'],
+    datasets: [{
+      data: [{{ occupied }}, {{ available }}],
+      backgroundColor: ['rgba(255,193,7,0.85)', 'rgba(25,135,84,0.8)']
+    }]
+  },
+  options: {responsive:true}
+});
+
+const billStatusCtx = document.getElementById('billStatusChart').getContext('2d');
+new Chart(billStatusCtx, {
+  type: 'doughnut',
+  data: {
+    labels: ['Đã đóng', 'Chưa đóng'],
+    datasets: [{
+      data: [{{ paid }}, {{ unpaid }}],
+      backgroundColor: ['rgba(13,110,253,0.85)', 'rgba(220,53,69,0.8)']
+    }]
+  },
+  options: {responsive:true}
+});
+
+const tenantStatusCtx = document.getElementById('tenantStatusChart').getContext('2d');
+new Chart(tenantStatusCtx, {
+  type: 'pie',
+  data: {
+    labels: ['Đang thuê', 'Đã kết thúc'],
+    datasets: [{
+      data: [{{ renting_tenants }}, {{ ended_tenants }}],
+      backgroundColor: ['rgba(255,193,7,0.85)', 'rgba(108,117,125,0.8)']
+    }]
+  },
+  options: {responsive:true}
+});
+
+const topElectricLabels = {{ top_room_labels|tojson | safe }};
+const topElectricData = {{ top_room_usage|tojson | safe }};
+const topElectricCtx = document.getElementById('topElectricChart').getContext('2d');
+new Chart(topElectricCtx, {
+  type: 'bar',
+  data: {
+    labels: topElectricLabels,
+    datasets: [{
+      label: 'kWh',
+      data: topElectricData,
+      backgroundColor: 'rgba(13,202,240,0.6)',
+      borderColor: 'rgba(13,202,240,1)',
+      borderWidth: 1
+    }]
+  },
+  options: {
+    responsive: true,
+    scales: { y: { beginAtZero: true } }
+  }
+});
+</script>
+
+{% endblock %}
