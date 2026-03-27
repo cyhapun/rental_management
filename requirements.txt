@@ -9,4 +9,4 @@ weasyprint
 cryptography
 reportlab
 mangum
-dotenv
+python-dotenv
