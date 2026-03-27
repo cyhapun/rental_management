@@ -1,16 +1,59 @@
 {% extends 'base.html' %}
+
 {% block content %}
-<div class="d-flex justify-content-center align-items-center" style="height:60vh">
-  <div class="card p-4" style="max-width:420px;width:100%">
-    <h3 class="mb-2">Đăng nhập</h3>
-    <div class="text-muted small mb-3">
-      Admin: xem/chỉnh sửa/cấu hình dữ liệu. Guest: chỉ xem tổng quan và không có quyền truy cập dữ liệu chi tiết.
+<div class="d-flex justify-content-center align-items-center" style="min-height: 80vh;">
+  
+  <div class="card border-0 shadow-sm p-4" style="max-width: 420px; width: 100%; border-radius: 15px;">
+    
+    <div class="text-center mb-4">
+      <h3 class="fw-bold text-primary">Chào mừng trở lại!</h3>
+      <p class="text-muted small">Vui lòng đăng nhập để tiếp tục</p>
     </div>
+
+    <div class="alert alert-light border-0 small mb-4" style="background-color: #f8f9fa; color: #6c757d;">
+      <div class="d-flex">
+        <div class="me-2">
+          <i class="bi bi-info-circle-fill text-info"></i>
+        </div>
+        <div>
+          <strong class="text-dark">Lưu ý quyền truy cập:</strong>
+          <ul class="mb-0 mt-1 ps-3" style="list-style-type: disc;">
+            <li><b>Quản trị:</b> Toàn quyền cấu hình dữ liệu.</li>
+            <li><b>Khách:</b> Xem báo cáo tổng quan.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
     <form action="/login" method="post">
-      <div class="mb-2"><input class="form-control" name="username" placeholder="Tài khoản" required /></div>
-      <div class="mb-3"><input class="form-control" name="password" placeholder="Mật khẩu" type="password" required /></div>
-      <button class="btn btn-primary w-100" type="submit">Đăng nhập</button>
+      <div class="mb-3">
+        <label class="form-label small fw-semibold text-secondary">Tên đăng nhập</label>
+        <div class="input-group">
+          <span class="input-group-text bg-white border-end-0"><i class="bi bi-person text-muted"></i></span>
+          <input class="form-control border-start-0 ps-0" name="username" placeholder="admin hoặc guest" required />
+        </div>
+      </div>
+
+      <div class="mb-4">
+        <label class="form-label small fw-semibold text-secondary">Mật khẩu</label>
+        <div class="input-group">
+          <span class="input-group-text bg-white border-end-0"><i class="bi bi-lock text-muted"></i></span>
+          <input class="form-control border-start-0 ps-0" name="password" placeholder="••••••••" type="password" required />
+        </div>
+      </div>
+
+      <button class="btn btn-primary w-100 py-2 fw-bold" type="submit" style="border-radius: 8px;">
+        Đăng nhập ngay
+      </button>
     </form>
+
+    <div class="text-center mt-4">
+      <a href="#" class="text-decoration-none small text-muted">Quên mật khẩu?</a>
+    </div>
+
   </div>
 </div>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+
 {% endblock %}
