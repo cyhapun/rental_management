@@ -37,3 +37,41 @@ body{font-family:Inter,Arial,Helvetica,sans-serif;margin:0;background:linear-gra
 .list-group-item.active { border-color:#0d6efd; background:#0d6efd; }
 .row-active-contract td { background: #fffdf2; }
 .form-select option[disabled] { color:#9aa3b2; }
+
+/* Page hero / create-first pattern */
+.page-hero{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:12px}
+.page-hero .hero-card{flex:1;min-width:0;background:linear-gradient(180deg,#ffffff,#f7fbff);padding:14px;border-radius:12px;box-shadow:0 8px 28px rgba(17,24,39,.06);}
+.hero-actions{display:flex;gap:8px;align-items:center}
+.hero-actions .btn{padding:.6rem .9rem}
+
+/* Mobile-friendly full width buttons */
+@media (max-width:576px){
+	.hero-actions{flex-direction:column;align-items:stretch}
+	.hero-actions .btn{width:100%}
+	.page-hero{flex-direction:column;align-items:stretch}
+	.sidebar{display:none}
+	main{padding-left:12px;padding-right:12px}
+}
+
+/* Collapse spacing for lists */
+.list-collapse{margin-top:8px}
+
+/* Smaller table padding on mobile */
+@media (max-width:768px){
+	.table td, .table th{padding:.5rem .6rem}
+	.cards{flex-direction:column}
+}
+
+/* Ensure modals appear above other UI (offcanvas, toasts, etc.) */
+.modal { z-index: 2000 !important; }
+.modal-backdrop { z-index: 1990 !important; }
+
+/* Login card: full-width inputs */
+.login-card .form-control { max-width: 100% !important; }
+
+/* Sticky toolbar so filters/tabs remain visible while scrolling */
+.table-toolbar { position: sticky; top: 72px; z-index: 1030; background-color: rgba(255,255,255,0.6); padding-top:6px; padding-bottom:6px; }
+
+/* List toggle button states */
+.btn-list-active { background: rgba(13,110,253,0.14); border-color: rgba(13,110,253,0.2); }
+.btn-list-inactive { background: transparent; }

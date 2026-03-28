@@ -1,35 +1,43 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <h1 class="h4">Phòng</h1>
-  <div>
-    <button class="btn btn-outline-primary me-2" data-bs-toggle="modal" data-bs-target="#createRoomModal"><i class="fa-solid fa-plus me-1"></i>Thêm phòng</button>
-    <a class="btn btn-outline-secondary" href="/rooms/?q="><i class="fa-solid fa-filter me-1"></i>Lọc</a>
+<div class="page-hero">
+  <div class="hero-card">
+    <div class="d-flex align-items-center justify-content-between">
+      <div>
+        <h1 class="h4 mb-0">Phòng</h1>
+        <div class="text-muted-small">Quản lý phòng trọ — tạo phòng mới hoặc mở danh sách</div>
+      </div>
+      <div class="hero-actions">
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createRoomModal"><i class="fa-solid fa-plus me-1"></i>Tạo phòng mới</button>
+        <button class="btn btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#roomsListCollapse" aria-expanded="false" aria-controls="roomsListCollapse"><i class="fa-solid fa-list me-1"></i>Hiển thị danh sách</button>
+      </div>
+    </div>
   </div>
 </div>
 
-<div class="table-toolbar mb-2 d-flex justify-content-between">
-  <div class="input-group w-50">
-    <input class="form-control form-control-sm" placeholder="Tìm số phòng..." id="roomSearch" value="{{ q }}">
-    <button class="btn btn-sm btn-light" onclick="filterRooms()"><i class="fa-solid fa-magnifying-glass"></i></button>
+<div class="collapse list-collapse show" id="roomsListCollapse">
+  <div class="table-toolbar mb-2 d-flex justify-content-between">
+    <div class="input-group w-50">
+      <input class="form-control form-control-sm" placeholder="Tìm số phòng..." id="roomSearch" value="{{ q }}">
+      <button class="btn btn-sm btn-light" onclick="filterRooms()"><i class="fa-solid fa-magnifying-glass"></i></button>
+    </div>
   </div>
-</div>
-<div class="d-flex gap-2 mb-2">
-  <select class="form-select form-select-sm" id="roomStatusFilter" style="max-width:170px;">
-    <option value="">Lọc trạng thái</option>
-    <option value="Đang thuê">Đang thuê</option>
-    <option value="Trống">Trống</option>
-  </select>
-  <select class="form-select form-select-sm" id="roomSort" style="max-width:220px;">
-    <option value="default">Sắp xếp mặc định</option>
-    <option value="room_asc">Phòng: tăng dần</option>
-    <option value="room_desc">Phòng: giảm dần</option>
-    <option value="price_asc">Giá: thấp đến cao</option>
-    <option value="price_desc">Giá: cao đến thấp</option>
-  </select>
-</div>
+  <div class="d-flex gap-2 mb-2">
+    <select class="form-select form-select-sm" id="roomStatusFilter" style="max-width:170px;">
+      <option value="">Lọc trạng thái</option>
+      <option value="Đang thuê">Đang thuê</option>
+      <option value="Trống">Trống</option>
+    </select>
+    <select class="form-select form-select-sm" id="roomSort" style="max-width:220px;">
+      <option value="default">Sắp xếp mặc định</option>
+      <option value="room_asc">Phòng: tăng dần</option>
+      <option value="room_desc">Phòng: giảm dần</option>
+      <option value="price_asc">Giá: thấp đến cao</option>
+      <option value="price_desc">Giá: cao đến thấp</option>
+    </select>
+  </div>
 
-<div class="table-responsive">
+  <div class="table-responsive">
   <table class="table table-striped" id="roomsTable">
     <thead><tr><th>Phòng</th><th>Giá</th><th>Chỉ số điện hiện tại</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
     <tbody>

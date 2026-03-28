@@ -1,20 +1,40 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
+  <div class="d-flex justify-content-between align-items-center mb-3">
   <h1 class="h4">Chỉ số điện</h1>
-  <form class="d-flex" action="/electric/add" method="post">
-    <select class="form-select me-2" name="room_id" id="roomSelect" required>
-      <option value="" selected disabled>Chọn phòng</option>
-      {% for r in rooms %}
-        <option value="{{ r.id }}">{{ r.room_number }}{% if r.status %} ({{ r.status }}){% endif %}</option>
-      {% endfor %}
-    </select>
-    <input class="form-control me-2" name="month" type="month" value="{{ default_month }}" required />
-    <input class="form-control me-2" name="old_index" id="oldIndex" placeholder="Chỉ số cũ" type="number" readonly />
-    <input class="form-control me-2" name="new_index" placeholder="Chỉ số mới" type="number" required />
-    <input class="form-control me-2" name="price_per_kwh" placeholder="Giá/kWh" value="3000" />
-    <button class="btn btn-primary" type="submit">Thêm</button>
-  </form>
+  <div>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createReadingModal"><i class="fa-solid fa-plus me-1"></i>Thêm chỉ số</button>
+    <button class="btn btn-outline-secondary" type="button" onclick="window.print()"><i class="fa-solid fa-print me-1"></i>In PDF</button>
+  </div>
+</div>
+
+<!-- Create reading modal -->
+<div class="modal fade" id="createReadingModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Thêm chỉ số điện</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <form action="/electric/add" method="post">
+        <div class="modal-body">
+          <div class="mb-2">
+            <select class="form-select" name="room_id" id="roomSelect" required>
+              <option value="" selected disabled>Chọn phòng</option>
+              {% for r in rooms %}
+                <option value="{{ r.id }}">{{ r.room_number }}{% if r.status %} ({{ r.status }}){% endif %}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-2"><input class="form-control" name="month" type="month" value="{{ default_month }}" required /></div>
+          <div class="mb-2"><input class="form-control" name="old_index" id="oldIndex" placeholder="Chỉ số cũ" type="number" readonly /></div>
+          <div class="mb-2"><input class="form-control" name="new_index" placeholder="Chỉ số mới" type="number" required /></div>
+          <div class="mb-2"><input class="form-control" name="price_per_kwh" placeholder="Giá/kWh" value="3000" /></div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" data-bs-dismiss="modal" type="button">Hủy</button>
+          <button class="btn btn-primary" type="submit">Thêm</button>
+        </div>
+      </form>
+    </div>
+  </div>
 </div>
 
 <div class="input-group mb-2" style="max-width:420px;">

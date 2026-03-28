@@ -28,7 +28,7 @@
           <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="navbarNav">
-          <ul class="navbar-nav">
+          <ul class="navbar-nav ms-auto">
             <li class="nav-item d-flex align-items-center me-2">
               {% if user_role == 'admin' %}
                 <span class="badge bg-light text-dark">Admin</span>
@@ -66,6 +66,9 @@
             <a class="nav-link {% if current_path.startswith('/contracts') %}active{% endif %}" href="/contracts/"><i class="fa-solid fa-file-contract me-2"></i>Hợp đồng</a>
             <a class="nav-link {% if current_path.startswith('/electric') %}active{% endif %}" href="/electric/"><i class="fa-solid fa-bolt me-2"></i>Điện</a>
             <a class="nav-link {% if current_path.startswith('/bills') %}active{% endif %}" href="/bills/"><i class="fa-solid fa-file-invoice me-2"></i>Hóa đơn</a>
+              {% if user_role == 'admin' %}
+              <a class="nav-link {% if current_path.startswith('/accounts') %}active{% endif %}" href="/accounts/"><i class="fa-solid fa-user-shield me-2"></i>Tài khoản</a>
+              {% endif %}
           </div>
         </aside>
         {% endif %}

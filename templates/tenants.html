@@ -1,40 +1,48 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <h1 class="h4">Người thuê</h1>
-  <div>
-    <button class="btn btn-outline-primary me-2" data-bs-toggle="modal" data-bs-target="#createTenantModal"><i class="fa-solid fa-plus me-1"></i>Thêm người thuê</button>
-    <a class="btn btn-outline-secondary" href="/tenants/?q="><i class="fa-solid fa-filter me-1"></i>Lọc</a>
+<div class="page-hero">
+  <div class="hero-card">
+    <div class="d-flex align-items-center justify-content-between">
+      <div>
+        <h1 class="h4 mb-0">Người thuê</h1>
+        <div class="text-muted-small">Thêm người thuê mới hoặc mở danh sách quản lý</div>
+      </div>
+      <div class="hero-actions">
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createTenantModal"><i class="fa-solid fa-plus me-1"></i>Thêm người thuê</button>
+        <button class="btn btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#tenantsListCollapse" aria-expanded="false" aria-controls="tenantsListCollapse"><i class="fa-solid fa-list me-1"></i>Hiển thị danh sách</button>
+      </div>
+    </div>
   </div>
 </div>
 
-<div class="table-toolbar mb-2 d-flex justify-content-between">
-  <div class="input-group w-50">
-    <input class="form-control form-control-sm" placeholder="Tìm kiếm..." id="tenantSearch" value="{{ q }}">
-    <button class="btn btn-sm btn-light" onclick="filterTenants()"><i class="fa-solid fa-magnifying-glass"></i></button>
+<div class="collapse list-collapse show" id="tenantsListCollapse">
+  <div class="table-toolbar mb-2 d-flex justify-content-between">
+    <div class="input-group w-50">
+      <input class="form-control form-control-sm" placeholder="Tìm kiếm..." id="tenantSearch" value="{{ q }}">
+      <button class="btn btn-sm btn-light" onclick="filterTenants()"><i class="fa-solid fa-magnifying-glass"></i></button>
+    </div>
   </div>
-</div>
-<div class="d-flex gap-2 mb-2">
-  <select class="form-select form-select-sm" id="tenantGenderFilter" style="max-width:160px;">
-    <option value="">Lọc giới tính</option>
-    <option value="nam">Nam</option>
-    <option value="nữ">Nữ</option>
-  </select>
-  <select class="form-select form-select-sm" id="tenantStatusFilter" style="max-width:180px;">
-    <option value="">Lọc tình trạng</option>
-    <option value="đang thuê">Đang thuê</option>
-    <option value="đã kết thúc">Đã kết thúc</option>
-  </select>
-  <select class="form-select form-select-sm" id="tenantSort" style="max-width:220px;">
-    <option value="default">Sắp xếp mặc định</option>
-    <option value="name_asc">Tên: A-Z</option>
-    <option value="name_desc">Tên: Z-A</option>
-    <option value="year_asc">Năm sinh: tăng dần</option>
-    <option value="year_desc">Năm sinh: giảm dần</option>
-  </select>
-</div>
+  <div class="d-flex gap-2 mb-2">
+    <select class="form-select form-select-sm" id="tenantGenderFilter" style="max-width:160px;">
+      <option value="">Lọc giới tính</option>
+      <option value="nam">Nam</option>
+      <option value="nữ">Nữ</option>
+    </select>
+    <select class="form-select form-select-sm" id="tenantStatusFilter" style="max-width:180px;">
+      <option value="">Lọc tình trạng</option>
+      <option value="đang thuê">Đang thuê</option>
+      <option value="đã kết thúc">Đã kết thúc</option>
+    </select>
+    <select class="form-select form-select-sm" id="tenantSort" style="max-width:220px;">
+      <option value="default">Sắp xếp mặc định</option>
+      <option value="name_asc">Tên: A-Z</option>
+      <option value="name_desc">Tên: Z-A</option>
+      <option value="year_asc">Năm sinh: tăng dần</option>
+      <option value="year_desc">Năm sinh: giảm dần</option>
+    </select>
+  </div>
 
-<div class="table-responsive">
+  <div class="table-responsive">
   <table class="table table-hover" id="tenantsTable">
     <thead><tr><th>Họ tên</th><th>SĐT</th><th>Giới tính</th><th>Năm sinh</th><th>Tình trạng</th><th>CCCD</th><th>Thao tác</th></tr></thead>
     <tbody>
