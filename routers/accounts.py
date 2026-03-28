@@ -38,9 +38,11 @@ async def list_accounts(request: Request):
 
 
 @router.post("/create")
-async def create_account(username: str = Form(...), password: str = Form(...), role: str = Form('manager')):
+async def create_account(username: str = Form(...), password: str = Form(...), confirm_password: str = Form(...), role: str = Form('manager')):
     db = get_db()
     try:
+        if password != confirm_password:
+            return redirect_with_flash('/accounts/', 'Mật khẩu và xác nhận mật khẩu không khớp', 'danger')
         existing = await db.accounts.find_one({"username": username})
         if existing:
             return redirect_with_flash('/accounts/', 'Tên đăng nhập đã tồn tại', 'danger')

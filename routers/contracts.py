@@ -244,10 +244,24 @@ async def list_contracts(request: Request):
             pass
         # latest electric reading for this contract's room
         try:
-            latest_er = await db.electric_readings.find_one(
-                {"room_id": c.get("room_id")},
-                sort=[("month", -1), ("_id", -1)],
-            )
+            # electric_readings.room_id may be stored as room _id string or room_number
+            # try matching both variants for robustness
+            room_id_val = c.get("room_id")
+            room_number_val = None
+            try:
+                # if we attached room earlier, prefer its room_number
+                room_number_val = c.get("room", {}).get("room_number")
+            except Exception:
+                room_number_val = None
+            query_or = []
+            if room_id_val is not None:
+                query_or.append({"room_id": room_id_val})
+            if room_number_val is not None:
+                query_or.append({"room_id": room_number_val})
+            if not query_or:
+                latest_er = await db.electric_readings.find_one({}, sort=[("month", -1), ("_id", -1)])
+            else:
+                latest_er = await db.electric_readings.find_one({"$or": query_or}, sort=[("month", -1), ("_id", -1)])
             if latest_er:
                 current_kwh = int(latest_er.get("new_index", 0))
                 used_kwh = int(latest_er.get("new_index", 0)) - int(latest_er.get("old_index", 0))

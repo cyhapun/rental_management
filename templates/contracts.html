@@ -87,7 +87,8 @@
         <th>Người thuê</th>
         <th>Phòng</th>
         <th>Số điện hiện tại (kWh)</th>
-        <th>Số điện đã dùng (kWh)</th>
+        <th>Số điện đã dùng tháng trước (kWh)</th>
+        <th>Tiền cọc</th>
         <th>Tiền phòng</th>
         <th>Ngày bắt đầu</th>
         <th>Ngày kết thúc</th>
@@ -124,6 +125,9 @@
         {% else %}
           0
         {% endif %}
+      </td>
+      <td>
+        {{ c.deposit | default(0) | money }}
       </td>
       <td>
         {% if c.rent_payment_status == 'paid' %}
@@ -224,8 +228,8 @@ function sortContracts(){
     return m ? parseInt(m[0],10) : 0;
   };
   rows.sort((a,b)=>{
-    if (sortVal === 'start_desc') return getDate(b,5) - getDate(a,5);
-    if (sortVal === 'start_asc') return getDate(a,5) - getDate(b,5);
+    if (sortVal === 'start_desc') return getDate(b,6) - getDate(a,6);
+    if (sortVal === 'start_asc') return getDate(a,6) - getDate(b,6);
     if (sortVal === 'room_asc') return getRoom(a) - getRoom(b);
     if (sortVal === 'room_desc') return getRoom(b) - getRoom(a);
     return 0;

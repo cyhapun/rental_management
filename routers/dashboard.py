@@ -16,25 +16,6 @@ env.filters["money"] = money
 @router.get("/dashboard")
 async def dashboard_view(request: Request):
     role = getattr(request.state, "user_role", "guest")
-    if role != "admin":
-        tpl = env.get_template("dashboard.html")
-        html = tpl.render(
-            request=request,
-            total_rooms=0,
-            occupied=0,
-            available=0,
-            paid=0,
-            unpaid=0,
-            revenue=0,
-            revenue_labels=[],
-            revenue_series=[],
-            renting_tenants=0,
-            ended_tenants=0,
-            top_room_labels=[],
-            top_room_usage=[],
-            readonly_guest=True,
-        )
-        return HTMLResponse(content=html)
 
     db = get_db()
     total_rooms = await db.rooms.count_documents({})

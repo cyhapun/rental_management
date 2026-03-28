@@ -102,6 +102,9 @@
         <a class="btn btn-outline-primary" href="/rooms/">Quản lý phòng</a>
         <a class="btn btn-outline-secondary" href="/tenants/">Quản lý người thuê</a>
         <a class="btn btn-outline-success" href="/bills/">Tạo hóa đơn</a>
+        {% if request.state.user_role == 'admin' %}
+        <a class="btn btn-outline-dark" href="/accounts/">Quản lý tài khoản</a>
+        {% endif %}
       </div>
     </div>
   </div>
