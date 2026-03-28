@@ -95,7 +95,7 @@
         </div>
         {% endif %}
 
-        <main class="{% if is_login_page %}col-12{% else %}col-md-10 ms-sm-auto{% endif %} px-4 py-4" style="min-height:calc(100vh - 80px);">
+        <main class="content-with-fixed-toolbar {% if is_login_page %}col-12{% else %}col-md-10 ms-sm-auto{% endif %} px-4 py-4" style="min-height:calc(100vh - 80px);">
           {% set flash_msg = request.query_params.get('flash') if request else None %}
           {% if flash_msg %}
             {% set level = request.query_params.get('level', 'success') %}
@@ -152,6 +152,8 @@
           });
         }catch(e){console.error(e)}
       })();
+      
+      // Sidebar affix removed — using CSS `position: sticky` to avoid horizontal jumps
     </script>
   </body>
 </html>

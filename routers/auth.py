@@ -25,7 +25,7 @@ async def login_get(request: Request):
 
 
 @router.post('/login')
-async def login_post(response: Response, username: str = Form(...), password: str = Form(...)):
+async def login_post(request: Request, response: Response, username: str = Form(...), password: str = Form(...)):
     # Authenticate against `account` collection in DB.
     db = get_db()
     acct = await db.accounts.find_one({"username": username})
@@ -45,6 +45,9 @@ async def login_post(response: Response, username: str = Form(...), password: st
         "user_id": acct.get("_id"),
         "created_at": now,
         "expires_at": expires,
+        # bind user agent and remote address to session for extra security
+        "user_agent": request.headers.get('user-agent'),
+        "remote_addr": (request.client.host if request.client else None),
     }
     await db.sessions.insert_one(session_doc)
 

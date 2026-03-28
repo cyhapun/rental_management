@@ -39,7 +39,8 @@ async def auth_middleware(request: Request, call_next):
         return await call_next(request)
 
     # Use an encrypted session cookie which maps to a server-side session record.
-    session_cookie = request.cookies.get("rental_session")
+    cookie_name = os.getenv("SESSION_COOKIE_NAME", "rental_session")
+    session_cookie = request.cookies.get(cookie_name)
     if not session_cookie:
         return RedirectResponse(url="/login", status_code=303)
 
@@ -57,6 +58,16 @@ async def auth_middleware(request: Request, call_next):
     account = await db.accounts.find_one({"_id": session_doc.get("user_id")})
     if not account:
         return RedirectResponse(url="/login", status_code=303)
+
+    # Optional: verify user-agent/ip fingerprint if recorded on session
+    try:
+        sess_ua = session_doc.get('user_agent')
+        if sess_ua:
+            req_ua = request.headers.get('user-agent','')
+            if sess_ua != req_ua:
+                return RedirectResponse(url="/login", status_code=303)
+    except Exception:
+        pass
 
     # Keep backward-compatible `user_role` for templates that expect it.
     request.state.user = account

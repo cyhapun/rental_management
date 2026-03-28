@@ -38,8 +38,11 @@ async def list_accounts(request: Request):
 
 
 @router.post("/create")
-async def create_account(username: str = Form(...), password: str = Form(...), confirm_password: str = Form(...), role: str = Form('manager')):
+async def create_account(request: Request, username: str = Form(...), password: str = Form(...), confirm_password: str = Form(...), role: str = Form('manager')):
     db = get_db()
+    # enforce admin role
+    if getattr(request.state, 'user_role', None) != 'admin':
+        return redirect_with_flash('/dashboard', 'Bạn không có quyền để tạo tài khoản', 'danger')
     try:
         if password != confirm_password:
             return redirect_with_flash('/accounts/', 'Mật khẩu và xác nhận mật khẩu không khớp', 'danger')
@@ -55,8 +58,10 @@ async def create_account(username: str = Form(...), password: str = Form(...), c
 
 
 @router.post('/{account_id}/update')
-async def update_account(account_id: str, username: str = Form(...), role: str = Form(...), password: str = Form('')):
+async def update_account(request: Request, account_id: str, username: str = Form(...), role: str = Form(...), password: str = Form('')):
     db = get_db()
+    if getattr(request.state, 'user_role', None) != 'admin':
+        return redirect_with_flash('/dashboard', 'Bạn không có quyền để cập nhật tài khoản', 'danger')
     try:
         update = {"username": username, "role": role}
         if password and str(password).strip():
@@ -68,8 +73,10 @@ async def update_account(account_id: str, username: str = Form(...), role: str =
 
 
 @router.post('/{account_id}/delete')
-async def delete_account(account_id: str):
+async def delete_account(request: Request, account_id: str):
     db = get_db()
+    if getattr(request.state, 'user_role', None) != 'admin':
+        return redirect_with_flash('/dashboard', 'Bạn không có quyền để xóa tài khoản', 'danger')
     try:
         await db.accounts.delete_one({"_id": ObjectId(account_id)})
         return redirect_with_flash('/accounts/', 'Xóa tài khoản thành công')

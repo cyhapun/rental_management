@@ -37,18 +37,20 @@
   </div>
 </div>
 
-<div class="input-group mb-2" style="max-width:420px;">
-  <input class="form-control form-control-sm" id="electricSearch" placeholder="Tìm theo phòng / tháng..." />
-  <button class="btn btn-sm btn-light" type="button" onclick="filterElectric()"><i class="fa-solid fa-magnifying-glass"></i></button>
-</div>
-<div class="d-flex gap-2 mb-2">
-  <select class="form-select form-select-sm" id="electricSort" style="max-width:230px;">
-    <option value="default">Sắp xếp mặc định</option>
-    <option value="month_desc">Tháng: mới nhất</option>
-    <option value="month_asc">Tháng: cũ nhất</option>
-    <option value="usage_desc">Đã dùng: cao -> thấp</option>
-    <option value="usage_asc">Đã dùng: thấp -> cao</option>
-  </select>
+<div class="table-toolbar">
+  <div class="input-group mb-2" style="max-width:420px;">
+    <input class="form-control form-control-sm" id="electricSearch" placeholder="Tìm theo phòng / tháng..." />
+    <button class="btn btn-sm btn-light" type="button" onclick="filterElectric()"><i class="fa-solid fa-magnifying-glass"></i></button>
+  </div>
+  <div class="d-flex gap-2 mb-2">
+    <select class="form-select form-select-sm" id="electricSort" style="max-width:230px;">
+      <option value="default">Sắp xếp mặc định</option>
+      <option value="month_desc">Tháng: mới nhất</option>
+      <option value="month_asc">Tháng: cũ nhất</option>
+      <option value="usage_desc">Đã dùng: cao -> thấp</option>
+      <option value="usage_asc">Đã dùng: thấp -> cao</option>
+    </select>
+  </div>
 </div>
 
 <div class="table-responsive">

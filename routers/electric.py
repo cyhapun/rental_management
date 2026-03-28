@@ -119,8 +119,10 @@ async def list_readings(request: Request):
 
 
 @router.post("/add")
-async def add_reading(room_id: str = Form(...), month: str = Form(...), old_index: int = Form(0), new_index: int = Form(...), price_per_kwh: float = Form(2000.0)):
+async def add_reading(request: Request, room_id: str = Form(...), month: str = Form(...), old_index: int = Form(0), new_index: int = Form(...), price_per_kwh: float = Form(2000.0)):
     try:
+        if getattr(request.state, "user_role", None) not in ("admin", "manager"):
+            return redirect_with_flash("/dashboard", "Bạn không có quyền thêm chỉ số điện", "danger")
         usage = int(new_index) - int(old_index)
         total = int(usage * price_per_kwh)
         db = get_db()
@@ -143,6 +145,7 @@ async def add_reading(room_id: str = Form(...), month: str = Form(...), old_inde
 
 @router.post("/{reading_id}/update")
 async def update_reading(
+    request: Request,
     reading_id: str,
     month: str = Form(...),
     old_index: int = Form(0),
@@ -150,6 +153,8 @@ async def update_reading(
     price_per_kwh: float = Form(2000.0),
 ):
     try:
+        if getattr(request.state, "user_role", None) not in ("admin", "manager"):
+            return redirect_with_flash("/dashboard", "Bạn không có quyền cập nhật chỉ số điện", "danger")
         db = get_db()
         doc = await db.electric_readings.find_one({"_id": ObjectId(reading_id)})
         if not doc:
@@ -176,9 +181,11 @@ async def update_reading(
 
 
 @router.post("/{reading_id}/delete")
-async def delete_reading(reading_id: str):
+async def delete_reading(request: Request, reading_id: str):
     db = get_db()
     try:
+        if getattr(request.state, "user_role", None) not in ("admin", "manager"):
+            return redirect_with_flash("/dashboard", "Bạn không có quyền xóa chỉ số điện", "danger")
         doc = await db.electric_readings.find_one({"_id": ObjectId(reading_id)})
         await db.electric_readings.delete_one({"_id": ObjectId(reading_id)})
         if doc and doc.get("room_id"):

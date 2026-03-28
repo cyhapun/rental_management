@@ -1,6 +1,15 @@
 
 body{font-family:Inter,Arial,Helvetica,sans-serif;margin:0;background:linear-gradient(180deg,#f6f8fc 0%,#eef2f9 100%)}
 .sidebar{min-height:100vh}
+/* Force header and sidebar to participate in normal document flow (not fixed/sticky) */
+.navbar{position:relative !important; top:auto !important; z-index:auto !important}
+.sidebar{position:relative !important; top:auto !important; z-index:auto !important}
+/* Sidebar should scroll with the page (not fixed) */
+@media (min-width:768px){
+  .sidebar{position:static; height:auto; overflow:visible}
+}
+
+/* Affix behaviour handled via CSS sticky to avoid layout shifts. */
 .sidebar .nav-link{color:#333;display:block;padding:10px 12px;margin:2px 6px}
 .sidebar .nav-link.active{background:rgba(13,110,253,0.14);color:#0d6efd}
 .sidebar .nav-link.active i{color:#0d6efd}
@@ -38,6 +47,20 @@ body{font-family:Inter,Arial,Helvetica,sans-serif;margin:0;background:linear-gra
 .row-active-contract td { background: #fffdf2; }
 .form-select option[disabled] { color:#9aa3b2; }
 
+/* Table UI polish */
+.table td, .table th { transition: background .15s ease, color .15s ease; }
+.table .btn-sm { padding: .25rem .5rem; font-size: .82rem; }
+.table thead th { font-size: .92rem; }
+.table tbody tr td:last-child { white-space: nowrap; }
+
+@media (max-width:576px){
+	/* Reduce table density on small screens for readability */
+	.table td, .table th { padding: .45rem .5rem; font-size: .88rem; }
+	/* Avoid sticky table headers on small screens to prevent overlap with offcanvas/menu */
+	.table thead th { position: static; top: auto; z-index: auto; background: #f3f5f9; }
+	.table tbody tr td { vertical-align: middle; }
+}
+
 /* Page hero / create-first pattern */
 .page-hero{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:12px}
 .page-hero .hero-card{flex:1;min-width:0;background:linear-gradient(180deg,#ffffff,#f7fbff);padding:14px;border-radius:12px;box-shadow:0 8px 28px rgba(17,24,39,.06);}
@@ -69,8 +92,12 @@ body{font-family:Inter,Arial,Helvetica,sans-serif;margin:0;background:linear-gra
 /* Login card: full-width inputs */
 .login-card .form-control { max-width: 100% !important; }
 
-/* Sticky toolbar so filters/tabs remain visible while scrolling */
-.table-toolbar { position: sticky; top: 72px; z-index: 1030; background-color: rgba(255,255,255,0.6); padding-top:6px; padding-bottom:6px; }
+/* Toolbar should be part of the document flow and scroll away when user scrolls past it.
+	 This avoids keeping the filters fixed while header/sidebar scroll. */
+.table-toolbar { position: static; top: auto; left: auto; right: auto; z-index: 1030; background-color: transparent; padding: 0; box-shadow: none; }
+
+/* Ensure content padding is normal since toolbar is not fixed */
+.content-with-fixed-toolbar { padding-top: 0; }
 
 /* List toggle button states */
 .btn-list-active { background: rgba(13,110,253,0.14); border-color: rgba(13,110,253,0.2); }

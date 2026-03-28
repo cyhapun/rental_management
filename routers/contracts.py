@@ -195,6 +195,25 @@ async def list_contracts(request: Request):
 
     latest_contract_ids = {str(v.get("_id")) for v in latest_by_room.values()}
 
+    def _fmt_date_iso(d):
+        if not d:
+            return None
+        try:
+            # try date only
+            dt = datetime.date.fromisoformat(str(d))
+            return dt.strftime("%d/%m/%Y")
+        except Exception:
+            try:
+                dt = datetime.datetime.fromisoformat(str(d))
+                # treat as UTC if naive, convert to +7
+                if dt.tzinfo is None:
+                    dt = dt + datetime.timedelta(hours=7)
+                else:
+                    dt = dt.astimezone(datetime.timezone(datetime.timedelta(hours=7)))
+                return dt.strftime("%d/%m/%Y")
+            except Exception:
+                return str(d)
+
     for c in all_contracts:
         c["id"] = str(c.get("_id"))
         # "Hợp đồng hiện hành" theo nghiệp vụ thao tác: mới nhất theo phòng
@@ -228,50 +247,81 @@ async def list_contracts(request: Request):
                     }
         except Exception:
             pass
+        room_doc = None
         try:
             room_id = c.get("room_id")
             if room_id:
-                # room_id may be stored as string; try to fetch by ObjectId or by room_number
-                room_doc = None
                 try:
                     room_doc = await db.rooms.find_one({"_id": ObjectId(room_id)})
                 except Exception:
                     room_doc = await _find_room_by_number(db, room_id)
                 if room_doc:
                     room_doc["id"] = str(room_doc.get("_id"))
-                    c["room"] = {"room_number": room_doc.get("room_number"), "price": room_doc.get("price"), "status": room_doc.get("status"), "id": room_doc.get("id")}
+                    c["room"] = {"room_number": room_doc.get("room_number"), "price": room_doc.get("price"), "status": room_doc.get("status"), "id": room_doc.get("id"), "current_electric_index": room_doc.get("current_electric_index")}
         except Exception:
-            pass
+            room_doc = None
         # latest electric reading for this contract's room
         try:
-            # electric_readings.room_id may be stored as room _id string or room_number
-            # try matching both variants for robustness
-            room_id_val = c.get("room_id")
-            room_number_val = None
-            try:
-                # if we attached room earlier, prefer its room_number
-                room_number_val = c.get("room", {}).get("room_number")
-            except Exception:
-                room_number_val = None
-            query_or = []
-            if room_id_val is not None:
-                query_or.append({"room_id": room_id_val})
-            if room_number_val is not None:
-                query_or.append({"room_id": room_number_val})
-            if not query_or:
-                latest_er = await db.electric_readings.find_one({}, sort=[("month", -1), ("_id", -1)])
-            else:
-                latest_er = await db.electric_readings.find_one({"$or": query_or}, sort=[("month", -1), ("_id", -1)])
-            if latest_er:
-                current_kwh = int(latest_er.get("new_index", 0))
-                used_kwh = int(latest_er.get("new_index", 0)) - int(latest_er.get("old_index", 0))
-                c["electric"] = {
-                    "current_kwh": current_kwh,
-                    "used_kwh": used_kwh,
-                    "month": latest_er.get("month"),
-                }
-            else:
-                c["electric"] = {"current_kwh": 0, "used_kwh": 0, "month": None}
+            # if we have a room_doc, prefer its current_electric_index
+            current_kwh = None
+            used_kwh = 0
+            month_val = None
+
+            if room_doc:
+                try:
+                    current_kwh = int(room_doc.get("current_electric_index", 0))
+                except Exception:
+                    current_kwh = None
+
+            # if still missing or zero, look up latest reading for that room and update room doc
+            if not current_kwh:
+                # try to find latest electric reading by room _id string or room number
+                room_id_str = None
+                try:
+                    # if room_doc exists, prefer its id
+                    if room_doc and room_doc.get("id"):
+                        room_id_str = room_doc.get("id")
+                    else:
+                        room_id_str = c.get("room_id")
+                except Exception:
+                    room_id_str = c.get("room_id")
+
+                latest_er = None
+                if room_id_str:
+                    latest_er = await db.electric_readings.find_one({"room_id": room_id_str}, sort=[("month", -1), ("_id", -1)])
+                # fallback: try room_number
+                if not latest_er:
+                    try:
+                        rn = c.get("room", {}).get("room_number")
+                        if rn:
+                            latest_er = await db.electric_readings.find_one({"room_id": rn}, sort=[("month", -1), ("_id", -1)])
+                    except Exception:
+                        latest_er = None
+
+                if latest_er:
+                    try:
+                        new_idx = int(latest_er.get("new_index", 0))
+                    except Exception:
+                        new_idx = 0
+                    current_kwh = new_idx
+                    try:
+                        used_kwh = int(latest_er.get("new_index", 0)) - int(latest_er.get("old_index", 0))
+                    except Exception:
+                        used_kwh = 0
+                    month_val = latest_er.get("month")
+
+                    # if room_doc exists and DB value differs, persist it so Rooms view matches Contracts view
+                    try:
+                        if room_doc and int(room_doc.get("current_electric_index", 0)) != current_kwh:
+                            await db.rooms.update_one({"_id": ObjectId(room_doc.get("id"))}, {"$set": {"current_electric_index": current_kwh}})
+                    except Exception:
+                        pass
+
+            # ensure integers and fallbacks
+            current_kwh = int(current_kwh or 0)
+            used_kwh = int(used_kwh or 0)
+
+            c["electric"] = {"current_kwh": current_kwh, "used_kwh": used_kwh, "month": month_val}
         except Exception:
             c["electric"] = {"current_kwh": 0, "used_kwh": 0, "month": None}
 
@@ -290,6 +340,15 @@ async def list_contracts(request: Request):
         except Exception:
             c["rent_payment_status"] = "unknown"
             c["rent_payment_month"] = None
+        # format start/end dates to dd/mm/YYYY (UTC+7 for datetimes)
+        try:
+            c["start_date"] = _fmt_date_iso(c.get("start_date"))
+        except Exception:
+            pass
+        try:
+            c["end_date"] = _fmt_date_iso(c.get("end_date"))
+        except Exception:
+            pass
         contracts.append(c)
     # data for create-contract dropdowns
     tenants = []
@@ -342,8 +401,10 @@ async def list_contracts(request: Request):
 
 
 @router.post("/create")
-async def create_contract(tenant_id: str = Form(...), room_id: str = Form(...), start_date: str = Form(...), end_date: str = Form(None), contract_type: str = Form(None), deposit: int = Form(0)):
+async def create_contract(request: Request, tenant_id: str = Form(...), room_id: str = Form(...), start_date: str = Form(...), end_date: str = Form(None), contract_type: str = Form(None), deposit: int = Form(0)):
     db = get_db()
+    if getattr(request.state, "user_role", None) not in ("admin", "manager"):
+        return redirect_with_flash("/dashboard", "Bạn không có quyền tạo hợp đồng", "danger")
     try:
         tenant_oid = ObjectId(tenant_id)
         room_oid = ObjectId(room_id)
@@ -374,6 +435,7 @@ async def create_contract(tenant_id: str = Form(...), room_id: str = Form(...), 
 
 @router.post("/{contract_id}/update")
 async def update_contract(
+    request: Request,
     contract_id: str,
     tenant_id: str = Form(...),
     room_id: str = Form(...),
@@ -383,6 +445,8 @@ async def update_contract(
     deposit: int = Form(0),
 ):
     db = get_db()
+    if getattr(request.state, "user_role", None) not in ("admin", "manager"):
+        return redirect_with_flash("/dashboard", "Bạn không có quyền cập nhật hợp đồng", "danger")
     try:
         tenant_oid = ObjectId(tenant_id)
         room_oid = ObjectId(room_id)
@@ -410,8 +474,10 @@ async def update_contract(
 
 
 @router.post("/{contract_id}/delete")
-async def delete_contract(contract_id: str):
+async def delete_contract(request: Request, contract_id: str):
     db = get_db()
+    if getattr(request.state, "user_role", None) not in ("admin", "manager"):
+        return redirect_with_flash("/dashboard", "Bạn không có quyền xóa hợp đồng", "danger")
     try:
         await db.contracts.delete_one({"_id": ObjectId(contract_id)})
         await _refresh_room_statuses(db)
