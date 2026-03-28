@@ -240,6 +240,8 @@ document.addEventListener('DOMContentLoaded', function(){
   if (p) p.addEventListener('change', filterContracts);
   const s = document.getElementById('contractSort');
   if (s) s.addEventListener('change', sortContracts);
+  // Ensure default sorting (room_asc) is applied on load
+  try{ sortContracts(); }catch(e){}
 });
 </script>
 {% endblock %}

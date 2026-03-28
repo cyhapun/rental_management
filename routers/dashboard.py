@@ -90,6 +90,22 @@ async def dashboard_view(request: Request):
         top_room_labels.append(f"Phòng {label}")
         top_room_usage.append(usage)
 
+    # total electricity usage (all-time and current month)
+    total_electric_all = 0
+    total_electric_month = 0
+    current_month = now.strftime('%Y-%m')
+    async for r in db.electric_readings.find({}):
+        try:
+            usage = int(r.get('usage', 0))
+        except Exception:
+            usage = 0
+        total_electric_all += usage
+        if (r.get('month') or '') == current_month:
+            total_electric_month += usage
+
+    # total accounts
+    total_accounts = await db.accounts.count_documents({})
+
     tpl = env.get_template("dashboard.html")
     html = tpl.render(
         request=request,
@@ -105,6 +121,9 @@ async def dashboard_view(request: Request):
         ended_tenants=ended_tenants,
         top_room_labels=top_room_labels,
         top_room_usage=top_room_usage,
+        total_electric_all=total_electric_all,
+        total_electric_month=total_electric_month,
+        total_accounts=total_accounts,
         readonly_guest=False,
     )
     return HTMLResponse(content=html)

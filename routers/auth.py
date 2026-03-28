@@ -14,7 +14,14 @@ async def login_get(request: Request):
     from fastapi.templating import Jinja2Templates
     import os as _os
     templates = Jinja2Templates(directory=_os.path.join(_os.path.dirname(__file__), '..', 'templates'))
-    return templates.TemplateResponse(request=request, name='login.html', context={})
+    resp = templates.TemplateResponse(request=request, name='login.html', context={})
+    # Clear session cookie if user navigates to login explicitly
+    try:
+        cookie_name = __import__('os').getenv('SESSION_COOKIE_NAME', 'rental_session')
+        resp.delete_cookie(cookie_name, path='/')
+    except Exception:
+        pass
+    return resp
 
 
 @router.post('/login')

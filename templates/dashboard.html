@@ -4,11 +4,6 @@
   <h1 class="h3">Tổng quan</h1>
   <div class="text-muted">Tổng quan nhà trọ</div>
 </div>
-{% if readonly_guest %}
-<div class="alert alert-warning">
-  Bạn không có quyền hạn để thấy dữ liệu chi tiết. Vui lòng đăng nhập bằng tài khoản quản trị.
-</div>
-{% endif %}
 
 <div class="row g-3 mb-3">
   <div class="col-sm-6 col-md-3">
@@ -52,6 +47,42 @@
           <strong class="h4">{{ revenue | money }}</strong>
         </div>
         <div><i class="fa-solid fa-coins fa-2x text-info"></i></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-sm-6 col-md-3">
+    <div class="card-metric p-3">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <div class="metric-small">Tổng điện (kWh)</div>
+          <strong class="h4">{{ total_electric_all }}</strong>
+        </div>
+        <div><i class="fa-solid fa-bolt fa-2x text-warning"></i></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-md-3">
+    <div class="card-metric p-3">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <div class="metric-small">Tháng này (kWh)</div>
+          <strong class="h4">{{ total_electric_month }}</strong>
+        </div>
+        <div><i class="fa-solid fa-calendar-days fa-2x text-info"></i></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-md-3">
+    <div class="card-metric p-3">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <div class="metric-small">Tài khoản</div>
+          <strong class="h4">{{ total_accounts }}</strong>
+        </div>
+        <div><i class="fa-solid fa-users fa-2x text-secondary"></i></div>
       </div>
     </div>
   </div>

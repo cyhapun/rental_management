@@ -87,6 +87,9 @@
               <a class="list-group-item list-group-item-action {% if current_path.startswith('/contracts') %}active{% endif %}" href="/contracts/">Hợp đồng</a>
               <a class="list-group-item list-group-item-action {% if current_path.startswith('/electric') %}active{% endif %}" href="/electric/">Điện</a>
               <a class="list-group-item list-group-item-action {% if current_path.startswith('/bills') %}active{% endif %}" href="/bills/">Hóa đơn</a>
+              {% if user_role == 'admin' %}
+              <a class="list-group-item list-group-item-action {% if current_path.startswith('/accounts') %}active{% endif %}" href="/accounts/">Tài khoản</a>
+              {% endif %}
             </div>
           </div>
         </div>
@@ -127,5 +130,28 @@
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      // Toggle active/inactive classes for "Hiển thị danh sách" buttons
+      (function(){
+        try{
+          document.addEventListener('DOMContentLoaded', function(){
+            const buttons = Array.from(document.querySelectorAll('button[data-bs-toggle="collapse"][data-bs-target]'));
+            buttons.forEach(btn=>{
+              const target = document.querySelector(btn.getAttribute('data-bs-target'));
+              if (!target || !target.classList.contains('list-collapse')) return;
+              const setActive = (isActive)=>{
+                btn.classList.toggle('btn-list-active', isActive);
+                btn.classList.toggle('btn-list-inactive', !isActive);
+              };
+              // initialize
+              setActive(target.classList.contains('show'));
+              // listen to bootstrap collapse events
+              target.addEventListener('shown.bs.collapse', ()=> setActive(true));
+              target.addEventListener('hidden.bs.collapse', ()=> setActive(false));
+            });
+          });
+        }catch(e){console.error(e)}
+      })();
+    </script>
   </body>
 </html>

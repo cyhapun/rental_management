@@ -3,7 +3,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse, JSONResponse
 import os
 
-from routers import rooms, tenants, contracts, bills, electric, dashboard, invoice, auth
+from routers import rooms, tenants, contracts, bills, electric, dashboard, invoice, auth, accounts
 from security import decrypt_value
 from deps import get_db
 from datetime import datetime
@@ -28,6 +28,7 @@ app.include_router(contracts)
 app.include_router(bills)
 app.include_router(electric)
 app.include_router(invoice)
+app.include_router(accounts)
 
 
 @app.middleware("http")
@@ -61,7 +62,8 @@ async def auth_middleware(request: Request, call_next):
     request.state.user = account
     request.state.user_role = account.get("role", "user")
 
-    admin_only_prefixes = ("/rooms", "/tenants", "/contracts", "/electric", "/bills", "/invoice")
+    # Only /accounts should be admin-only; managers have access to other pages
+    admin_only_prefixes = ("/accounts",)
     if path.startswith(admin_only_prefixes) and request.state.user_role != "admin":
         if request.method != "GET":
             return JSONResponse({"detail": "Bạn không có quyền hạn để thấy"}, status_code=403)

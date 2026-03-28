@@ -1,0 +1,143 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="page-hero">
+  <div class="hero-card">
+    <div class="d-flex align-items-center justify-content-between">
+      <div>
+        <h1 class="h4 mb-0">Tài khoản</h1>
+        <div class="text-muted-small">Quản lý tài khoản — chỉ Admin có thể tạo, sửa, xóa</div>
+      </div>
+      <div class="hero-actions">
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createAccountModal"><i class="fa-solid fa-user-plus me-1"></i>Tạo tài khoản</button>
+        <button class="btn btn-outline-secondary" type="button" onclick="window.print()"><i class="fa-solid fa-print me-1"></i>In PDF</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="collapse list-collapse show" id="accountsListCollapse">
+  <div class="table-toolbar mb-2 d-flex justify-content-between">
+    <div class="input-group w-50">
+      <input class="form-control form-control-sm" placeholder="Tìm username..." id="accountSearch">
+      <button class="btn btn-sm btn-light" onclick="filterAccounts()"><i class="fa-solid fa-magnifying-glass"></i></button>
+    </div>
+    <div class="text-muted-small">Tổng tài khoản: <strong>{{ total }}</strong></div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-hover" id="accountsTable">
+      <thead><tr><th>Tên đăng nhập</th><th>Vai trò</th><th>Thời gian tạo</th><th>Thao tác</th></tr></thead>
+      <tbody>
+        {% for a in accounts %}
+        <tr data-account-id="{{ a.id }}" data-username="{{ a.username }}" data-role="{{ a.role }}">
+          <td>{{ a.username }}</td>
+          <td>{{ a.role }}</td>
+          <td>{{ a.created_at or '' }}</td>
+          <td>
+            <button class="btn btn-sm btn-outline-primary me-2" onclick="openEditAccount(this)">Sửa</button>
+            <form action="/accounts/{{ a.id }}/delete" method="post" style="display:inline" onsubmit="return confirm('Xóa tài khoản này?');">
+              <button class="btn btn-sm btn-outline-danger">Xóa</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Create Account Modal -->
+<div class="modal fade" id="createAccountModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Tạo tài khoản mới</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <form id="createAccountForm" action="/accounts/create" method="post" onsubmit="return validateCreateAccount(this)">
+        <div class="modal-body">
+          <div class="mb-2"><input class="form-control" name="username" placeholder="Tên đăng nhập" required></div>
+          <div class="mb-2 input-group">
+            <input class="form-control" id="create_password" name="password" type="password" placeholder="Mật khẩu" required>
+            <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('create_password')"><i class="fa-solid fa-eye"></i></button>
+          </div>
+          <div class="mb-2">
+            <input class="form-control" id="create_password_confirm" type="password" placeholder="Xác nhận mật khẩu" required>
+          </div>
+          <div class="mb-2">
+            <select class="form-select" name="role">
+              <option value="admin">admin</option>
+              <option value="manager" selected>manager</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" data-bs-dismiss="modal" type="button">Hủy</button>
+          <button class="btn btn-primary" type="submit">Tạo</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Account Modal -->
+<div class="modal fade" id="editAccountModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Sửa tài khoản</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <form id="editAccountForm" method="post">
+        <div class="modal-body">
+          <div class="mb-2"><input class="form-control" id="edit_account_username" name="username" placeholder="Tên đăng nhập" required></div>
+          <div class="mb-2 input-group"><input class="form-control" id="edit_account_password" name="password" type="password" placeholder="Mật khẩu (để trống nếu không đổi)"><button class="btn btn-outline-secondary" type="button" onclick="togglePassword('edit_account_password')"><i class="fa-solid fa-eye"></i></button></div>
+          <div class="mb-2">
+            <select class="form-select" id="edit_account_role" name="role">
+              <option value="admin">admin</option>
+              <option value="manager">manager</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" data-bs-dismiss="modal" type="button">Hủy</button>
+          <button class="btn btn-primary" type="submit">Lưu</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+function filterAccounts(){
+  const q = (document.getElementById('accountSearch').value||'').toLowerCase();
+  document.querySelectorAll('#accountsTable tbody tr').forEach(r=>{
+    r.style.display = r.innerText.toLowerCase().includes(q) ? '' : 'none';
+  });
+}
+
+function openEditAccount(btn){
+  const row = btn.closest('tr');
+  const id = row.dataset.accountId;
+  document.getElementById('edit_account_username').value = row.dataset.username || '';
+  document.getElementById('edit_account_role').value = row.dataset.role || 'manager';
+  const form = document.getElementById('editAccountForm');
+  form.action = `/accounts/${id}/update`;
+  const modal = new bootstrap.Modal(document.getElementById('editAccountModal'));
+  modal.show();
+}
+</script>
+
+<script>
+function togglePassword(id){
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.type = el.type === 'password' ? 'text' : 'password';
+}
+
+function validateCreateAccount(form){
+  const pw = document.getElementById('create_password').value || '';
+  const pwc = document.getElementById('create_password_confirm').value || '';
+  if (pw !== pwc){
+    alert('Mật khẩu và xác nhận mật khẩu không khớp');
+    return false;
+  }
+  return true;
+}
+</script>
+
+{% endblock %}

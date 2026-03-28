@@ -6,3 +6,4 @@ from .electric import router as electric
 from .dashboard import router as dashboard
 from .invoice import router as invoice
 from .auth import router as auth
+from .accounts import router as accounts
