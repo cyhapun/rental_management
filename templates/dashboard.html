@@ -130,7 +130,7 @@
           <div id="timeUnit" class="small text-muted bg-light px-2 py-1 rounded border">Đơn vị: Tháng</div>
         </div>
       </div>
-      <div class="flex-grow-1">
+      <div class="flex-grow-1 chart-container">
         <canvas id="revenueChart"></canvas>
       </div>
     </div>
@@ -151,8 +151,8 @@
           <div id="churnTimeUnit" class="small text-muted bg-light px-2 py-1 rounded border">Đơn vị: Tháng</div>
         </div>
       </div>
-      <div class="flex-grow-1">
-        <canvas id="churnChart" height="180"></canvas>
+      <div class="flex-grow-1 chart-container">
+        <canvas id="churnChart"></canvas>
       </div>
     </div>
   </div>
@@ -176,8 +176,8 @@
 
       <div class="row g-4">
         <div class="col-12 col-md-8 d-flex flex-column">
-          <div class="flex-grow-1">
-            <canvas id="electricHistoryChart" height="140"></canvas>
+          <div class="flex-grow-1 chart-container-small">
+            <canvas id="electricHistoryChart"></canvas>
           </div>
           <div class="small text-muted fst-italic mt-3 text-end">
             <i class="fa-solid fa-circle-info me-1"></i> Ghi chú: Nhấn vào các cột trên biểu đồ để xem chi tiết số điện tiêu thụ của từng tháng.
@@ -246,7 +246,7 @@ let revenueChart = new Chart(ctx, {
             fill: true
         }]
     },
-    options: {responsive:true, maintainAspectRatio: false, plugins:{legend:{display:false}}, scales:{x:{title:{display:true,text:'Thời gian'}}}}
+    options: {responsive:true, maintainAspectRatio: false, maintainAspectRatio: false, plugins:{legend:{display:false}}, scales:{x:{title:{display:true,text:'Thời gian'}}}}
 });
 
 function updateChart(range){
@@ -343,7 +343,7 @@ if (electricCtx){
   electricChart = new Chart(electricCtx, {
     type: 'line',
     data: { labels: electricLabels6, datasets: [{ label: 'kWh', data: electricSeries6, borderColor: 'rgba(255,159,64,0.9)', backgroundColor: 'rgba(255,159,64,0.12)', tension:0.3, fill:true }] },
-    options: { responsive:true, scales: { y:{ beginAtZero:true } }, plugins:{legend:{display:false}} }
+    options: { responsive:true, maintainAspectRatio: false, scales: { y:{ beginAtZero:true } }, plugins:{legend:{display:false}} }
   });
 }
 
@@ -495,7 +495,7 @@ if (churnCtx){
       { label: 'Thuê mới', data: tenantStarted6, backgroundColor: 'rgba(13,110,253,0.85)' },
       { label: 'Thoát', data: tenantEnded6, backgroundColor: 'rgba(220,53,69,0.85)' }
     ]},
-    options: { responsive:true, plugins:{legend:{position:'top'}}, scales:{ x:{ stacked:false }, y:{ beginAtZero:true } } }
+    options: { responsive:true, maintainAspectRatio: false, plugins:{legend:{position:'top'}}, scales:{ x:{ stacked:false }, y:{ beginAtZero:true } } }
   });
 }
 

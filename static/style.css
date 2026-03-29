@@ -293,3 +293,20 @@ body{
 .sidebar::-webkit-scrollbar-thumb:hover {
     background-color: rgba(0, 0, 0, 0.3); /* Đậm hơn một chút khi di chuột vào */
 }
+
+/* Thêm vào style.css */
+.chart-container {
+    position: relative;
+    height: 300px; /* Chiều cao cố định cho mobile */
+    width: 100%;
+}
+
+.chart-container-small {
+    position: relative;
+    height: 200px;
+    width: 100%;
+}
+
+@media (min-width: 768px) {
+    .chart-container { height: 250px; } /* Chiều cao cho desktop */
+}
