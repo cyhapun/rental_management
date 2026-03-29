@@ -161,6 +161,10 @@
       <td>{{ c.end_date }}</td>
       <td>
         <button class="btn btn-sm btn-outline-primary me-2" type="button" onclick="openEditContract(this)">Sửa</button>
+        <form action="/contracts/{{ c.id }}/create_bill" method="post" style="display:inline">
+          <input type="hidden" name="month" value="{{ today[:7] }}" />
+          <button class="btn btn-sm btn-outline-success me-2" type="submit">Tạo hóa đơn</button>
+        </form>
         <form action="/contracts/{{ c.id }}/delete" method="post" style="display:inline" onsubmit="return confirm('Xóa hợp đồng này?');">
           <button class="btn btn-sm btn-outline-danger" type="submit">Xóa</button>
         </form>

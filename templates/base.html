@@ -117,14 +117,23 @@
           {% set flash_msg = request.query_params.get('flash') if request else None %}
           {% if flash_msg %}
             <div id="flash-data" data-flash="{{ flash_msg|e }}" data-level="{{ request.query_params.get('level', 'success') }}"></div>
+            <!-- Inline bootstrap alert fallback for accessibility / when Notyf is blocked -->
+            <div id="flash-alert" class="alert {% if request.query_params.get('level','success') in ['danger','error'] %}alert-danger{% elif request.query_params.get('level','success') == 'warning' %}alert-warning{% else %}alert-success{% endif %} alert-dismissible fade show" role="alert" style="position:fixed;top:70px;right:16px;z-index:2200;min-width:220px;max-width:92vw;display:none">
+              <span id="flash-alert-msg">{{ flash_msg|e }}</span>
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
             <script>
               window.addEventListener('load', function () {
                 try {
                   const el = document.getElementById('flash-data');
                   // create a single, styled Notyf instance with custom types
+                  // adapt position and duration for small screens
+                  const isMobileSmall = (window.innerWidth <= 576);
+                  const notyfPos = isMobileSmall ? { x: 'center', y: 'top' } : { x: 'right', y: 'top' };
+                  const notyfDur = isMobileSmall ? 1800 : 2400;
                   const notyf = new Notyf({
-                    duration: 4200,
-                    position: { x: 'right', y: 'top' },
+                    duration: notyfDur,
+                    position: notyfPos,
                     ripple: true,
                     dismissible: true,
                     types: [
@@ -194,7 +203,8 @@
           if (!el) return alert('Không tìm thấy phần tử để in: ' + selector);
           // Prefer capturing the surrounding .table-responsive if present to include full table layout
           const targetEl = el.closest('.table-responsive') || el;
-          const canvas = await html2canvas(targetEl, { scale: 2, useCORS: true, backgroundColor: '#ffffff', scrollY: -window.scrollY });
+          const scale = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+          const canvas = await html2canvas(targetEl, { scale: scale, useCORS: true, backgroundColor: '#ffffff', scrollY: -window.scrollY, allowTaint: true });
           if (!canvas) return alert('Không thể tạo ảnh từ phần tử');
 
           // Convert to blob and trigger download
@@ -211,7 +221,7 @@
               a.click();
               a.remove();
               setTimeout(()=>URL.revokeObjectURL(url), 1000);
-              try{ new Notyf({duration:2000}).success('Đã lưu ảnh: ' + fname); }catch(e){}
+              try{ new Notyf({position: (window.innerWidth<=576?{x:'center',y:'top'}:{x:'right',y:'top'})}).success('Đã lưu ảnh: ' + fname); }catch(e){}
             }catch(e){ console.error('download error', e); alert('Lỗi khi lưu ảnh: ' + (e && e.message)); }
           }, 'image/png');
         } catch (e) { console.error(e); alert('Lỗi khi tạo ảnh: ' + (e && e.message)); }

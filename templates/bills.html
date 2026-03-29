@@ -4,7 +4,13 @@
   <h1 class="h4">Hóa đơn</h1>
   <form class="d-flex" action="/bills/generate" method="post">
     <input class="form-control me-2" name="month" type="month" value="{{ default_month }}" required />
-    <button class="btn btn-primary" type="submit">Tạo hóa đơn theo tháng</button>
+    <select class="form-select me-2" name="contract_id" style="max-width:320px">
+      <option value="">Tạo cho tất cả hợp đồng</option>
+      {% for c in contracts %}
+      <option value="{{ c.id }}">{{ c.display }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn btn-primary" type="submit">Tạo hóa đơn</button>
   </form>
 </div>
 
@@ -28,8 +34,11 @@
 </div>
 
 <div class="table-responsive">
+  {% if not bills %}
+    <div class="alert alert-secondary">Chưa có hóa đơn nào để hiển thị.</div>
+  {% else %}
   <table class="table table-hover">
-    <thead><tr><th>Người thuê / Phòng</th><th>Tháng</th><th>Tổng</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+    <thead><tr><th>Người thuê / Phòng</th><th>Tháng</th><th>Tổng</th><th>Đã thanh toán</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
     <tbody>
     {% for b in bills %}
     <tr>
@@ -42,6 +51,7 @@
       </td>
       <td>{{ b.month }}</td>
       <td>{{ b.total | money }}</td>
+      <td>{{ (b.paid_amount or 0) | money }}</td>
       <td>
         {% if b.status == 'paid' %}
           <span class="badge bg-success">Đã đóng</span>
@@ -61,12 +71,13 @@
         <form action="/bills/{{ b.id }}/delete" method="post" class="d-inline" onsubmit="return confirm('Xóa hóa đơn này?');">
           <button class="btn btn-sm btn-outline-danger ms-2" type="submit">Xóa</button>
         </form>
-        <a class="btn btn-sm btn-outline-secondary ms-1" href="/invoice/pdf/{{ b.id }}" target="_blank">PDF</a>
+        <button class="btn btn-sm btn-outline-secondary ms-1" type="button" onclick="captureInvoiceImage('{{ b.id }}', this)">In ảnh</button>
       </td>
     </tr>
     {% endfor %}
     </tbody>
   </table>
+  {% endif %}
 </div>
 
 <!-- Modal hiển thị hóa đơn -->
@@ -87,9 +98,22 @@
 <script>
 function showBill(billId){
   const frame = document.getElementById('billViewFrame');
-  frame.src = `/invoice/print/${billId}`;
-  const modal = new bootstrap.Modal(document.getElementById('billViewModal'));
-  modal.show();
+  // fetch invoice HTML to detect auth redirect and embed styles via srcdoc
+  (async ()=>{
+    try{
+      const resp = await fetch(`/invoice/print/${billId}`, { credentials: 'include' });
+      const finalUrl = resp.url || '';
+      const text = await resp.text();
+      if (finalUrl.includes('/login') || /Đăng nhập|Đăng nh?p/.test(text)){
+        try{ new Notyf().error('Bạn cần đăng nhập để xem hóa đơn'); }catch(e){}
+        window.location.href = '/login';
+        return;
+      }
+      frame.srcdoc = text;
+      const modal = new bootstrap.Modal(document.getElementById('billViewModal'));
+      modal.show();
+    }catch(e){ console.error(e); try{ new Notyf().error('Không thể tải hóa đơn'); }catch(err){} }
+  })();
 }
 
 function filterBills(){
@@ -122,6 +146,70 @@ document.addEventListener('DOMContentLoaded', function(){
   const s = document.getElementById('billSort');
   if (s) s.addEventListener('change', sortBills);
 });
+
+async function captureInvoiceImage(billId, btn){
+  try{
+    const origHtml = btn.innerHTML;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+
+    const resp = await fetch(`/invoice/print/${billId}`, { credentials: 'include' });
+    const finalUrl = resp.url || '';
+    const text = await resp.text();
+
+    // detect redirect-to-login
+    if (finalUrl.includes('/login') || /Đăng nhập|Đăng nh?p/.test(text)){
+      try{ new Notyf().error('Bạn cần đăng nhập để xem hóa đơn'); }catch(e){}
+      window.location.href = '/login';
+      return;
+    }
+
+    // Use iframe with srcdoc so head styles are applied exactly as the print page
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed'; iframe.style.left = '-9999px'; iframe.style.top = '0'; iframe.style.width = '800px'; iframe.style.height = '1100px';
+    iframe.id = 'invoice-capture-iframe';
+    document.body.appendChild(iframe);
+    // set srcdoc (may include head styles and inline CSS)
+    iframe.srcdoc = text;
+
+    await new Promise((resolve, reject) => {
+      const tid = setTimeout(()=>{ resolve(); }, 1200); // fallback timeout
+      iframe.onload = ()=>{ clearTimeout(tid); resolve(); };
+      iframe.onerror = ()=>{ clearTimeout(tid); resolve(); };
+    });
+
+    // wait for images inside iframe to load
+    try{
+      const imgs = iframe.contentDocument.querySelectorAll('img');
+      await new Promise(res=>{
+        if (!imgs.length) return res();
+        let loaded = 0; const N = imgs.length;
+        imgs.forEach(img=>{
+          if (img.complete) { if (++loaded===N) res(); }
+          else img.addEventListener('load', ()=>{ if (++loaded===N) res(); });
+          img.addEventListener('error', ()=>{ if (++loaded===N) res(); });
+        });
+      });
+    }catch(e){}
+
+    // capture iframe body
+    const scale = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+    const target = iframe.contentWindow.document.body;
+    const canvas = await html2canvas(target, { scale: scale, backgroundColor: '#ffffff', useCORS: true });
+    if (!canvas) throw new Error('Không thể tạo ảnh');
+
+    canvas.toBlob(function(blob){
+      const ts = new Date(); const pad = (n)=>String(n).padStart(2,'0');
+      const fname = 'invoice-' + ts.getFullYear() + pad(ts.getMonth()+1) + pad(ts.getDate()) + '-' + pad(ts.getHours()) + pad(ts.getMinutes()) + '.png';
+      const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = fname; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url), 1500);
+      try{ new Notyf({position: (window.innerWidth<=576?{x:'center',y:'top'}:{x:'right',y:'top'})}).success('Đã lưu ảnh: ' + fname); }catch(e){}
+    }, 'image/png');
+
+    // cleanup
+    setTimeout(()=>{ const f = document.getElementById('invoice-capture-iframe'); if (f) f.remove(); }, 800);
+    btn.innerHTML = origHtml;
+  }catch(e){ console.error(e); try{ new Notyf().error('Không thể tạo ảnh hóa đơn'); }catch(err){}; btn.innerHTML = origHtml; }
+}
 </script>
 
 {% endblock %}

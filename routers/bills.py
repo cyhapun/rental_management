@@ -27,6 +27,18 @@ async def list_bills(request: Request, status: str = "unpaid"):
     bills = []
     async for b in cursor:
         b["id"] = str(b.get("_id"))
+        # compute amount already paid for this bill (sum of payments)
+        try:
+            paid_sum = 0
+            pc = db.payments.find({"bill_id": b.get("id")})
+            async for p in pc:
+                try:
+                    paid_sum += int(p.get("amount", 0) or 0)
+                except Exception:
+                    pass
+            b["paid_amount"] = paid_sum
+        except Exception:
+            b["paid_amount"] = 0
         # Backfill water_cost for legacy bills that don't have it.
         if b.get("water_cost") is None or int(b.get("water_cost") or 0) == 0:
             room_price = int(b.get("room_price", 0) or 0)
@@ -66,28 +78,87 @@ async def list_bills(request: Request, status: str = "unpaid"):
         bills.append(b)
     # default month = current month (YYYY-MM) for generate form
     default_month = datetime.date.today().strftime("%Y-%m")
+    # also provide a list of active contracts so user can create bill for a contract
+    contracts_list = []
+    try:
+        ccur = db.contracts.find({})
+        async for c in ccur:
+            cid = str(c.get("_id"))
+            # attach room/tenant for display
+            tenant_name = None
+            room_number = None
+            try:
+                room = await db.rooms.find_one({"_id": ObjectId(c.get("room_id"))})
+            except Exception:
+                room = None
+            if room:
+                room_number = room.get("room_number")
+            try:
+                tenant = await db.tenants.find_one({"_id": ObjectId(c.get("tenant_id"))})
+            except Exception:
+                tenant = None
+            if tenant:
+                tenant_name = tenant.get("full_name")
+            contracts_list.append({"id": cid, "display": (f"{tenant_name or ''} - Phòng {room_number or ''}").strip()})
+    except Exception:
+        contracts_list = []
+
     tpl = env.get_template("bills.html")
-    html = tpl.render(request=request, bills=bills, default_month=default_month, status=status)
+    html = tpl.render(request=request, bills=bills, default_month=default_month, status=status, contracts=contracts_list)
     return HTMLResponse(content=html)
 
 
 @router.post("/generate")
-async def generate_monthly(month: str = Form(...)):
+async def generate_monthly(month: str = Form(...), contract_id: str = Form(None)):
     db = get_db()
     try:
-        cursor = db.contracts.find({})
         created = 0
-        async for c in cursor:
-            room = await db.rooms.find_one({"_id": ObjectId(c.get("room_id"))})
-            room_price = int(room.get("price", 0)) if room else 0
-            er = await db.electric_readings.find_one({"room_id": c.get("room_id"), "month": month})
-            electric_cost = er.get("total", 0) if er else 0
+        if contract_id:
+            # create for single contract
+            try:
+                c = await db.contracts.find_one({"_id": ObjectId(contract_id)})
+            except Exception:
+                c = None
+            if not c:
+                return redirect_with_flash('/bills/?status=unpaid', 'Không tìm thấy hợp đồng để tạo hóa đơn.', 'danger')
+            room_price = 0
+            try:
+                room = await db.rooms.find_one({"_id": ObjectId(c.get('room_id'))})
+                room_price = int(room.get('price', 0)) if room else 0
+            except Exception:
+                room_price = 0
+            er = await db.electric_readings.find_one({"room_id": c.get('room_id'), "month": month})
+            electric_cost = er.get('total', 0) if er else 0
+            # embed electric reading details so invoice can display indices and usage
+            prev_index = er.get('old_index') if er else None
+            curr_index = er.get('new_index') if er else None
+            usage = er.get('usage') if er else None
+            kwh_price = er.get('price_per_kwh') if er else None
             water_cost = WATER_FEE
             total = room_price + electric_cost + water_cost
-            bill = {"contract_id": str(c.get("_id")), "month": month, "room_price": room_price, "electric_cost": electric_cost, "water_cost": water_cost, "other_cost": 0, "total": total, "status": "unpaid", "created_at": datetime.datetime.utcnow()}
+            bill = {"contract_id": str(c.get("_id")), "month": month, "room_price": room_price, "electric_cost": electric_cost, "water_cost": water_cost, "other_cost": 0, "total": total, "status": "unpaid", "created_at": datetime.datetime.utcnow(),
+                    "prev_index": prev_index, "curr_index": curr_index, "usage": usage, "kwh_price": kwh_price}
             await db.bills.insert_one(bill)
-            created += 1
-        return redirect_with_flash(f"/bills/?status=unpaid", f"Tạo hóa đơn thành công ({created} hóa đơn).")
+            created = 1
+            return redirect_with_flash(f"/bills/?status=unpaid", f"Tạo hóa đơn cho hợp đồng thành công.")
+        else:
+            cursor = db.contracts.find({})
+            async for c in cursor:
+                room = await db.rooms.find_one({"_id": ObjectId(c.get("room_id"))})
+                room_price = int(room.get("price", 0)) if room else 0
+                er = await db.electric_readings.find_one({"room_id": c.get("room_id"), "month": month})
+                electric_cost = er.get("total", 0) if er else 0
+                prev_index = er.get('old_index') if er else None
+                curr_index = er.get('new_index') if er else None
+                usage = er.get('usage') if er else None
+                kwh_price = er.get('price_per_kwh') if er else None
+                water_cost = WATER_FEE
+                total = room_price + electric_cost + water_cost
+                bill = {"contract_id": str(c.get("_id")), "month": month, "room_price": room_price, "electric_cost": electric_cost, "water_cost": water_cost, "other_cost": 0, "total": total, "status": "unpaid", "created_at": datetime.datetime.utcnow(),
+                    "prev_index": prev_index, "curr_index": curr_index, "usage": usage, "kwh_price": kwh_price}
+                await db.bills.insert_one(bill)
+                created += 1
+            return redirect_with_flash(f"/bills/?status=unpaid", f"Tạo hóa đơn thành công ({created} hóa đơn).")
     except Exception:
         return redirect_with_flash("/bills/?status=unpaid", "Tạo hóa đơn thất bại.", "danger")
 
@@ -99,10 +170,24 @@ async def pay_bill(bill_id: str, amount: int = Form(...), method: str = Form("ca
         bill = await db.bills.find_one({"_id": ObjectId(bill_id)})
         if not bill:
             return redirect_with_flash("/bills/?status=unpaid", "Không tìm thấy hóa đơn.", "danger")
-        if amount >= bill.get("total", 0):
-            await db.bills.update_one({"_id": ObjectId(bill_id)}, {"$set": {"status": "paid"}})
+        total_due = int(bill.get("total", 0) or 0)
+        if amount <= 0:
+            return redirect_with_flash(f"/bills/?status={bill.get('status','unpaid')}", "Số tiền phải lớn hơn 0.", "danger")
+        if amount > total_due:
+            return redirect_with_flash(f"/bills/?status={bill.get('status','unpaid')}", "Số tiền thanh toán không được lớn hơn tổng tiền.", "danger")
+
+        remaining = total_due - amount
+        # record payment
         await db.payments.insert_one({"bill_id": bill_id, "amount": amount, "payment_date": datetime.datetime.utcnow(), "method": method})
-        return redirect_with_flash("/bills/?status=unpaid", "Thanh toán thành công.")
+
+        if remaining <= 0:
+            # fully paid
+            await db.bills.update_one({"_id": ObjectId(bill_id)}, {"$set": {"status": "paid"}})
+        else:
+            # update partial info (store outstanding as 'total' = remaining)
+            await db.bills.update_one({"_id": ObjectId(bill_id)}, {"$set": {"total": remaining}})
+
+        return redirect_with_flash(f"/bills/?status={ 'paid' if remaining==0 else 'unpaid'}", "Thanh toán thành công.")
     except Exception:
         return redirect_with_flash("/bills/?status=unpaid", "Thanh toán thất bại.", "danger")
 

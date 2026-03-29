@@ -131,13 +131,20 @@ body{
 
 /* Notyf customizations - nicer toast style */
 .notyf { font-family: Inter, Arial, sans-serif; }
-.notyf__toast { border-radius: 12px; box-shadow: 0 10px 30px rgba(2,6,23,0.15); padding: 12px 16px; color: #fff; display:flex; align-items:center; gap:12px; cursor: pointer; }
+.notyf__toast { border-radius: 6px !important; box-shadow: 0 10px 30px rgba(2,6,23,0.15); padding: 12px 16px; color: #fff; display:flex; align-items:center; gap:12px; cursor: pointer; }
 .notyf__message { font-size: 0.98rem; font-weight:600; }
 .notyf__icon { font-size:1.25rem; margin-right:6px; opacity:0.95; }
+.notyf__icon > i { border-radius: 4px; }
+/* Ensure icon background does not force circular badge; keep toast rectangular */
+.notyf__icon, .notyf__icon > i { background: transparent !important; border-radius: 2px !important; }
 .notyf--success { background: linear-gradient(90deg,#10b981,#059669); }
 .notyf--error { background: linear-gradient(90deg,#ef4444,#dc2626); }
 .notyf--warning { background: linear-gradient(90deg,#f59e0b,#d97706); }
 .notyf__toast:hover { transform: translateY(-3px); transition: transform .18s ease; }
+
+/* Ensure toasts render above other UI and are not clipped by parent containers */
+.notyf { z-index: 3050 !important; position: fixed !important; overflow: visible !important; }
+.notyf__toast { overflow: visible !important; }
 
 /* Avatar and navbar tweaks */
 .avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(90deg,var(--primary-500),var(--primary-600));color:#fff;font-weight:700;display:inline-flex;align-items:center;justify-content:center}
@@ -149,3 +156,35 @@ body{
 .app-brand{display:flex;align-items:center;gap:.6rem;font-weight:700;color:#fff;text-decoration:none}
 .app-brand img{height:48px;width:auto;display:block}
 .app-brand .brand-title{font-size:1.05rem;letter-spacing:.2px;color:#fff}
+
+/* Metrics equal-height rows */
+.metrics-row{display:flex;flex-wrap:wrap;margin-left:-.75rem;margin-right:-.75rem}
+.metrics-row > [class*='col-']{display:flex;padding-left:.75rem;padding-right:.75rem}
+.metrics-row .card-metric{flex:1;display:flex;flex-direction:column;justify-content:space-between}
+.metrics-row .card-metric .h4{margin:0}
+
+/* Make Notyf toasts responsive (cap width on mobile) */
+.notyf__toast{max-width:92vw}
+
+@media (max-width:576px){
+	.notyf__toast{padding:8px 10px; border-radius:10px}
+	.notyf__message{font-size:0.95rem}
+	.notyf__icon{font-size:1rem}
+}
+
+/* Strongly ensure icon background does not render as a circular badge */
+.notyf__toast .notyf__icon,
+.notyf__toast .notyf__icon > i {
+	background: transparent !important;
+	padding: 0 !important;
+	width: auto !important;
+	height: auto !important;
+	border-radius: 0 !important;
+	display: inline-flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+}
+
+/* Prevent accidental white circular overlays from Notyf internals */
+.notyf__toast .notyf__icon svg,
+.notyf__toast .notyf__icon i { background: transparent !important; }

@@ -64,6 +64,48 @@ async def print_invoice(bill_id: str, request: Request):
         # Keep whatever is stored if parsing fails.
         pass
 
+    # If bill is missing electric indices/usage, try to find the electric reading for the room/month
+    try:
+        if (not bill.get('prev_index') or not bill.get('curr_index') or not bill.get('usage')) and room:
+            # room._id may be ObjectId; contract.room_id may be string, try both
+            r_id = room.get('_id')
+            reading = await db.electric_readings.find_one({"room_id": r_id, "month": bill.get('month')})
+            if not reading:
+                # try string form
+                try:
+                    from bson import ObjectId
+                    reading = await db.electric_readings.find_one({"room_id": str(r_id), "month": bill.get('month')})
+                except Exception:
+                    reading = None
+            if reading:
+                bill['prev_index'] = bill.get('prev_index') or reading.get('old_index')
+                bill['curr_index'] = bill.get('curr_index') or reading.get('new_index')
+                bill['usage'] = bill.get('usage') or reading.get('usage')
+                bill['kwh_price'] = bill.get('kwh_price') or reading.get('price_per_kwh')
+                # update electric_cost if missing
+                if not bill.get('electric_cost'):
+                    bill['electric_cost'] = reading.get('total') or bill.get('electric_cost')
+    except Exception:
+        pass
+
+    # Format created_at for display (d/m/Y) if present
+    try:
+        from datetime import datetime
+        ca = bill.get('created_at')
+        if isinstance(ca, datetime):
+            bill['created_at_fmt'] = ca.strftime('%d/%m/%Y')
+        else:
+            try:
+                bill['created_at_fmt'] = datetime.fromisoformat(str(ca)).strftime('%d/%m/%Y')
+            except Exception:
+                # fallback: if it's a timestamp number
+                try:
+                    bill['created_at_fmt'] = datetime.utcfromtimestamp(float(ca)).strftime('%d/%m/%Y')
+                except Exception:
+                    bill['created_at_fmt'] = str(ca)[:10] if ca else ''
+    except Exception:
+        bill['created_at_fmt'] = ''
+
     html = render_template("invoice_print.html", {"bill": bill, "tenant": tenant, "room": room, "request": request})
     return HTMLResponse(content=html)
 

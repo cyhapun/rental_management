@@ -5,7 +5,7 @@
   <div class="text-muted">Tổng quan nhà trọ</div>
 </div>
 
-<div class="row g-3 mb-3">
+<div class="row g-3 mb-3 metrics-row">
   <div class="col-sm-6 col-md-3">
     <div class="card-metric p-3">
       <div class="d-flex justify-content-between align-items-center">
@@ -44,7 +44,7 @@
       <div class="d-flex justify-content-between align-items-center">
         <div>
           <div class="metric-small">Doanh thu tháng này</div>
-          <strong class="h4">{{ revenue | money }}</strong>
+          <strong class="h4">{{ paid_amount_current_month | money }}</strong>
         </div>
         <div><i class="fa-solid fa-coins fa-2x text-info"></i></div>
       </div>
@@ -52,7 +52,7 @@
   </div>
 </div>
 
-<div class="row g-3 mb-3">
+<div class="row g-3 mb-3 metrics-row">
   <div class="col-sm-6 col-md-3">
     <div class="card-metric p-3">
       <div class="d-flex justify-content-between align-items-center">
@@ -102,7 +102,18 @@
 <div class="row">
   <div class="col-lg-8">
     <div class="bg-panel">
-      <h5>Doanh thu (6 tháng gần nhất)</h5>
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h5 class="mb-0">Doanh thu</h5>
+        <div class="d-flex align-items-center">
+          <label class="me-2 small text-muted mb-0">Phạm vi</label>
+          <select id="rangeSelect" class="form-select form-select-sm me-3">
+            <option value="30">30 ngày</option>
+            <option value="6" selected>6 tháng</option>
+            <option value="12">1 năm</option>
+          </select>
+          <div id="timeUnit" class="small text-muted">Đơn vị: Tháng</div>
+        </div>
+      </div>
       <canvas id="revenueChart" height="120"></canvas>
     </div>
   </div>
@@ -154,24 +165,48 @@
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-const labels = {{ revenue_labels|tojson | safe }};
-const data = {{ revenue_series|tojson | safe }};
+const labels6 = {{ revenue_labels|tojson | safe }};
+const paid6 = {{ revenue_series|tojson | safe }};
+const payments6 = {{ payments_series|tojson | safe }};
+const labels12 = {{ labels_12|tojson | safe }};
+const payments12 = {{ payments_series_12|tojson | safe }};
+const labels30 = {{ labels_30|tojson | safe }};
+const payments30 = {{ payments_30|tojson | safe }};
 const ctx = document.getElementById('revenueChart').getContext('2d');
-new Chart(ctx, {
+let revenueChart = new Chart(ctx, {
     type: 'line',
     data: {
-        labels: labels,
+        labels: labels6,
         datasets: [{
-            label: 'Doanh thu',
-            data: data,
-            borderColor: 'rgba(13,110,253,0.9)',
-            backgroundColor: 'rgba(13,110,253,0.15)',
+            label: 'Tiền đã nhận',
+            data: payments6,
+            borderColor: 'rgba(40,167,69,0.9)',
+            backgroundColor: 'rgba(40,167,69,0.12)',
             tension: 0.3,
             fill: true
         }]
     },
-    options: {responsive:true, plugins:{legend:{display:false}}}
+    options: {responsive:true, plugins:{legend:{display:false}}, scales:{x:{title:{display:true,text:'Thời gian'}}}}
 });
+
+function updateChart(range){
+  if (range === '30'){
+    revenueChart.data.labels = labels30;
+    revenueChart.data.datasets = [{label:'Tiền đã nhận', data: payments30, borderColor:'rgba(40,167,69,0.9)', backgroundColor:'rgba(40,167,69,0.12)', tension:0.3, fill:true}];
+    document.getElementById('timeUnit').innerText = 'Đơn vị: Ngày';
+  } else if (range === '6'){
+    revenueChart.data.labels = labels6;
+    revenueChart.data.datasets = [{label:'Tiền đã nhận', data: payments6, borderColor:'rgba(40,167,69,0.9)', backgroundColor:'rgba(40,167,69,0.12)', tension:0.3, fill:true}];
+    document.getElementById('timeUnit').innerText = 'Đơn vị: Tháng';
+  } else if (range === '12'){
+    revenueChart.data.labels = labels12;
+    revenueChart.data.datasets = [{label:'Tiền đã nhận', data: payments12, borderColor:'rgba(40,167,69,0.9)', backgroundColor:'rgba(40,167,69,0.12)', tension:0.3, fill:true}];
+    document.getElementById('timeUnit').innerText = 'Đơn vị: Tháng';
+  }
+  revenueChart.update();
+}
+
+document.getElementById('rangeSelect').addEventListener('change', function(e){ updateChart(e.target.value); });
 
 const roomStatusCtx = document.getElementById('roomStatusChart').getContext('2d');
 new Chart(roomStatusCtx, {

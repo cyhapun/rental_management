@@ -7,6 +7,7 @@ import os
 from jinja2 import Environment, FileSystemLoader
 
 from security import decrypt_value, mask_cccd
+from constants import WATER_FEE
 from template_filters import money
 from security import hash_value
 from flash import redirect_with_flash
@@ -421,6 +422,57 @@ async def list_contracts(request: Request):
         today=today_str,
     )
     return HTMLResponse(content=html)
+
+
+@router.post("/{contract_id}/create_bill")
+async def create_bill_from_contract(request: Request, contract_id: str, month: str = Form(None)):
+    db = get_db()
+    try:
+        c = await db.contracts.find_one({"_id": ObjectId(contract_id)})
+    except Exception:
+        c = None
+    if not c:
+        return redirect_with_flash('/contracts/', 'Không tìm thấy hợp đồng.', 'danger')
+
+    # default to current month YYYY-MM
+    import datetime as _dt
+    if not month:
+        month = _dt.date.today().isoformat()[:7]
+
+    # prevent duplicate bill for same contract+month
+    existing = await db.bills.find_one({"contract_id": contract_id, "month": month})
+    if existing:
+        return redirect_with_flash('/contracts/', f'Đã tồn tại hóa đơn cho hợp đồng này ({month}).', 'warning')
+
+    # compute basic costs
+    room = None
+    try:
+        room = await db.rooms.find_one({"_id": ObjectId(c.get('room_id'))})
+    except Exception:
+        room = None
+    room_price = int(room.get('price', 0)) if room else 0
+
+    er = await db.electric_readings.find_one({"room_id": c.get('room_id'), "month": month})
+    electric_cost = int(er.get('total', 0)) if er else 0
+    water_cost = WATER_FEE
+    total = room_price + electric_cost + water_cost
+
+    bill = {
+        "contract_id": contract_id,
+        "month": month,
+        "room_price": room_price,
+        "electric_cost": electric_cost,
+        "water_cost": water_cost,
+        "other_cost": 0,
+        "total": total,
+        "status": "unpaid",
+        "created_at": _dt.datetime.utcnow(),
+    }
+    try:
+        await db.bills.insert_one(bill)
+        return redirect_with_flash('/contracts/', 'Tạo hóa đơn cho hợp đồng thành công.')
+    except Exception:
+        return redirect_with_flash('/contracts/', 'Tạo hóa đơn thất bại.', 'danger')
 
 
 @router.post("/create")
