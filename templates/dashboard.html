@@ -114,112 +114,113 @@
   </div>
 </div>
 
-<div class="row">
-  <div class="col-12">
-    <div class="bg-panel">
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <h5 class="mb-0">Doanh thu</h5>
-      </div>
-      <div class="row">
-        <div class="col-12">
-          <div class="d-flex align-items-center mb-2">
-            <label class="me-2 small text-muted mb-0">Phạm vi</label>
-            <select id="rangeSelect" class="form-select form-select-sm me-3">
-              <option value="all" selected>Tất cả</option>
-              <option value="30">30 ngày</option>
-              <option value="6">6 tháng</option>
-              <option value="12">1 năm</option>
-            </select>
-            <div id="timeUnit" class="small text-muted">Đơn vị: Tháng</div>
-          </div>
-          <canvas id="revenueChart" height="180"></canvas>
+<div class="row g-4 mb-4">
+  <div class="col-12 col-md-6">
+    <div class="bg-panel h-100 d-flex flex-column p-4">
+      <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-2 border-bottom">
+        <h5 class="mb-0 text-primary">Doanh thu</h5>
+        <div class="d-flex align-items-center mt-2 mt-md-0">
+          <label class="me-2 small text-muted mb-0">Phạm vi:</label>
+          <select id="rangeSelect" class="form-select form-select-sm me-3" style="width: auto;">
+            <option value="all">Tất cả</option>
+            <option value="30">30 ngày</option>
+            <option value="6" selected>6 tháng</option>
+            <option value="12">1 năm</option>
+          </select>
+          <div id="timeUnit" class="small text-muted bg-light px-2 py-1 rounded border">Đơn vị: Tháng</div>
         </div>
+      </div>
+      <div class="flex-grow-1">
+        <canvas id="revenueChart" height="180"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-md-6">
+    <div class="bg-panel h-100 d-flex flex-column p-4">
+      <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-2 border-bottom">
+        <h5 class="mb-0 text-primary">Biến động thuê/thoát phòng</h5>
+        <div class="d-flex align-items-center mt-2 mt-md-0">
+          <label class="me-2 small text-muted mb-0">Phạm vi:</label>
+          <select id="churnRangeSelect" class="form-select form-select-sm me-3" style="width: auto;">
+            <option value="all">Tất cả</option>
+            <option value="30">30 ngày</option>
+            <option value="6" selected>6 tháng</option>
+            <option value="12">1 năm</option>
+          </select>
+          <div id="churnTimeUnit" class="small text-muted bg-light px-2 py-1 rounded border">Đơn vị: Tháng</div>
+        </div>
+      </div>
+      <div class="flex-grow-1">
+        <canvas id="churnChart" height="180"></canvas>
       </div>
     </div>
   </div>
 </div>
 
-<div class="row mt-3">
+<div class="row mb-3">
   <div class="col-12">
-    <div class="bg-panel">
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <h5 class="mb-0">Tiêu thụ điện</h5>
-      </div>
-      <div class="row">
-        <div class="col-md-9">
-          <div class="d-flex align-items-center mb-2">
-            <label class="me-2 small text-muted mb-0">Phạm vi</label>
-            <select id="electricRangeSelect" class="form-select form-select-sm me-3">
-              <option value="all" selected>Tất cả</option>
-              <option value="6">6 tháng</option>
-              <option value="12">1 năm</option>
-            </select>
-            <div id="electricTimeUnit" class="small text-muted">Đơn vị: Tháng</div>
-          </div>
-          <canvas id="electricHistoryChart" height="140"></canvas>
-          
-          <div class="small text-muted fst-italic mt-2 text-end">
-            * Ghi chú: Nhấn vào các cột trên biểu đồ để xem chi tiết số điện tiêu thụ của từng tháng.
-          </div>
-          
+    <div class="bg-panel h-100 p-4">
+      <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-2 border-bottom">
+        <h5 class="mb-0 text-primary">Tiêu thụ điện</h5>
+        <div class="d-flex align-items-center mt-2 mt-md-0">
+          <label class="me-2 small text-muted mb-0">Phạm vi:</label>
+          <select id="electricRangeSelect" class="form-select form-select-sm me-3" style="width: auto;">
+            <option value="all">Tất cả</option>
+            <option value="6" selected>6 tháng</option>
+            <option value="12">1 năm</option>
+          </select>
+          <div id="electricTimeUnit" class="small text-muted bg-light px-2 py-1 rounded border">Đơn vị: Tháng</div>
         </div>
-        <div class="col-md-3">
-          <div class="bg-panel p-3 h-100 d-flex flex-column">
-            <h6 class="mb-2">Top phòng</h6>
-            <div id="electricTopList" class="small text-muted mb-3">Đang tải...</div>
-            
-            <div class="small text-muted fst-italic mt-auto border-top pt-2">
-              * Nhấn vào tên phòng để xem thông tin chi tiết.
+      </div>
+
+      <div class="row g-4">
+        <div class="col-12 col-md-8 d-flex flex-column">
+          <div class="flex-grow-1">
+            <canvas id="electricHistoryChart" height="140"></canvas>
+          </div>
+          <div class="small text-muted fst-italic mt-3 text-end">
+            <i class="fa-solid fa-circle-info me-1"></i> Ghi chú: Nhấn vào các cột trên biểu đồ để xem chi tiết số điện tiêu thụ của từng tháng.
+          </div>
+        </div>
+
+        <div class="col-12 col-md-4 d-flex flex-column">
+          <h6 class="fw-semibold text-muted mb-2">Top tiêu thụ</h6>
+          <div class="flex-grow-1 p-3 rounded" style="background-color: #f8f9fa; border: 1px solid #e9ecef; overflow-y: auto; max-height: 300px;">
+            <div id="electricTopList" class="small text-dark mb-0">
+              <div class="d-flex align-items-center">
+                <span class="spinner-border spinner-border-sm me-2 text-primary" role="status" aria-hidden="true"></span>
+                Đang tải dữ liệu...
+              </div>
             </div>
-            
           </div>
         </div>
       </div>
-    </div>
-  </div>
-</div>
-
-<div class="row mt-3">
-  <div class="col-12">
-    <div class="bg-panel">
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <h5 class="mb-0">Biến động thuê/thoát phòng</h5>
-      </div>
-      <div class="d-flex align-items-center mb-2">
-        <label class="me-2 small text-muted mb-0">Phạm vi</label>
-        <select id="churnRangeSelect" class="form-select form-select-sm me-3">
-          <option value="all" selected>Tất cả</option>
-          <option value="30">30 ngày</option>
-          <option value="6">6 tháng</option>
-          <option value="12">1 năm</option>
-        </select>
-        <div id="churnTimeUnit" class="small text-muted">Đơn vị: Tháng</div>
-      </div>
-      <canvas id="churnChart" height="120"></canvas>
+      
     </div>
   </div>
 </div>
 
 <div class="row mt-3 g-3">
-  <div class="col-lg-4">
-    <div class="bg-panel">
+  <div class="col-12 col-md-3">
+    <div class="bg-panel h-100">
       <h5>Tỷ lệ phòng</h5>
       <canvas id="roomStatusChart" height="180"></canvas>
     </div>
   </div>
-  <div class="col-lg-4">
-    <div class="bg-panel">
+  <div class="col-12 col-md-3">
+    <div class="bg-panel h-100">
       <h5>Trạng thái hóa đơn</h5>
       <canvas id="billStatusChart" height="180"></canvas>
     </div>
   </div>
-  <div class="col-lg-4">
-    <div class="bg-panel">
+  <div class="col-12 col-md-3">
+    <div class="bg-panel h-100">
       <h5>Tình trạng người thuê</h5>
       <canvas id="tenantStatusChart" height="180"></canvas>
     </div>
   </div>
-</div>
+  </div>
 
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -428,7 +429,7 @@ function renderTopPanelHtml(title, items){
   if (!container) return;
   let html = '';
   if (!items || !items.length){
-    html = '<div>Không có dữ liệu</div>';
+    html = '<div>Không ghi nhận được dữ liệu</div>';
   } else {
     html = '<ol class="mb-0 small">' + items.map(x=>`<li class="mb-1">${x.label}: <strong>${x.usage}</strong> kWh</li>`).join('') + '</ol>';
   }
@@ -450,7 +451,7 @@ async function updateElectricTopPanelForLabel(range, label){
       // label may contain year or month; pick year
       const year = String(label).match(/^(\d{4})/)?.[1] || new Date().getFullYear();
       const res = await fetch(`/electric/dashboard/top-electric-year/${year}`);
-      if (!res.ok) { container.innerHTML = 'Không lấy được dữ liệu'; return; }
+      if (!res.ok) { container.innerHTML = 'Không ghi nhận được dữ liệu'; return; }
       const data = await res.json();
       const items = (data.top_months||[]).map(x=>({label:x.month, usage:x.usage}));
       renderTopPanelHtml(`Top tháng trong ${year}`, items);
@@ -459,7 +460,7 @@ async function updateElectricTopPanelForLabel(range, label){
     // otherwise treat label as month string (e.g., YYYY-MM or DD-MM for 30d)
     const month = label;
     const res = await fetch(`/electric/dashboard/top-electric/${month}`);
-    if (!res.ok) { container.innerHTML = 'Không lấy được dữ liệu'; return; }
+    if (!res.ok) { container.innerHTML = 'Không ghi nhận được dữ liệu'; return; }
     const data = await res.json();
     const items = (data.top_rooms||[]).map(x=>({label:`Phòng ${x.room_number}`, usage:x.usage}));
     renderTopPanelHtml(`Top phòng ${month}`, items);
@@ -540,12 +541,51 @@ if (churnRange){
     updateChurnChart(v);
   });
 }
-// initialize charts to the currently selected range (default 'all')
+// initialize charts to the currently selected range (default 6 months)
 try{
-  const initialRange = document.getElementById('rangeSelect')?.value || 'all';
+  const initialRange = document.getElementById('rangeSelect')?.value || '6';
   updateChart(initialRange);
   updateChurnChart(initialRange);
-  updateElectricChart(document.getElementById('electricRangeSelect')?.value || 'all');
+  updateElectricChart(document.getElementById('electricRangeSelect')?.value || '6');
+
+  // Responsive adjustments: make axes/tick fonts smaller on narrow screens and
+  // increase canvas height so charts appear larger on mobile.
+  function adjustChartsResponsive(){
+    const w = window.innerWidth || document.documentElement.clientWidth || 1024;
+    const small = w < 576; // bootstrap xs breakpoint
+    const tickSize = small ? 10 : 12;
+    // helper to apply settings to a chart
+    const applyToChart = (chart, canvasId, mobileHeight, desktopHeight)=>{
+      try{
+        if (!chart) return;
+        const canvas = document.getElementById(canvasId);
+        if (canvas){ canvas.height = small ? mobileHeight : desktopHeight; }
+        if (chart.options && chart.options.scales){
+          Object.keys(chart.options.scales).forEach(k=>{
+            const s = chart.options.scales[k];
+            s.ticks = s.ticks || {};
+            s.ticks.font = s.ticks.font || {};
+            s.ticks.font.size = tickSize;
+          });
+        }
+        if (chart.options && chart.options.plugins && chart.options.plugins.legend && chart.options.plugins.legend.labels){
+          chart.options.plugins.legend.labels.font = chart.options.plugins.legend.labels.font || {};
+          chart.options.plugins.legend.labels.font.size = tickSize;
+        }
+        chart.resize();
+        chart.update();
+      }catch(e){console.error(e)}
+    };
+
+    applyToChart(revenueChart, 'revenueChart', 260, 180);
+    applyToChart(electricChart, 'electricHistoryChart', 260, 140);
+    applyToChart(churnChart, 'churnChart', 220, 180);
+  }
+
+  // run once and on resize
+  adjustChartsResponsive();
+  window.addEventListener('resize', function(){ setTimeout(adjustChartsResponsive, 120); });
+
 }catch(e){ console.error(e); }
 </script>
 
