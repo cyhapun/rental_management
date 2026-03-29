@@ -29,12 +29,12 @@ async def list_bills(request: Request, status: str = "unpaid"):
         b["id"] = str(b.get("_id"))
         bills.append(b)
 
-    # Batch-fetch payments for the listed bills to avoid N queries.
+    # Compute paid_amount from bill document if present; fallback to payments collection for legacy data
     try:
-        bill_ids = [b.get("id") for b in bills if b.get("id")]
+        ids_missing = [b.get("id") for b in bills if not b.get("paid_amount")]
         payments_map = {}
-        if bill_ids:
-            pc = db.payments.find({"bill_id": {"$in": bill_ids}})
+        if ids_missing:
+            pc = db.payments.find({"bill_id": {"$in": ids_missing}})
             async for p in pc:
                 try:
                     bid = p.get("bill_id")
@@ -43,59 +43,88 @@ async def list_bills(request: Request, status: str = "unpaid"):
                 except Exception:
                     pass
         for b in bills:
-            b["paid_amount"] = payments_map.get(b.get("id"), 0)
+            if b.get("paid_amount") is not None:
+                # ensure numeric
+                try:
+                    b["paid_amount"] = int(b.get("paid_amount") or 0)
+                except Exception:
+                    b["paid_amount"] = 0
+            else:
+                b["paid_amount"] = payments_map.get(b.get("id"), 0)
+            # format paid_at for display if present
+            try:
+                pa = b.get('paid_at')
+                if pa:
+                    try:
+                        b['paid_at_fmt'] = pa.strftime('%d/%m/%Y %H:%M')
+                    except Exception:
+                        try:
+                            # use module datetime imported at top
+                            b['paid_at_fmt'] = datetime.datetime.fromisoformat(str(pa)).strftime('%d/%m/%Y %H:%M')
+                        except Exception:
+                            b['paid_at_fmt'] = str(pa)
+                else:
+                    b['paid_at_fmt'] = ''
+            except Exception:
+                b['paid_at_fmt'] = ''
     except Exception:
+        # If payments lookup failed, ensure minimal safe defaults.
         for b in bills:
-            b["paid_amount"] = 0
-        # Backfill water_cost for legacy bills that don't have it.
-        if b.get("water_cost") is None or int(b.get("water_cost") or 0) == 0:
-            room_price = int(b.get("room_price", 0) or 0)
-            electric_cost = int(b.get("electric_cost", 0) or 0)
-            other_cost = int(b.get("other_cost", 0) or 0)
-            new_total = int(b.get("total", room_price + electric_cost + other_cost) or 0) + WATER_FEE
-            await db.bills.update_one(
-                {"_id": ObjectId(b["id"])},
-                {"$set": {"water_cost": WATER_FEE, "total": new_total}},
-            )
-            b["water_cost"] = WATER_FEE
-            b["total"] = new_total
-        # attach contract -> tenant + room for display (resolve IDs robustly)
-        async def _resolve_document(collection, doc_id):
-            if not doc_id:
-                return None
-            try:
-                d = await collection.find_one({"_id": doc_id})
-                if d:
-                    return d
-            except Exception:
-                pass
-            try:
-                d = await collection.find_one({"_id": ObjectId(doc_id)})
-                if d:
-                    return d
-            except Exception:
-                pass
-            try:
-                d = await collection.find_one({"_id": str(doc_id)})
-                if d:
-                    return d
-            except Exception:
-                pass
-            return None
+            b["paid_amount"] = int(b.get("paid_amount") or 0)
+            b['paid_at_fmt'] = ''
 
-        for b in bills:
-            tenant_name = None
-            room_number = None
-            contract = await _resolve_document(db.contracts, b.get("contract_id"))
-            if contract:
-                room = await _resolve_document(db.rooms, contract.get("room_id"))
-                if room:
-                    room_number = room.get("room_number")
-                tenant = await _resolve_document(db.tenants, contract.get("tenant_id"))
-                if tenant:
-                    tenant_name = tenant.get("full_name")
-            b["contract_display"] = {"tenant_name": tenant_name, "room_number": room_number}
-        bills.append(b)
+    # Normalize and attach contract display info for all bills (robust ID handling)
+    async def _resolve_document(collection, doc_id):
+        if not doc_id:
+            return None
+        try:
+            d = await collection.find_one({"_id": doc_id})
+            if d:
+                return d
+        except Exception:
+            pass
+        try:
+            d = await collection.find_one({"_id": ObjectId(doc_id)})
+            if d:
+                return d
+        except Exception:
+            pass
+        try:
+            d = await collection.find_one({"_id": str(doc_id)})
+            if d:
+                return d
+        except Exception:
+            pass
+        return None
+
+    for b in bills:
+        # backfill water_cost for legacy bills if missing
+        try:
+            if b.get("water_cost") is None or int(b.get("water_cost") or 0) == 0:
+                room_price = int(b.get("room_price", 0) or 0)
+                electric_cost = int(b.get("electric_cost", 0) or 0)
+                other_cost = int(b.get("other_cost", 0) or 0)
+                new_total = int(b.get("total", room_price + electric_cost + other_cost) or 0) + WATER_FEE
+                try:
+                    await db.bills.update_one({"_id": ObjectId(b["id"])}, {"$set": {"water_cost": WATER_FEE, "total": new_total}})
+                except Exception:
+                    pass
+                b["water_cost"] = WATER_FEE
+                b["total"] = new_total
+        except Exception:
+            pass
+
+        tenant_name = None
+        room_number = None
+        contract = await _resolve_document(db.contracts, b.get("contract_id"))
+        if contract:
+            room = await _resolve_document(db.rooms, contract.get("room_id"))
+            if room:
+                room_number = room.get("room_number")
+            tenant = await _resolve_document(db.tenants, contract.get("tenant_id"))
+            if tenant:
+                tenant_name = tenant.get("full_name")
+        b["contract_display"] = {"tenant_name": tenant_name, "room_number": room_number}
     # default month = current month (YYYY-MM) for generate form
     default_month = datetime.date.today().strftime("%Y-%m")
     # also provide a list of active contracts so user can create bill for a contract
@@ -184,7 +213,7 @@ async def generate_monthly(month: str = Form(...), contract_id: str = Form(None)
 
 
 @router.post("/{bill_id}/pay")
-async def pay_bill(bill_id: str, amount: int = Form(...), method: str = Form("cash")):
+async def pay_bill(bill_id: str, amount: int = Form(...), method: str = Form("Chuyển khoản")):
     db = get_db()
     try:
         bill = await db.bills.find_one({"_id": ObjectId(bill_id)})
@@ -197,15 +226,20 @@ async def pay_bill(bill_id: str, amount: int = Form(...), method: str = Form("ca
             return redirect_with_flash(f"/bills/?status={bill.get('status','unpaid')}", "Số tiền thanh toán không được lớn hơn tổng tiền.", "danger")
 
         remaining = total_due - amount
-        # record payment
-        await db.payments.insert_one({"bill_id": bill_id, "amount": amount, "payment_date": datetime.datetime.utcnow(), "method": method})
-
-        if remaining <= 0:
-            # fully paid
-            await db.bills.update_one({"_id": ObjectId(bill_id)}, {"$set": {"status": "paid"}})
+        # record payment data on bill (store paid_amount, paid_at, paid_method)
+        existing_paid = int(bill.get('paid_amount', 0) or 0)
+        new_paid = existing_paid + amount
+        update_fields = {
+            'paid_amount': new_paid,
+            'paid_method': method or 'Chuyển khoản',
+            'paid_at': datetime.datetime.utcnow(),
+        }
+        if new_paid >= total_due:
+            update_fields['status'] = 'paid'
+            update_fields['total'] = 0
         else:
-            # update partial info (store outstanding as 'total' = remaining)
-            await db.bills.update_one({"_id": ObjectId(bill_id)}, {"$set": {"total": remaining}})
+            update_fields['total'] = total_due - new_paid
+        await db.bills.update_one({"_id": ObjectId(bill_id)}, {"$set": update_fields})
 
         return redirect_with_flash(f"/bills/?status={ 'paid' if remaining==0 else 'unpaid'}", "Thanh toán thành công.")
     except Exception:
@@ -223,12 +257,7 @@ async def delete_bill(bill_id: str):
         bill_status = bill.get("status", "unpaid")
         redirect_status = bill_status if bill_status in ("paid", "unpaid") else "unpaid"
 
-        # Remove related payments if present
-        try:
-            await db.payments.delete_many({"bill_id": bill_id})
-        except Exception:
-            pass
-
+        # delete the bill (payments collection not used for new records)
         await db.bills.delete_one({"_id": ObjectId(bill_id)})
         return redirect_with_flash(f"/bills/?status={redirect_status}", "Xóa hóa đơn thành công.")
     except Exception:

@@ -79,6 +79,19 @@ async def dashboard_view(request: Request):
                 pass
         payments_series_6.append(pay_total)
 
+    # electric consumption series for last 6 months
+    electric_series_6 = []
+    for yy, mm in months_ago(now, 6):
+        target = month_label(yy, mm)
+        e_total = 0
+        ecursor = db.electric_readings.find({"month": target})
+        async for er in ecursor:
+            try:
+                e_total += int(er.get('usage', 0) or 0)
+            except Exception:
+                pass
+        electric_series_6.append(e_total)
+
     for yy, mm in months_ago(now, 12):
         target = month_label(yy, mm)
         labels_12.append(target)
@@ -249,6 +262,8 @@ async def dashboard_view(request: Request):
         room_price_max=room_price_max,
         price_per_kwh=price_per_kwh,
         water_fee=water_fee,
+        electric_labels_6=labels_6,
+        electric_series_6=electric_series_6,
         readonly_guest=False,
     )
     return HTMLResponse(content=html)

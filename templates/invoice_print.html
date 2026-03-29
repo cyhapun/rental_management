@@ -41,6 +41,11 @@
 
         <div class="invoice-row total"><div class="label">Tổng cộng:</div><div class="value">{{ bill.total | money }}</div></div>
 
+        {% if bill.paid_at_fmt %}
+        <div class="invoice-row"><div class="label">Ngày trả:</div><div class="value">{{ bill.paid_at_fmt }}</div></div>
+        <div class="invoice-row"><div class="label">Hình thức:</div><div class="value">{{ bill.paid_method or 'Chuyển khoản' }}</div></div>
+        {% endif %}
+
         <div class="bank-info">
           <div>TK: 9778847258</div>
           <div>Vietcombank - Châu Đăng Vinh</div>

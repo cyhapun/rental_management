@@ -119,6 +119,21 @@
   </div>
   <div class="col-lg-4">
     <div class="bg-panel">
+      <h5>Tiêu thụ điện (6 tháng)</h5>
+      <canvas id="electricHistoryChart" height="120"></canvas>
+      <div class="mt-3">
+        <div class="table-responsive small">
+          <table class="table table-sm table-borderless mb-0">
+            <thead><tr><th>Thời gian</th><th class="text-end">kWh</th></tr></thead>
+            <tbody id="electricTableBody">
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="bg-panel">
       <h5>Thao tác nhanh</h5>
       <div class="d-grid gap-2">
         <a class="btn btn-outline-primary" href="/rooms/">Quản lý phòng</a>
@@ -267,6 +282,30 @@ new Chart(topElectricCtx, {
     scales: { y: { beginAtZero: true } }
   }
 });
+
+// Electric history chart
+const electricLabels6 = {{ electric_labels_6|tojson | safe }};
+const electricSeries6 = {{ electric_series_6|tojson | safe }};
+const electricCtx = document.getElementById('electricHistoryChart')?.getContext('2d');
+if (electricCtx){
+  new Chart(electricCtx, {
+    type: 'line',
+    data: { labels: electricLabels6, datasets: [{ label: 'kWh', data: electricSeries6, borderColor: 'rgba(255,159,64,0.9)', backgroundColor: 'rgba(255,159,64,0.12)', tension:0.3, fill:true }] },
+    options: { responsive:true, scales:{ y:{ beginAtZero:true } }, plugins:{legend:{display:false}} }
+  });
+  // populate small table below chart for clarity
+  try{
+    const tbody = document.getElementById('electricTableBody');
+    if (tbody && Array.isArray(electricLabels6) && Array.isArray(electricSeries6)){
+      for (let i=0;i<electricLabels6.length;i++){
+        const tr = document.createElement('tr');
+        const td1 = document.createElement('td'); td1.innerText = electricLabels6[i];
+        const td2 = document.createElement('td'); td2.className = 'text-end'; td2.innerText = (electricSeries6[i] || 0) + ' kWh';
+        tr.appendChild(td1); tr.appendChild(td2); tbody.appendChild(tr);
+      }
+    }
+  }catch(e){console.warn(e)}
+}
 </script>
 
 {% endblock %}

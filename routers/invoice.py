@@ -1,14 +1,15 @@
+
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import HTMLResponse, StreamingResponse
 from deps import get_db
 import os
 from jinja2 import Environment, FileSystemLoader
 import io
+import datetime
 
 from security import decrypt_value
 from template_filters import money
 from constants import WATER_FEE
-from fastapi.responses import JSONResponse
 from bson import ObjectId
 
 router = APIRouter(prefix="/invoice", tags=["invoice"])
@@ -30,14 +31,12 @@ async def print_invoice(bill_id: str, request: Request):
     if not bill:
         # try ObjectId
         try:
-            from bson import ObjectId
             bill = await db.bills.find_one({"_id": ObjectId(bill_id)})
         except Exception:
             bill = None
     # If still not found, the provided id may be a contract/room/tenant id.
     if not bill:
         try:
-            from bson import ObjectId
             # try direct match on contract_id stored on bills
             bill = await db.bills.find_one({"contract_id": bill_id}, sort=[("month", -1)])
             if not bill:
@@ -50,7 +49,6 @@ async def print_invoice(bill_id: str, request: Request):
                     bill = await db.bills.find_one({"contract_id": cid}, sort=[("month", -1)])
             # try to find contracts by room_id or tenant_id, then lookup bills
             if not bill:
-                # search contracts where room_id or tenant_id equals provided id
                 contracts_cursor = db.contracts.find({"$or": [{"room_id": bill_id}, {"room_id": str(bill_id)}, {"tenant_id": bill_id}, {"tenant_id": str(bill_id)}]})
                 async for c in contracts_cursor:
                     cid = str(c.get("_id"))
@@ -80,7 +78,6 @@ async def print_invoice(bill_id: str, request: Request):
             pass
         # try as ObjectId
         try:
-            from bson import ObjectId
             d = await collection.find_one({"_id": ObjectId(doc_id)})
             if d:
                 return d
@@ -141,49 +138,6 @@ async def print_invoice(bill_id: str, request: Request):
     except Exception:
         bill['room_current_electric_index'] = None
 
-    # Ensure room has a current electric index available (use room.current_electric_index or latest reading)
-    try:
-        if room:
-            # prefer existing field
-            if not room.get('current_electric_index'):
-                # try to find latest reading for this room (accepting _id, str(_id), room_number)
-                candidates = []
-                try:
-                    candidates.append(room.get('_id'))
-                    candidates.append(str(room.get('_id')))
-                except Exception:
-                    pass
-                try:
-                    rn = room.get('room_number')
-                    if rn is not None:
-                        candidates.append(rn)
-                        candidates.append(str(rn))
-                except Exception:
-                    pass
-                latest = None
-                for c in candidates:
-                    if c is None:
-                        continue
-                    try:
-                        latest = await db.electric_readings.find_one({"room_id": c}, sort=[("month", -1)])
-                    except Exception:
-                        latest = None
-                    if latest:
-                        break
-                if latest:
-                    ci = latest.get('new_index') or latest.get('new_index') == 0 and 0
-                    try:
-                        room['current_electric_index'] = int(ci) if ci is not None else None
-                    except Exception:
-                        room['current_electric_index'] = ci
-                    # persist to room doc for future quick use
-                    try:
-                        await db.rooms.update_one({"_id": room.get('_id')}, {"$set": {"current_electric_index": room.get('current_electric_index')}})
-                    except Exception:
-                        pass
-    except Exception:
-        pass
-
     # Backfill legacy bills missing water_cost/total so invoice modal shows đúng.
     try:
         water_cost_val = bill.get("water_cost")
@@ -198,14 +152,12 @@ async def print_invoice(bill_id: str, request: Request):
         other_cost = int(bill.get("other_cost", 0) or 0)
         bill["total"] = room_price + electric_cost + water_cost + other_cost
     except Exception:
-        # Keep whatever is stored if parsing fails.
         pass
 
     # If bill is missing electric indices/usage, try to find the electric reading for the room/month
     try:
         if (not bill.get('prev_index') or not bill.get('curr_index') or not bill.get('usage')) and room:
             month_val = bill.get('month')
-            # Build a set of candidate room identifiers to try: ObjectId, string form, room_number, contract.room_id
             candidates = []
             r_id = room.get('_id')
             try:
@@ -223,7 +175,6 @@ async def print_invoice(bill_id: str, request: Request):
                     candidates.append(str(rn))
             except Exception:
                 pass
-            # also try contract.room_id if available
             try:
                 cid = bill.get('contract_id')
                 if cid:
@@ -233,7 +184,6 @@ async def print_invoice(bill_id: str, request: Request):
                 pass
 
             reading = None
-            # Try exact month matches first with each candidate using $or for room_id forms
             try:
                 or_clauses = []
                 for c in candidates:
@@ -243,7 +193,6 @@ async def print_invoice(bill_id: str, request: Request):
             except Exception:
                 reading = None
 
-            # If no exact-month reading found, fall back to most recent reading for any candidate using $or
             if not reading:
                 try:
                     if or_clauses:
@@ -269,231 +218,42 @@ async def print_invoice(bill_id: str, request: Request):
 
     # Format created_at for display (d/m/Y) if present
     try:
-        from datetime import datetime
         ca = bill.get('created_at')
-        if isinstance(ca, datetime):
+        if isinstance(ca, datetime.datetime):
             bill['created_at_fmt'] = ca.strftime('%d/%m/%Y')
         else:
             try:
-                bill['created_at_fmt'] = datetime.fromisoformat(str(ca)).strftime('%d/%m/%Y')
+                bill['created_at_fmt'] = datetime.datetime.fromisoformat(str(ca)).strftime('%d/%m/%Y')
             except Exception:
                 # fallback: if it's a timestamp number
                 try:
-                    bill['created_at_fmt'] = datetime.utcfromtimestamp(float(ca)).strftime('%d/%m/%Y')
+                    bill['created_at_fmt'] = datetime.datetime.utcfromtimestamp(float(ca)).strftime('%d/%m/%Y')
                 except Exception:
                     bill['created_at_fmt'] = str(ca)[:10] if ca else ''
     except Exception:
         bill['created_at_fmt'] = ''
 
+    # Format paid_at for display if present
+    try:
+        pa = bill.get('paid_at')
+        if pa:
+            if isinstance(pa, datetime.datetime):
+                bill['paid_at_fmt'] = pa.strftime('%d/%m/%Y %H:%M')
+            else:
+                try:
+                    bill['paid_at_fmt'] = datetime.datetime.fromisoformat(str(pa)).strftime('%d/%m/%Y %H:%M')
+                except Exception:
+                    try:
+                        bill['paid_at_fmt'] = datetime.datetime.utcfromtimestamp(float(pa)).strftime('%d/%m/%Y %H:%M')
+                    except Exception:
+                        bill['paid_at_fmt'] = str(pa)
+        else:
+            bill['paid_at_fmt'] = ''
+    except Exception:
+        bill['paid_at_fmt'] = ''
+
     html = render_template("invoice_print.html", {"bill": bill, "tenant": tenant, "room": room, "request": request})
     return HTMLResponse(content=html)
-
-
-@router.get('/debug/{bill_id}')
-async def debug_invoice_resolution(bill_id: str):
-    """Temporary debug endpoint: returns resolved documents and lookup attempts for a bill."""
-    db = get_db()
-    out = {"requested_bill_id": bill_id, "bill_raw": None, "contract_attempts": [], "tenant": None, "room": None, "reading_candidates": [], "reading_found": None}
-    # fetch bill raw
-    try:
-        b = await db.bills.find_one({"_id": bill_id})
-        if not b:
-            b = await db.bills.find_one({"_id": ObjectId(bill_id)})
-        out['bill_raw'] = b
-    except Exception as e:
-        out['bill_raw_error'] = str(e)
-
-    # try to resolve contract by several forms
-    try:
-        contract_id = (b or {}).get('contract_id') if b else None
-        for attempt in [contract_id, str(contract_id) if contract_id is not None else None]:
-            if attempt is None:
-                out['contract_attempts'].append({'attempt': attempt, 'found': None})
-                continue
-            try:
-                c = await db.contracts.find_one({'_id': attempt})
-            except Exception:
-                c = None
-            if not c:
-                try:
-                    c = await db.contracts.find_one({'_id': ObjectId(attempt)})
-                except Exception:
-                    c = None
-            out['contract_attempts'].append({'attempt': attempt, 'found': bool(c), 'doc': c})
-            if c:
-                # resolve tenant/room
-                try:
-                    tid = c.get('tenant_id')
-                    r_id = c.get('room_id')
-                    t = None
-                    try:
-                        t = await db.tenants.find_one({'_id': tid})
-                    except Exception:
-                        t = None
-                    if not t and tid:
-                        try:
-                            t = await db.tenants.find_one({'_id': ObjectId(tid)})
-                        except Exception:
-                            t = None
-                    out['tenant'] = t
-                    rm = None
-                    try:
-                        rm = await db.rooms.find_one({'_id': r_id})
-                    except Exception:
-                        rm = None
-                    if not rm and r_id:
-                        try:
-                            rm = await db.rooms.find_one({'_id': ObjectId(r_id)})
-                        except Exception:
-                            rm = None
-                    out['room'] = rm
-                except Exception:
-                    pass
-                break
-    except Exception as e:
-        out['contract_resolve_error'] = str(e)
-
-    # If no contract/room/tenant resolved yet, try searching rooms and tenants directly by the provided id
-    if not out.get('contract_attempts') or all(a.get('found') in (None, False) for a in out.get('contract_attempts', [])):
-        try:
-            # try room by _id, ObjectId, or room_number
-            room = None
-            try:
-                room = await db.rooms.find_one({'_id': bill_id})
-            except Exception:
-                room = None
-            if not room:
-                try:
-                    room = await db.rooms.find_one({'_id': ObjectId(bill_id)})
-                except Exception:
-                    room = None
-            if not room:
-                try:
-                    room = await db.rooms.find_one({'room_number': bill_id})
-                except Exception:
-                    room = None
-            out['room_search'] = room
-            if room:
-                # find contracts for this room
-                ctrs = []
-                ccur = db.contracts.find({'$or': [{'room_id': room.get('_id')}, {'room_id': str(room.get('_id'))}, {'room_id': room.get('room_number')}]})
-                async for cc in ccur:
-                    ctrs.append(cc)
-                out['contracts_for_room'] = ctrs
-                for cc in ctrs:
-                    cand = await db.bills.find_one({'contract_id': str(cc.get('_id'))}, sort=[('month', -1)])
-                    if cand:
-                        out['bill_from_room_contract'] = cand
-                        break
-
-            # try tenant by similar logic
-            tenant = None
-            try:
-                tenant = await db.tenants.find_one({'_id': bill_id})
-            except Exception:
-                tenant = None
-            if not tenant:
-                try:
-                    tenant = await db.tenants.find_one({'_id': ObjectId(bill_id)})
-                except Exception:
-                    tenant = None
-            out['tenant_search'] = tenant
-            if tenant:
-                ctrs = []
-                ccur = db.contracts.find({'$or': [{'tenant_id': tenant.get('_id')}, {'tenant_id': str(tenant.get('_id'))}]})
-                async for cc in ccur:
-                    ctrs.append(cc)
-                out['contracts_for_tenant'] = ctrs
-                for cc in ctrs:
-                    cand = await db.bills.find_one({'contract_id': str(cc.get('_id'))}, sort=[('month', -1)])
-                    if cand:
-                        out['bill_from_tenant_contract'] = cand
-                        break
-        except Exception as e:
-            out['room_tenant_search_error'] = str(e)
-
-    # If still nothing, perform a broader scan across common collections/fields
-    try:
-        broad = {}
-        cols = {
-            'bills': ['_id', 'contract_id'],
-            'contracts': ['_id', 'room_id', 'tenant_id'],
-            'rooms': ['_id', 'room_number'],
-            'tenants': ['_id', 'full_name', 'phone'],
-            'electric_readings': ['_id', 'room_id', 'month']
-        }
-        for cname, fields in cols.items():
-            found = None
-            coll = getattr(db, cname)
-            for f in fields:
-                if f == '_id':
-                    # try direct, string, ObjectId
-                    try:
-                        found = await coll.find_one({'_id': bill_id})
-                    except Exception:
-                        found = None
-                    if not found:
-                        try:
-                            found = await coll.find_one({'_id': ObjectId(bill_id)})
-                        except Exception:
-                            found = None
-                    if found:
-                        broad[cname] = {'field': '_id', 'doc': found}
-                        break
-                else:
-                    try:
-                        found = await coll.find_one({f: bill_id})
-                    except Exception:
-                        found = None
-                    if not found:
-                        try:
-                            found = await coll.find_one({f: str(bill_id)})
-                        except Exception:
-                            found = None
-                    if found:
-                        broad[cname] = {'field': f, 'doc': found}
-                        break
-        out['broad_search'] = broad
-    except Exception as e:
-        out['broad_search_error'] = str(e)
-
-    # build candidate room ids for reading lookup
-    try:
-        candidates = []
-        if out.get('room'):
-            rid = out['room'].get('_id')
-            rn = out['room'].get('room_number')
-            candidates.extend([rid, str(rid) if rid is not None else None, rn, str(rn) if rn is not None else None])
-        # also include bill.contract_id
-        if b and b.get('contract_id'):
-            candidates.append(b.get('contract_id'))
-            candidates.append(str(b.get('contract_id')))
-        candidates = [c for c in candidates if c is not None]
-        out['reading_candidates'] = candidates
-        month_val = (b or {}).get('month')
-        found = None
-        for c in candidates:
-            try:
-                r = await db.electric_readings.find_one({'room_id': c, 'month': month_val})
-            except Exception:
-                r = None
-            if r:
-                found = {'candidate': c, 'reading': r}
-                break
-        if not found:
-            for c in candidates:
-                try:
-                    r = await db.electric_readings.find_one({'room_id': c}, sort=[('month', -1)])
-                except Exception:
-                    r = None
-                if r:
-                    found = {'candidate': c, 'reading': r}
-                    break
-        out['reading_found'] = found
-    except Exception as e:
-        out['reading_error'] = str(e)
-
-    return JSONResponse(out)
 
 
 @router.get("/pdf/{bill_id}")
@@ -511,13 +271,11 @@ async def invoice_pdf(bill_id: str):
     db = get_db()
     bill = await db.bills.find_one({"_id": bill_id})
     if not bill:
-        from bson import ObjectId
         bill = await db.bills.find_one({"_id": ObjectId(bill_id)})
     if not bill:
         raise HTTPException(404)
     contract = await db.contracts.find_one({"_id": bill.get("contract_id")})
     if not contract:
-        from bson import ObjectId
         contract = await db.contracts.find_one({"_id": ObjectId(bill.get("contract_id"))})
     tenant = None
     room = None
@@ -525,7 +283,10 @@ async def invoice_pdf(bill_id: str):
         tenant = await db.tenants.find_one({"_id": contract.get("tenant_id")}) or await db.tenants.find_one({"_id": ObjectId(contract.get("tenant_id"))})
         room = await db.rooms.find_one({"_id": contract.get("room_id")}) or await db.rooms.find_one({"_id": ObjectId(contract.get("room_id"))})
         if tenant:
-            tenant["phone"] = decrypt_value(tenant.get("phone"))
+            try:
+                tenant["phone"] = decrypt_value(tenant.get("phone"))
+            except Exception:
+                pass
 
     # Backfill water_cost for legacy bills that don't have it.
     try:

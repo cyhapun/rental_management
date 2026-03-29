@@ -46,7 +46,7 @@
         {% if b.contract_display and (b.contract_display.tenant_name or b.contract_display.room_number) %}
           {{ b.contract_display.tenant_name or '' }}{% if b.contract_display.room_number %} - Phòng {{ b.contract_display.room_number }}{% endif %}
         {% else %}
-          {{ b.contract_id }}
+          <span class="text-danger">Không phải thông tin người thuê / phòng</span>
         {% endif %}
       </td>
       <td>{{ b.month }}</td>
@@ -54,11 +54,12 @@
       <td>{{ (b.paid_amount or 0) | money }}</td>
       <td>
         {% if b.status == 'paid' %}
-          <span class="badge bg-success">Đã đóng</span>
+          <div><span class="badge bg-success">Đã đóng</span></div>
+          {% if b.paid_at_fmt %}<div class="small text-muted">{{ b.paid_at_fmt }}</div>{% endif %}
         {% elif b.status == 'unpaid' %}
-          <span class="badge bg-warning text-dark">Chưa đóng</span>
+          <div><span class="badge bg-warning text-dark">Chưa đóng</span></div>
         {% else %}
-          <span class="badge bg-secondary">{{ b.status }}</span>
+          <div><span class="badge bg-secondary">{{ b.status }}</span></div>
         {% endif %}
       </td>
       <td>
