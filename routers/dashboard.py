@@ -65,18 +65,28 @@ async def dashboard_view(request: Request):
                 pass
         paid_series_6.append(total_m)
 
-        first_day = _dt.datetime(yy, mm, 1)
-        if mm == 12:
-            next_day = _dt.datetime(yy + 1, 1, 1)
-        else:
-            next_day = _dt.datetime(yy, mm + 1, 1)
+        # sum actual paid amounts on bills for this month (fallback to payments collection for legacy records)
         pay_total = 0
-        pcursor = db.payments.find({"payment_date": {"$gte": first_day, "$lt": next_day}})
-        async for p in pcursor:
+        bcur = db.bills.find({"month": target})
+        async for b in bcur:
             try:
-                pay_total += int(p.get("amount", 0) or 0)
+                paid_amt = int(b.get('paid_amount', 0) or 0)
             except Exception:
-                pass
+                paid_amt = 0
+            if paid_amt:
+                pay_total += paid_amt
+            else:
+                # fallback to payments collection entries for this bill
+                try:
+                    bid = str(b.get('_id'))
+                    pc = db.payments.find({"bill_id": bid})
+                    async for p in pc:
+                        try:
+                            pay_total += int(p.get('amount', 0) or 0)
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
         payments_series_6.append(pay_total)
 
     # electric consumption series for last 6 months
@@ -216,18 +226,27 @@ async def dashboard_view(request: Request):
                 pass
         paid_series_12.append(total_m)
 
-        first_day = _dt.datetime(yy, mm, 1)
-        if mm == 12:
-            next_day = _dt.datetime(yy + 1, 1, 1)
-        else:
-            next_day = _dt.datetime(yy, mm + 1, 1)
+        # sum actual paid amounts on bills for this month (fallback to payments collection for legacy records)
         pay_total = 0
-        pcursor = db.payments.find({"payment_date": {"$gte": first_day, "$lt": next_day}})
-        async for p in pcursor:
+        bcur = db.bills.find({"month": target})
+        async for b in bcur:
             try:
-                pay_total += int(p.get("amount", 0) or 0)
+                paid_amt = int(b.get('paid_amount', 0) or 0)
             except Exception:
-                pass
+                paid_amt = 0
+            if paid_amt:
+                pay_total += paid_amt
+            else:
+                try:
+                    bid = str(b.get('_id'))
+                    pc = db.payments.find({"bill_id": bid})
+                    async for p in pc:
+                        try:
+                            pay_total += int(p.get('amount', 0) or 0)
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
         payments_series_12.append(pay_total)
 
     # last 30 days payments
@@ -339,17 +358,31 @@ async def dashboard_view(request: Request):
                 next_dt = _dt.datetime(yy + 1, 1, 1)
             else:
                 next_dt = _dt.datetime(yy, mm + 1, 1)
-            pay_total = 0
-            try:
-                pc = db.payments.find({"payment_date": {"$gte": start_dt, "$lt": next_dt}})
-                async for p in pc:
-                    try:
-                        pay_total += int(p.get('amount', 0) or 0)
-                    except Exception:
-                        pass
-            except Exception:
+                # sum actual paid amounts on bills for this month (fallback to payments collection)
                 pay_total = 0
-            payments_all.append(pay_total)
+                try:
+                    bcur = db.bills.find({"month": label})
+                    async for b in bcur:
+                        try:
+                            paid_amt = int(b.get('paid_amount', 0) or 0)
+                        except Exception:
+                            paid_amt = 0
+                        if paid_amt:
+                            pay_total += paid_amt
+                        else:
+                            try:
+                                bid = str(b.get('_id'))
+                                pc = db.payments.find({"bill_id": bid})
+                                async for p in pc:
+                                    try:
+                                        pay_total += int(p.get('amount', 0) or 0)
+                                    except Exception:
+                                        pass
+                            except Exception:
+                                pass
+                except Exception:
+                    pay_total = 0
+                payments_all.append(pay_total)
 
             # electric usage in month
             e_total = 0
@@ -394,23 +427,28 @@ async def dashboard_view(request: Request):
 
     paid_amount_current_month = 0
     try:
-        if current_month in labels_6:
-            paid_amount_current_month = payments_series_6[labels_6.index(current_month)]
-        else:
-            ty = now.year; tm = now.month
-            first_day = _dt.datetime(ty, tm, 1)
-            if tm == 12:
-                next_day = _dt.datetime(ty + 1, 1, 1)
+        # compute paid amount for current month by summing paid_amount on bills (fallback to payments collection)
+        s = 0
+        bcur = db.bills.find({"month": current_month})
+        async for b in bcur:
+            try:
+                paid_amt = int(b.get('paid_amount', 0) or 0)
+            except Exception:
+                paid_amt = 0
+            if paid_amt:
+                s += paid_amt
             else:
-                next_day = _dt.datetime(ty, tm + 1, 1)
-            pcur = db.payments.find({"payment_date": {"$gte": first_day, "$lt": next_day}})
-            s = 0
-            async for p in pcur:
                 try:
-                    s += int(p.get('amount', 0) or 0)
+                    bid = str(b.get('_id'))
+                    pc = db.payments.find({"bill_id": bid})
+                    async for p in pc:
+                        try:
+                            s += int(p.get('amount', 0) or 0)
+                        except Exception:
+                            pass
                 except Exception:
                     pass
-            paid_amount_current_month = s
+        paid_amount_current_month = s
     except Exception:
         paid_amount_current_month = 0
 
@@ -479,7 +517,7 @@ async def dashboard_view(request: Request):
         available=available,
         paid=paid,
         unpaid=unpaid,
-        revenue=series[-1] if series else 0,
+        revenue=payments_series[-1] if payments_series else 0,
         revenue_labels=labels,
         revenue_series=series,
         billed_total_current_month=billed_total_current_month,

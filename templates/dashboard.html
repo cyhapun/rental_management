@@ -98,6 +98,22 @@
   </div>
 </div>
 
+<div class="row g-3 mb-3">
+  <div class="col-12">
+    <div class="card-metric p-3">
+      <h6 class="mb-2">Thao tác nhanh</h6>
+      <div class="d-flex flex-row flex-wrap gap-2">
+        <a class="btn btn-outline-primary btn-sm" href="/rooms/">Quản lý phòng</a>
+        <a class="btn btn-outline-secondary btn-sm" href="/tenants/">Quản lý người thuê</a>
+        <a class="btn btn-outline-success btn-sm" href="/bills/">Tạo hóa đơn</a>
+        {% if request.state.user_role == 'admin' %}
+        <a class="btn btn-outline-dark btn-sm" href="/accounts/">Quản lý tài khoản</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="row">
   <div class="col-12">
     <div class="bg-panel">
@@ -105,31 +121,18 @@
         <h5 class="mb-0">Doanh thu</h5>
       </div>
       <div class="row">
-        <div class="col-md-9">
+        <div class="col-12">
           <div class="d-flex align-items-center mb-2">
             <label class="me-2 small text-muted mb-0">Phạm vi</label>
             <select id="rangeSelect" class="form-select form-select-sm me-3">
-              <option value="all">Tất cả</option>
+              <option value="all" selected>Tất cả</option>
               <option value="30">30 ngày</option>
-              <option value="6" selected>6 tháng</option>
+              <option value="6">6 tháng</option>
               <option value="12">1 năm</option>
             </select>
             <div id="timeUnit" class="small text-muted">Đơn vị: Tháng</div>
           </div>
           <canvas id="revenueChart" height="180"></canvas>
-        </div>
-        <div class="col-md-3">
-          <div class="bg-panel p-3">
-            <h6 class="mb-2">Thao tác nhanh</h6>
-            <div class="d-grid gap-2">
-              <a class="btn btn-outline-primary" href="/rooms/">Quản lý phòng</a>
-              <a class="btn btn-outline-secondary" href="/tenants/">Quản lý người thuê</a>
-              <a class="btn btn-outline-success" href="/bills/">Tạo hóa đơn</a>
-              {% if request.state.user_role == 'admin' %}
-              <a class="btn btn-outline-dark" href="/accounts/">Quản lý tài khoản</a>
-              {% endif %}
-            </div>
-          </div>
         </div>
       </div>
     </div>
@@ -147,8 +150,8 @@
           <div class="d-flex align-items-center mb-2">
             <label class="me-2 small text-muted mb-0">Phạm vi</label>
             <select id="electricRangeSelect" class="form-select form-select-sm me-3">
-              <option value="all">Tất cả</option>
-              <option value="6" selected>6 tháng</option>
+              <option value="all" selected>Tất cả</option>
+              <option value="6">6 tháng</option>
               <option value="12">1 năm</option>
             </select>
             <div id="electricTimeUnit" class="small text-muted">Đơn vị: Tháng</div>
@@ -185,9 +188,9 @@
       <div class="d-flex align-items-center mb-2">
         <label class="me-2 small text-muted mb-0">Phạm vi</label>
         <select id="churnRangeSelect" class="form-select form-select-sm me-3">
-          <option value="all">Tất cả</option>
+          <option value="all" selected>Tất cả</option>
           <option value="30">30 ngày</option>
-          <option value="6" selected>6 tháng</option>
+          <option value="6">6 tháng</option>
           <option value="12">1 năm</option>
         </select>
         <div id="churnTimeUnit" class="small text-muted">Đơn vị: Tháng</div>
@@ -249,7 +252,7 @@ function updateChart(range){
   if (range === 'all'){
     revenueChart.data.labels = labels_all;
     revenueChart.data.datasets = [{label:'Tiền đã nhận', data: payments_all, borderColor:'rgba(40,167,69,0.9)', backgroundColor:'rgba(40,167,69,0.12)', tension:0.3, fill:true}];
-    document.getElementById('timeUnit').innerText = 'Đơn vị: Tất cả';
+    document.getElementById('timeUnit').innerText = 'Đơn vị: Tháng';
   } else if (range === '30'){
     revenueChart.data.labels = labels30;
     revenueChart.data.datasets = [{label:'Tiền đã nhận', data: payments30, borderColor:'rgba(40,167,69,0.9)', backgroundColor:'rgba(40,167,69,0.12)', tension:0.3, fill:true}];
@@ -346,10 +349,10 @@ if (electricCtx){
 // electric range selector
 function updateElectricChart(range){
   if (!electricChart) return;
-  if (range === 'all'){
+    if (range === 'all'){
     electricChart.data.labels = labels_all;
     electricChart.data.datasets = [{label:'kWh', data: electricSeriesAll, borderColor:'rgba(255,159,64,0.9)', backgroundColor:'rgba(255,159,64,0.12)', tension:0.3, fill:true}];
-    document.getElementById('electricTimeUnit').innerText = 'Đơn vị: Tất cả';
+    document.getElementById('electricTimeUnit').innerText = 'Đơn vị: Tháng';
   } else if (range === '30'){
     electricChart.data.labels = electricLabels30;
     electricChart.data.datasets = [{label:'kWh', data: electricSeries30, borderColor:'rgba(255,159,64,0.9)', backgroundColor:'rgba(255,159,64,0.12)', tension:0.3, fill:true}];
@@ -500,15 +503,19 @@ function updateChurnChart(range){
   if (range === 'all'){
     churnChart.data.labels = labels_all;
     churnChart.data.datasets = [{label:'Thuê mới', data: tenantStartedAll, backgroundColor:'rgba(13,110,253,0.85)'},{label:'Thoát', data: tenantEndedAll, backgroundColor:'rgba(220,53,69,0.85)'}];
+    try{ document.getElementById('churnTimeUnit').innerText = 'Đơn vị: Tháng'; }catch(e){}
   } else if (range === '30'){
     churnChart.data.labels = tenantLabels30;
     churnChart.data.datasets = [{label:'Thuê mới', data: tenantStarted30, backgroundColor:'rgba(13,110,253,0.85)'},{label:'Thoát', data: tenantEnded30, backgroundColor:'rgba(220,53,69,0.85)'}];
+    try{ document.getElementById('churnTimeUnit').innerText = 'Đơn vị: Ngày'; }catch(e){}
   } else if (range === '6'){
     churnChart.data.labels = labels6;
     churnChart.data.datasets = [{label:'Thuê mới', data: tenantStarted6, backgroundColor:'rgba(13,110,253,0.85)'},{label:'Thoát', data: tenantEnded6, backgroundColor:'rgba(220,53,69,0.85)'}];
+    try{ document.getElementById('churnTimeUnit').innerText = 'Đơn vị: Tháng'; }catch(e){}
   } else if (range === '12'){
     churnChart.data.labels = labels12;
     churnChart.data.datasets = [{label:'Thuê mới', data: tenantStarted12, backgroundColor:'rgba(13,110,253,0.85)'},{label:'Thoát', data: tenantEnded12, backgroundColor:'rgba(220,53,69,0.85)'}];
+    try{ document.getElementById('churnTimeUnit').innerText = 'Đơn vị: Tháng'; }catch(e){}
   }
   churnChart.update();
 }
@@ -533,6 +540,13 @@ if (churnRange){
     updateChurnChart(v);
   });
 }
+// initialize charts to the currently selected range (default 'all')
+try{
+  const initialRange = document.getElementById('rangeSelect')?.value || 'all';
+  updateChart(initialRange);
+  updateChurnChart(initialRange);
+  updateElectricChart(document.getElementById('electricRangeSelect')?.value || 'all');
+}catch(e){ console.error(e); }
 </script>
 
 {% endblock %}

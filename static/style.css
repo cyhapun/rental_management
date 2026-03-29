@@ -27,12 +27,23 @@ body{
 }
 
 .sidebar{min-height:100vh}
-/* Force header and sidebar to participate in normal document flow (not fixed/sticky) */
-.navbar{position:relative !important; top:auto !important; z-index:auto !important}
-.sidebar{position:relative !important; top:auto !important; z-index:auto !important}
-/* Sidebar should scroll with the page (not fixed) */
-@media (min-width:768px){
-  .sidebar{position:static; height:auto; overflow:visible}
+/* Header cố định trên cùng */
+.navbar {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 1050 !important;
+}
+
+/* Sidebar cố định bên trái khi cuộn (chỉ áp dụng trên màn hình lớn) */
+@media (min-width: 768px) {
+    .sidebar {
+        position: sticky !important;
+        top: 76px !important; 
+        height: calc(100vh - 76px) !important;
+        min-height: calc(100vh - 76px) !important; /* Ghi đè cái min-height: 100vh cũ */
+        align-self: flex-start; /* Quan trọng: Ngăn Bootstrap tự động kéo dài sidebar theo nội dung */
+        overflow-y: auto;
+    }
 }
 
 /* Affix behaviour handled via CSS sticky to avoid layout shifts. */
@@ -56,6 +67,16 @@ body{
 
 /* Override: make main revenue selector smaller to match other charts */
 #rangeSelect.form-select {
+  min-width: 110px;
+  max-width: 140px;
+}
+
+#churnRangeSelect.form-select {
+  min-width: 110px;
+  max-width: 140px;
+}
+
+#electricRangeSelect.form-select {
   min-width: 110px;
   max-width: 140px;
 }
@@ -252,3 +273,21 @@ body{
 .notyf__toast.notyf__toast--error, .notyf--error { background: linear-gradient(90deg,#ef4444,#dc2626) !important; }
 .notyf__toast.notyf__toast--warning, .notyf--warning { background: linear-gradient(90deg,#f59e0b,#d97706) !important; }
 .notyf__toast img, .notyf__toast svg { background: transparent !important; }
+
+/* Tùy chỉnh thanh cuộn cho Sidebar (áp dụng cho Chrome, Edge, Safari) */
+.sidebar::-webkit-scrollbar {
+    width: 6px; /* Làm thanh cuộn mỏng lại */
+}
+
+.sidebar::-webkit-scrollbar-track {
+    background: transparent; /* Ẩn nền thanh cuộn */
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.15); /* Màu thanh cuộn nhạt mờ */
+    border-radius: 10px; /* Bo tròn thanh cuộn */
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(0, 0, 0, 0.3); /* Đậm hơn một chút khi di chuột vào */
+}
