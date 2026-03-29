@@ -27,17 +27,25 @@ async def list_bills(request: Request, status: str = "unpaid"):
     bills = []
     async for b in cursor:
         b["id"] = str(b.get("_id"))
-        # compute amount already paid for this bill (sum of payments)
-        try:
-            paid_sum = 0
-            pc = db.payments.find({"bill_id": b.get("id")})
+        bills.append(b)
+
+    # Batch-fetch payments for the listed bills to avoid N queries.
+    try:
+        bill_ids = [b.get("id") for b in bills if b.get("id")]
+        payments_map = {}
+        if bill_ids:
+            pc = db.payments.find({"bill_id": {"$in": bill_ids}})
             async for p in pc:
                 try:
-                    paid_sum += int(p.get("amount", 0) or 0)
+                    bid = p.get("bill_id")
+                    amt = int(p.get("amount", 0) or 0)
+                    payments_map[bid] = payments_map.get(bid, 0) + amt
                 except Exception:
                     pass
-            b["paid_amount"] = paid_sum
-        except Exception:
+        for b in bills:
+            b["paid_amount"] = payments_map.get(b.get("id"), 0)
+    except Exception:
+        for b in bills:
             b["paid_amount"] = 0
         # Backfill water_cost for legacy bills that don't have it.
         if b.get("water_cost") is None or int(b.get("water_cost") or 0) == 0:
@@ -51,30 +59,42 @@ async def list_bills(request: Request, status: str = "unpaid"):
             )
             b["water_cost"] = WATER_FEE
             b["total"] = new_total
-        # attach contract -> tenant + room for display
-        try:
-            contract = await db.contracts.find_one({"_id": ObjectId(b.get("contract_id"))})
-        except Exception:
-            contract = None
-        tenant_name = None
-        room_number = None
-        if contract:
+        # attach contract -> tenant + room for display (resolve IDs robustly)
+        async def _resolve_document(collection, doc_id):
+            if not doc_id:
+                return None
             try:
-                room = await db.rooms.find_one({"_id": ObjectId(contract.get("room_id"))})
+                d = await collection.find_one({"_id": doc_id})
+                if d:
+                    return d
             except Exception:
-                room = None
-            if room:
-                room_number = room.get("room_number")
+                pass
             try:
-                tenant = await db.tenants.find_one({"_id": ObjectId(contract.get("tenant_id"))})
+                d = await collection.find_one({"_id": ObjectId(doc_id)})
+                if d:
+                    return d
             except Exception:
-                tenant = None
-            if tenant:
-                tenant_name = tenant.get("full_name")
-        b["contract_display"] = {
-            "tenant_name": tenant_name,
-            "room_number": room_number,
-        }
+                pass
+            try:
+                d = await collection.find_one({"_id": str(doc_id)})
+                if d:
+                    return d
+            except Exception:
+                pass
+            return None
+
+        for b in bills:
+            tenant_name = None
+            room_number = None
+            contract = await _resolve_document(db.contracts, b.get("contract_id"))
+            if contract:
+                room = await _resolve_document(db.rooms, contract.get("room_id"))
+                if room:
+                    room_number = room.get("room_number")
+                tenant = await _resolve_document(db.tenants, contract.get("tenant_id"))
+                if tenant:
+                    tenant_name = tenant.get("full_name")
+            b["contract_display"] = {"tenant_name": tenant_name, "room_number": room_number}
         bills.append(b)
     # default month = current month (YYYY-MM) for generate form
     default_month = datetime.date.today().strftime("%Y-%m")

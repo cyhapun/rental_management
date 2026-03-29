@@ -29,9 +29,10 @@
       </div>
 
       <div class="invoice-body">
-        <div class="invoice-row"><div class="label">Số phòng:</div><div class="value">{{ (room.room_number if room else '') or 'Rỗng' }}</div></div>
+        <div class="invoice-row"><div class="label">Người thuê:</div><div class="value">{{ (tenant.full_name if tenant else (bill.contract_display.tenant_name if bill.contract_display and bill.contract_display.tenant_name else 'Rỗng')) }}</div></div>
+        <div class="invoice-row"><div class="label">Số phòng:</div><div class="value">{{ (room.room_number if room else (bill.contract_display.room_number if bill.contract_display and bill.contract_display.room_number else 'Rỗng')) }}</div></div>
         <div class="invoice-row"><div class="label">Ngày tạo:</div><div class="value">{{ (bill.created_at_fmt or '') or 'Rỗng' }}</div></div>
-        <div class="invoice-row"><div class="label">Chỉ số cũ:</div><div class="value">{{ (bill.prev_index is defined and (bill.prev_index|string)) or 'Rỗng' }}</div></div>
+        <div class="invoice-row"><div class="label">Chỉ số cũ:</div><div class="value">{{ (bill.prev_index is defined and (bill.prev_index|string)) or (bill.room_current_electric_index is defined and (bill.room_current_electric_index|string)) or 'Rỗng' }}</div></div>
         <div class="invoice-row"><div class="label">Chỉ số mới:</div><div class="value">{{ (bill.curr_index is defined and (bill.curr_index|string)) or 'Rỗng' }}</div></div>
         <div class="invoice-row"><div class="label">Tiêu thụ:</div><div class="value">{{ (bill.usage is defined and (bill.usage|string)) or 'Rỗng' }}{% if bill.kwh_price is defined and bill.kwh_price %} x {{ bill.kwh_price | money }}{% endif %}</div></div>
         <div class="invoice-row"><div class="label">Tiền điện:</div><div class="value">{{ bill.electric_cost | money }}</div></div>

@@ -188,3 +188,11 @@ body{
 /* Prevent accidental white circular overlays from Notyf internals */
 .notyf__toast .notyf__icon svg,
 .notyf__toast .notyf__icon i { background: transparent !important; }
+
+/* Extra guards: remove ripples and any leftover backgrounds from Notyf internals */
+.notyf__ripple, .notyf__toast .notyf__ripple { display: none !important; }
+/* Ensure toast variants keep their background even when nested elements exist */
+.notyf__toast.notyf__toast--success, .notyf--success { background: linear-gradient(90deg,#10b981,#059669) !important; }
+.notyf__toast.notyf__toast--error, .notyf--error { background: linear-gradient(90deg,#ef4444,#dc2626) !important; }
+.notyf__toast.notyf__toast--warning, .notyf--warning { background: linear-gradient(90deg,#f59e0b,#d97706) !important; }
+.notyf__toast img, .notyf__toast svg { background: transparent !important; }

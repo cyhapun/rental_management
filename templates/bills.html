@@ -199,7 +199,8 @@ async function captureInvoiceImage(billId, btn){
 
     canvas.toBlob(function(blob){
       const ts = new Date(); const pad = (n)=>String(n).padStart(2,'0');
-      const fname = 'invoice-' + ts.getFullYear() + pad(ts.getMonth()+1) + pad(ts.getDate()) + '-' + pad(ts.getHours()) + pad(ts.getMinutes()) + '.png';
+      // use ASCII filename without diacritics per user request
+      const fname = 'danh_sach_hoa_don-' + ts.getFullYear() + pad(ts.getMonth()+1) + pad(ts.getDate()) + '-' + pad(ts.getHours()) + pad(ts.getMinutes()) + '.png';
       const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = fname; document.body.appendChild(a); a.click(); a.remove();
       setTimeout(()=>URL.revokeObjectURL(url), 1500);
       try{ new Notyf({position: (window.innerWidth<=576?{x:'center',y:'top'}:{x:'right',y:'top'})}).success('Đã lưu ảnh: ' + fname); }catch(e){}

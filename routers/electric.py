@@ -126,7 +126,7 @@ async def add_reading(request: Request, room_id: str = Form(...), month: str = F
         usage = int(new_index) - int(old_index)
         total = int(usage * price_per_kwh)
         db = get_db()
-        await db.electric_readings.insert_one(
+        res = await db.electric_readings.insert_one(
             {
                 "room_id": room_id,
                 "month": month,
@@ -137,6 +137,23 @@ async def add_reading(request: Request, room_id: str = Form(...), month: str = F
                 "total": total,
             }
         )
+        # record history
+        try:
+            await db.electric_history.insert_one({
+                "action": "create",
+                "reading_id": str(res.inserted_id) if res and getattr(res, 'inserted_id', None) else None,
+                "room_id": room_id,
+                "month": month,
+                "old_index": old_index,
+                "new_index": new_index,
+                "usage": usage,
+                "price_per_kwh": price_per_kwh,
+                "total": total,
+                "changed_by": getattr(request.state, 'user_id', None) or getattr(request.state, 'user', None),
+                "changed_at": datetime.datetime.utcnow(),
+            })
+        except Exception:
+            pass
         await _sync_room_current_index(db, room_id)
         return redirect_with_flash("/electric/", "Thêm chỉ số điện thành công.")
     except Exception:
@@ -161,19 +178,42 @@ async def update_reading(
             return redirect_with_flash("/electric/", "Không tìm thấy chỉ số điện.", "danger")
         usage = int(new_index) - int(old_index)
         total = int(usage * float(price_per_kwh))
-        await db.electric_readings.update_one(
-            {"_id": ObjectId(reading_id)},
-            {
-                "$set": {
+        # update and record history (old values in doc)
+        try:
+            await db.electric_readings.update_one(
+                {"_id": ObjectId(reading_id)},
+                {
+                    "$set": {
+                        "month": month,
+                        "old_index": old_index,
+                        "new_index": new_index,
+                        "usage": usage,
+                        "price_per_kwh": price_per_kwh,
+                        "total": total,
+                    }
+                },
+            )
+            try:
+                await db.electric_history.insert_one({
+                    "action": "update",
+                    "reading_id": str(reading_id),
+                    "room_id": doc.get("room_id"),
                     "month": month,
-                    "old_index": old_index,
+                    "old_index": doc.get("old_index"),
                     "new_index": new_index,
-                    "usage": usage,
-                    "price_per_kwh": price_per_kwh,
-                    "total": total,
-                }
-            },
-        )
+                    "old_usage": doc.get("usage"),
+                    "new_usage": usage,
+                    "old_price_per_kwh": doc.get("price_per_kwh"),
+                    "new_price_per_kwh": price_per_kwh,
+                    "old_total": doc.get("total"),
+                    "new_total": total,
+                    "changed_by": getattr(request.state, 'user_id', None) or getattr(request.state, 'user', None),
+                    "changed_at": datetime.datetime.utcnow(),
+                })
+            except Exception:
+                pass
+        except Exception:
+            pass
         await _sync_room_current_index(db, str(doc.get("room_id")))
         return redirect_with_flash("/electric/", "Cập nhật chỉ số điện thành công.")
     except Exception:
@@ -187,6 +227,24 @@ async def delete_reading(request: Request, reading_id: str):
         if getattr(request.state, "user_role", None) not in ("admin", "manager"):
             return redirect_with_flash("/dashboard", "Bạn không có quyền xóa chỉ số điện", "danger")
         doc = await db.electric_readings.find_one({"_id": ObjectId(reading_id)})
+        # record deletion history
+        try:
+            if doc:
+                await db.electric_history.insert_one({
+                    "action": "delete",
+                    "reading_id": str(reading_id),
+                    "room_id": doc.get("room_id"),
+                    "month": doc.get("month"),
+                    "old_index": doc.get("old_index"),
+                    "new_index": doc.get("new_index"),
+                    "usage": doc.get("usage"),
+                    "price_per_kwh": doc.get("price_per_kwh"),
+                    "total": doc.get("total"),
+                    "changed_by": getattr(request.state, 'user_id', None) or getattr(request.state, 'user', None),
+                    "changed_at": datetime.datetime.utcnow(),
+                })
+        except Exception:
+            pass
         await db.electric_readings.delete_one({"_id": ObjectId(reading_id)})
         if doc and doc.get("room_id"):
             await _sync_room_current_index(db, str(doc.get("room_id")))
