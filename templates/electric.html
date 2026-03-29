@@ -55,29 +55,46 @@
 
 <div class="table-responsive">
   <table class="table table-sm table-striped">
-    <thead><tr><th>Phòng</th><th>Tháng</th><th>Cũ</th><th>Mới</th><th>Đã dùng</th><th>Thao tác</th></tr></thead>
-    <tbody>
-    {% for r in readings %}
-    <tr data-reading-id="{{ r.id }}" data-month="{{ r.month }}" data-old-index="{{ r.old_index }}" data-new-index="{{ r.new_index }}" data-price="{{ r.price_per_kwh }}">
-      <td>
-        {% if r.room %}
-          {{ r.room.room_number }}
-        {% else %}
-          {{ r.room_id }}
-        {% endif %}
-      </td>
-      <td>{{ r.month }}</td>
-      <td>{{ r.old_index }}</td>
-      <td>{{ r.new_index }}</td>
-      <td>{{ r.usage }}</td>
-      <td>
-        <button class="btn btn-sm btn-outline-primary me-2" type="button" onclick="openEditReading(this)">Sửa</button>
-        <form action="/electric/{{ r.id }}/delete" method="post" style="display:inline" onsubmit="return confirm('Xóa chỉ số điện này?');">
-          <button class="btn btn-sm btn-outline-danger" type="submit">Xóa</button>
-        </form>
-      </td>
-    </tr>
-    {% endfor %}
+    <thead>
+      <tr>
+        <th>Phòng</th>
+        <th>Tháng</th>
+        <th>Cũ</th>
+        <th>Mới</th>
+        <th>Đã dùng</th>
+        <th>Thao tác</th>
+      </tr>
+    </thead>
+    <tbody id="electricTableBody">
+      {% for r in readings %}
+      <tr class="data-row" data-reading-id="{{ r.id }}" data-month="{{ r.month }}" data-old-index="{{ r.old_index }}" data-new-index="{{ r.new_index }}" data-price="{{ r.price_per_kwh }}">
+        <td>
+          {% if r.room %}
+            {{ r.room.room_number }}
+          {% else %}
+            {{ r.room_id }}
+          {% endif %}
+        </td>
+        <td>{{ r.month }}</td>
+        <td>{{ r.old_index }}</td>
+        <td>{{ r.new_index }}</td>
+        <td>{{ r.usage }}</td>
+        <td>
+          <button class="btn btn-sm btn-outline-primary me-2" type="button" onclick="openEditReading(this)">Sửa</button>
+          <form action="/electric/{{ r.id }}/delete" method="post" style="display:inline" onsubmit="return confirm('Xóa chỉ số điện này?');">
+            <button class="btn btn-sm btn-outline-danger" type="submit">Xóa</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr id="emptyDbRow">
+        <td colspan="6" class="text-center text-muted py-3">Hiện tại chưa có dữ liệu</td>
+      </tr>
+      {% endfor %}
+      
+      <tr id="noSearchResultRow" style="display: none;">
+        <td colspan="6" class="text-center text-muted py-3">Không tìm thấy dữ liệu phù hợp</td>
+      </tr>
     </tbody>
   </table>
 </div>
@@ -145,10 +162,32 @@ function openEditReading(btn){
 
 function filterElectric(){
   const q = (document.getElementById('electricSearch').value || '').toLowerCase();
-  const rows = document.querySelectorAll('table tbody tr');
-  rows.forEach(r=>{
-    r.style.display = r.innerText.toLowerCase().includes(q) ? '' : 'none';
+  const rows = document.querySelectorAll('table tbody tr.data-row'); // Chỉ lấy các dòng có dữ liệu
+  const noSearchRow = document.getElementById('noSearchResultRow');
+  const emptyDbRow = document.getElementById('emptyDbRow');
+  
+  let visibleCount = 0;
+
+  // Nếu DB trống từ đầu thì không cần filter
+  if (emptyDbRow && emptyDbRow.style.display !== 'none') {
+    return;
+  }
+
+  rows.forEach(r => {
+    if (r.innerText.toLowerCase().includes(q)) {
+      r.style.display = '';
+      visibleCount++;
+    } else {
+      r.style.display = 'none';
+    }
   });
+
+  // Hiện/ẩn dòng thông báo tìm kiếm
+  if (visibleCount === 0 && rows.length > 0) {
+    noSearchRow.style.display = '';
+  } else if (noSearchRow) {
+    noSearchRow.style.display = 'none';
+  }
 }
 
 function sortElectric(){

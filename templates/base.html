@@ -201,11 +201,81 @@
         try {
           const el = document.querySelector(selector);
           if (!el) return alert('Không tìm thấy phần tử để in: ' + selector);
+
           // Prefer capturing the surrounding .table-responsive if present to include full table layout
-          const targetEl = el.closest('.table-responsive') || el;
+          const sourceContainer = el.closest('.table-responsive') || el;
+
+          // Clone node so we can modify it for printing (remove action column, expand width)
+          const cloneWrapper = document.createElement('div');
+          cloneWrapper.style.position = 'absolute';
+          cloneWrapper.style.left = '-9999px';
+          cloneWrapper.style.top = '0';
+          cloneWrapper.style.overflow = 'visible';
+          cloneWrapper.style.background = '#ffffff';
+          cloneWrapper.style.padding = '12px';
+
+          // Deep clone the source container
+          const clone = sourceContainer.cloneNode(true);
+
+          // If clone contains a table, remove the action column (header containing 'Thao tác' or last column)
+          const tbl = clone.querySelector('table') || clone;
+          if (tbl && tbl.querySelector) {
+            const thead = tbl.querySelector('thead');
+            let actionIndex = -1;
+            if (thead) {
+              const ths = Array.from(thead.querySelectorAll('th'));
+              ths.forEach((th, idx) => {
+                const txt = (th.innerText || th.textContent || '').trim().toLowerCase();
+                if (txt.includes('thao tác') || txt.includes('thao_tac') || txt.includes('thao-tac')) actionIndex = idx;
+              });
+            }
+            // fallback remove last column
+            if (actionIndex === -1) {
+              // try to detect last header cell if any
+              try{
+                const lastTh = thead && thead.querySelector('th:last-child');
+                if (lastTh) actionIndex = Array.from(thead.querySelectorAll('th')).length - 1;
+              }catch(e){}
+            }
+            if (actionIndex > -1) {
+              // remove the header cell
+              try{ thead.querySelectorAll('th')[actionIndex].remove(); }catch(e){}
+              // remove each row's cell at that index
+              const rows = tbl.querySelectorAll('tbody tr');
+              rows.forEach(r => {
+                const cells = r.querySelectorAll('td');
+                if (cells && cells.length > actionIndex) {
+                  cells[actionIndex].remove();
+                }
+              });
+            }
+          }
+
+          // Ensure table/cloned container expands to full width and shows overflow
+          clone.style.width = 'auto';
+          const tables = clone.querySelectorAll('table');
+          tables.forEach(t => {
+            t.style.width = 'auto';
+            t.style.tableLayout = 'auto';
+            t.style.maxWidth = 'none';
+            t.style.overflow = 'visible';
+          });
+
+          cloneWrapper.appendChild(clone);
+          document.body.appendChild(cloneWrapper);
+
+          // choose scale to capture high-res but limit to reasonable size
           const scale = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
-          const canvas = await html2canvas(targetEl, { scale: scale, useCORS: true, backgroundColor: '#ffffff', scrollY: -window.scrollY, allowTaint: true });
-          if (!canvas) return alert('Không thể tạo ảnh từ phần tử');
+
+          // Use html2canvas on the offscreen clone; ensure scrollY is 0 to avoid crop offsets
+          const canvas = await html2canvas(cloneWrapper, { scale: scale, useCORS: true, backgroundColor: '#ffffff', scrollY: 0, allowTaint: true });
+          if (!canvas) {
+            cloneWrapper.remove();
+            return alert('Không thể tạo ảnh từ phần tử');
+          }
+
+          // Clean up clone before download
+          cloneWrapper.remove();
 
           // Convert to blob and trigger download
           canvas.toBlob(function(blob){
