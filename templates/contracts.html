@@ -71,9 +71,20 @@
 </div>
 
 <h2>Danh sách hợp đồng</h2>
-{% if warnings %}
+{% if today_due and today_due|length > 0 %}
+<div class="alert alert-danger">
+  <strong>Hôm nay có {{ today_due|length }} phòng tới kì hạn thanh toán:</strong>
+  <ul class="mb-0 mt-1">
+    {% for d in today_due %}
+      <li>Phòng {{ d.room_number }} - {{ d.tenant_name }} (hạn: {{ d.due_date }})</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+{% if warnings and warnings|length > 0 %}
 <div class="alert alert-warning">
-  <strong>Nhắc đóng tiền (còn 1 ngày):</strong>
+  <strong>Sắp có {{ warnings|length }} phòng tới kì hạn thanh toán (còn 1 ngày):</strong>
   <ul class="mb-0 mt-1">
     {% for w in warnings %}
       <li>Phòng {{ w.room_number }} - {{ w.tenant_name }} (hạn: {{ w.due_date }})</li>

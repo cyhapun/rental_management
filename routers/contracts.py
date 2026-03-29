@@ -391,6 +391,7 @@ async def list_contracts(request: Request):
         r["id"] = str(r.get("_id"))
         rooms.append({"id": r.get("id"), "room_number": r.get("room_number"), "price": r.get("price"), "status": r.get("status")})
     warnings = []
+    today_due = []
     today_str = today.isoformat()
     for c in contracts:
         if not c.get("is_active"):
@@ -402,19 +403,21 @@ async def list_contracts(request: Request):
             continue
         due = _next_due_date(start_date, today)
         days_left = (due - today).days
+        entry = {
+            "room_number": c.get("room", {}).get("room_number") if c.get("room") else c.get("room_id"),
+            "tenant_name": c.get("tenant", {}).get("full_name") if c.get("tenant") else c.get("tenant_id"),
+            "due_date": due.isoformat(),
+        }
         if days_left == 1:
-            warnings.append(
-                {
-                    "room_number": c.get("room", {}).get("room_number") if c.get("room") else c.get("room_id"),
-                    "tenant_name": c.get("tenant", {}).get("full_name") if c.get("tenant") else c.get("tenant_id"),
-                    "due_date": due.isoformat(),
-                }
-            )
+            warnings.append(entry)
+        elif days_left == 0:
+            today_due.append(entry)
     tpl = env.get_template("contracts.html")
     html = tpl.render(
         request=request,
         contracts=contracts,
         warnings=warnings,
+        today_due=today_due,
         tenants=tenants,
         rooms=rooms,
         active_room_ids=list(active_room_ids),
