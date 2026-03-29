@@ -57,10 +57,10 @@
     <div class="card-metric p-3">
       <div class="d-flex justify-content-between align-items-center">
         <div>
-          <div class="metric-small">Tổng điện (kWh)</div>
-          <strong class="h4">{{ total_electric_all }}</strong>
+          <div class="metric-small">Giá phòng (TB)</div>
+          <strong class="h4">{{ room_price_avg | money }}</strong>
         </div>
-        <div><i class="fa-solid fa-bolt fa-2x text-warning"></i></div>
+        <div><i class="fa-solid fa-tag fa-2x text-success"></i></div>
       </div>
     </div>
   </div>
@@ -68,10 +68,21 @@
     <div class="card-metric p-3">
       <div class="d-flex justify-content-between align-items-center">
         <div>
-          <div class="metric-small">Tháng này (kWh)</div>
-          <strong class="h4">{{ total_electric_month }}</strong>
+          <div class="metric-small">Giá điện (kWh)</div>
+          <strong class="h4">{{ price_per_kwh | money }}</strong>
         </div>
-        <div><i class="fa-solid fa-calendar-days fa-2x text-info"></i></div>
+        <div><i class="fa-solid fa-bolt fa-2x text-danger"></i></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-md-3">
+    <div class="card-metric p-3">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <div class="metric-small">Tiền nước (mỗi phòng)</div>
+          <strong class="h4">{{ water_fee | money }}</strong>
+        </div>
+        <div><i class="fa-solid fa-water fa-2x text-primary"></i></div>
       </div>
     </div>
   </div>

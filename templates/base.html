@@ -14,6 +14,11 @@
     <!-- Notyf notifications -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.css">
     <script src="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.js"></script>
+    <style>
+      /* Slightly larger notification text and padding */
+      .notyf__message { font-size: 1.15rem; padding: 14px 18px; }
+      .notyf { font-family: Inter, Arial, sans-serif; }
+    </style>
     <link rel="stylesheet" href="/static/style.css?v=20260327-1" />
   </head>
   <body>
@@ -109,7 +114,7 @@
                   if (!el) return;
                   const msg = el.dataset.flash || '';
                   const level = (el.dataset.level || 'success').toLowerCase();
-                  const notyf = new Notyf({ duration: 2200, position: { x: 'center', y: 'top' } });
+                  const notyf = new Notyf({ duration: 3000, position: { x: 'center', y: 'top' } });
                   if (level === 'danger' || level === 'error') notyf.error(msg);
                   else if (level === 'warning') notyf.open({ type: 'warning', message: msg });
                   else notyf.success(msg);
@@ -152,23 +157,49 @@
       // Sidebar affix removed — using CSS `position: sticky` to avoid horizontal jumps
     </script>
     <script>
-      // Print an element as an image (captured via html2canvas)
+      // Capture an element as an image and trigger download (table-only)
       async function printElementAsImage(selector, title) {
         try {
           const el = document.querySelector(selector);
           if (!el) return alert('Không tìm thấy phần tử để in: ' + selector);
-          const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
-          const dataUrl = canvas.toDataURL('image/png');
-          const w = window.open('', '_blank');
-          if (!w) return alert('Không thể mở cửa sổ in (chặn pop-up?)');
-          w.document.write('<!doctype html><html><head><title>' + (title||'In') + '</title></head><body style="margin:0;padding:10px;background:#fff">');
-          w.document.write('<div style="text-align:center;margin-bottom:8px;font-family:Inter,Arial,sans-serif"><h3>' + (title||'') + '</h3></div>');
-          w.document.write('<img src="' + dataUrl + '" style="max-width:100%;height:auto;display:block;margin:0 auto"/>');
-          w.document.write('<script>window.onload=function(){setTimeout(function(){window.print();},200);};</script>');
-          w.document.write('</body></html>');
-          w.document.close();
+          // Prefer capturing the surrounding .table-responsive if present to include full table layout
+          const targetEl = el.closest('.table-responsive') || el;
+          const canvas = await html2canvas(targetEl, { scale: 2, useCORS: true, backgroundColor: '#ffffff', scrollY: -window.scrollY });
+          if (!canvas) return alert('Không thể tạo ảnh từ phần tử');
+
+          // Convert to blob and trigger download
+          canvas.toBlob(function(blob){
+            try{
+              const ts = new Date();
+              const pad = (n)=>String(n).padStart(2,'0');
+              const fname = (title ? title.replace(/[^a-z0-9\-_]/gi,'_') : 'capture') + '-' + ts.getFullYear() + pad(ts.getMonth()+1) + pad(ts.getDate()) + '-' + pad(ts.getHours()) + pad(ts.getMinutes()) + pad(ts.getSeconds()) + '.png';
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = fname;
+              document.body.appendChild(a);
+              a.click();
+              a.remove();
+              setTimeout(()=>URL.revokeObjectURL(url), 1000);
+              try{ new Notyf({duration:2000}).success('Đã lưu ảnh: ' + fname); }catch(e){}
+            }catch(e){ console.error('download error', e); alert('Lỗi khi lưu ảnh: ' + (e && e.message)); }
+          }, 'image/png');
         } catch (e) { console.error(e); alert('Lỗi khi tạo ảnh: ' + (e && e.message)); }
       }
+    </script>
+    <script>
+      // Attach print button handlers for elements with data-print-target
+      document.addEventListener('DOMContentLoaded', function(){
+        try{
+          document.querySelectorAll('[data-print-target]').forEach(btn=>{
+            btn.addEventListener('click', function(e){
+              const target = btn.getAttribute('data-print-target');
+              const title = btn.getAttribute('data-print-title') || '';
+              printElementAsImage(target, title);
+            });
+          });
+        }catch(e){console.error('print binding error', e)}
+      });
     </script>
   </body>
 </html>

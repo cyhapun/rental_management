@@ -10,7 +10,7 @@
       <div class="hero-actions">
         <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createTenantModal"><i class="fa-solid fa-plus me-1"></i>Thêm người thuê</button>
         <button class="btn btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#tenantsListCollapse" aria-expanded="false" aria-controls="tenantsListCollapse"><i class="fa-solid fa-list me-1"></i>Hiển thị danh sách</button>
-        <button class="btn btn-outline-secondary" type="button" onclick="printElementAsImage('#tenantsTable','Danh sách Người thuê')"><i class="fa-solid fa-image me-1"></i>In ảnh</button>
+        <button class="btn btn-outline-secondary" type="button" data-print-target="#tenantsTable" data-print-title="Danh sách Người thuê"><i class="fa-solid fa-image me-1"></i>In ảnh</button>
       </div>
     </div>
   </div>
@@ -48,7 +48,7 @@
     <thead><tr><th>Họ tên</th><th>SĐT</th><th>Giới tính</th><th>Năm sinh</th><th>Tình trạng</th><th>CCCD</th><th>Thao tác</th></tr></thead>
     <tbody>
       {% for t in tenants %}
-      <tr data-tenant-id="{{ t.id }}" data-full-name="{{ t.full_name }}" data-phone="{{ t.phone }}" data-gender="{{ t.gender }}" data-birth-year="{{ t.birth_year }}" data-rental-status="{{ t.rental_status }}" data-cccd-full="{{ t.cccd_full }}" data-cccd-masked="{{ t.cccd }}">
+      <tr data-tenant-id="{{ t.id|e }}" data-full-name="{{ t.full_name|e }}" data-phone="{{ t.phone|e }}" data-gender="{{ t.gender|e }}" data-birth-year="{{ t.birth_year|e }}" data-rental-status="{{ t.rental_status|e }}" data-cccd-full="{{ t.cccd_full|e }}" data-cccd-masked="{{ t.cccd|e }}">
         <td>{{ t.full_name }}</td>
         <td>{{ t.phone }}</td>
         <td>{{ t.gender }}</td>

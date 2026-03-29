@@ -214,6 +214,21 @@ async def list_contracts(request: Request):
             except Exception:
                 return str(d)
 
+        def _to_iso_date(d):
+            if not d:
+                return None
+            try:
+                dt = datetime.date.fromisoformat(str(d))
+                return dt.isoformat()
+            except Exception:
+                try:
+                    dt = datetime.datetime.fromisoformat(str(d))
+                    if dt.tzinfo is None:
+                        dt = dt + datetime.timedelta(hours=7)
+                    return dt.date().isoformat()
+                except Exception:
+                    return None
+
     for c in all_contracts:
         c["id"] = str(c.get("_id"))
         # "Hợp đồng hiện hành" theo nghiệp vụ thao tác: mới nhất theo phòng
@@ -340,7 +355,15 @@ async def list_contracts(request: Request):
         except Exception:
             c["rent_payment_status"] = "unknown"
             c["rent_payment_month"] = None
-        # format start/end dates to dd/mm/YYYY (UTC+7 for datetimes)
+        # preserve ISO dates for <input type="date" values, and format start/end for display
+        try:
+            c["start_date_iso"] = _to_iso_date(c.get("start_date"))
+        except Exception:
+            c["start_date_iso"] = None
+        try:
+            c["end_date_iso"] = _to_iso_date(c.get("end_date"))
+        except Exception:
+            c["end_date_iso"] = None
         try:
             c["start_date"] = _fmt_date_iso(c.get("start_date"))
         except Exception:
