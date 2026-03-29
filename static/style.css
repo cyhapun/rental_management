@@ -106,6 +106,43 @@ body{
 	.table tbody tr td { vertical-align: middle; }
 }
 
+/* Mobile: scale down metrics cards and allow 2-per-row */
+@media (max-width:768px){
+	.metrics-row > [class*='col-']{ flex: 0 0 50%; max-width:50%; }
+	.metrics-row .card-metric{ padding:10px; }
+	.metrics-row .metric-small{ font-size:0.85rem; }
+	.metrics-row .card-metric .h4{ font-size:1.2rem; }
+}
+
+/* Ensure table page buttons (hero actions / toolbars) appear under the title on most mobile widths */
+@media (max-width:768px){
+	.page-hero{flex-direction:column;align-items:stretch}
+	.page-hero .hero-card > .d-flex{flex-direction:column;align-items:stretch}
+	.hero-actions{width:100%;margin-top:8px;justify-content:flex-start}
+	.hero-actions .btn{width:100%}
+	.table-toolbar{flex-direction:column;align-items:stretch}
+	.table-toolbar .input-group{width:100%}
+}
+
+@media (max-width:480px){
+	.metrics-row > [class*='col-']{ flex: 0 0 50%; max-width:50%; }
+	.metrics-row .card-metric{ padding:8px; }
+	.metrics-row .metric-small{ font-size:0.8rem; }
+	.metrics-row .card-metric .h4{ font-size:1.05rem; }
+	/* make small charts more compact */
+	.bg-panel canvas{ max-height:140px !important; }
+	#roomStatusChart, #billStatusChart, #tenantStatusChart{ max-height:130px !important; }
+	/* ensure hero actions (buttons) stack under title and table toolbar stacks vertically */
+	.hero-actions{flex-direction:column;align-items:stretch}
+	.table-toolbar{flex-direction:column;align-items:stretch}
+	.table-toolbar .input-group{width:100%;}
+}
+
+/* Slightly reduce size of small donut/pie charts on medium screens */
+@media (max-width:992px){
+	#roomStatusChart, #billStatusChart, #tenantStatusChart{ max-height:150px; }
+}
+
 /* Page hero / create-first pattern */
 .page-hero{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:12px}
 .page-hero .hero-card{flex:1;min-width:0;background:linear-gradient(180deg,#ffffff,#f7fbff);padding:14px;border-radius:12px;box-shadow:0 8px 28px rgba(17,24,39,.06);}
