@@ -278,66 +278,65 @@ async def list_contracts(request: Request):
             room_doc = None
         # latest electric reading for this contract's room
         try:
-            # if we have a room_doc, prefer its current_electric_index
-            current_kwh = None
+            current_kwh = 0
             used_kwh = 0
             month_val = None
 
-            if room_doc:
-                try:
-                    current_kwh = int(room_doc.get("current_electric_index", 0))
-                except Exception:
-                    current_kwh = None
+            # build candidate identifiers to search electric_readings by
+            candidates = []
+            try:
+                if room_doc and room_doc.get("id"):
+                    candidates.append(room_doc.get("id"))
+            except Exception:
+                pass
+            try:
+                if c.get("room_id"):
+                    candidates.append(c.get("room_id"))
+            except Exception:
+                pass
+            try:
+                rn = c.get("room", {}).get("room_number")
+                if rn:
+                    candidates.append(rn)
+            except Exception:
+                rn = None
 
-            # if still missing or zero, look up latest reading for that room and update room doc
-            if not current_kwh:
-                # try to find latest electric reading by room _id string or room number
-                room_id_str = None
-                try:
-                    # if room_doc exists, prefer its id
-                    if room_doc and room_doc.get("id"):
-                        room_id_str = room_doc.get("id")
-                    else:
-                        room_id_str = c.get("room_id")
-                except Exception:
-                    room_id_str = c.get("room_id")
-
+            latest_er = None
+            try:
+                if candidates:
+                    latest_er = await db.electric_readings.find_one({"room_id": {"$in": candidates}}, sort=[("month", -1), ("_id", -1)])
+            except Exception:
                 latest_er = None
-                if room_id_str:
-                    latest_er = await db.electric_readings.find_one({"room_id": room_id_str}, sort=[("month", -1), ("_id", -1)])
-                # fallback: try room_number
-                if not latest_er:
-                    try:
-                        rn = c.get("room", {}).get("room_number")
-                        if rn:
-                            latest_er = await db.electric_readings.find_one({"room_id": rn}, sort=[("month", -1), ("_id", -1)])
-                    except Exception:
-                        latest_er = None
 
-                if latest_er:
-                    try:
-                        new_idx = int(latest_er.get("new_index", 0))
-                    except Exception:
-                        new_idx = 0
-                    current_kwh = new_idx
-                    try:
-                        used_kwh = int(latest_er.get("new_index", 0)) - int(latest_er.get("old_index", 0))
-                    except Exception:
-                        used_kwh = 0
-                    month_val = latest_er.get("month")
+            if latest_er:
+                try:
+                    new_idx = int(latest_er.get("new_index", 0))
+                except Exception:
+                    new_idx = 0
+                try:
+                    old_idx = int(latest_er.get("old_index", 0))
+                except Exception:
+                    old_idx = 0
+                current_kwh = new_idx
+                used_kwh = max(0, new_idx - old_idx)
+                month_val = latest_er.get("month")
 
-                    # if room_doc exists and DB value differs, persist it so Rooms view matches Contracts view
-                    try:
-                        if room_doc and int(room_doc.get("current_electric_index", 0)) != current_kwh:
-                            await db.rooms.update_one({"_id": ObjectId(room_doc.get("id"))}, {"$set": {"current_electric_index": current_kwh}})
-                    except Exception:
-                        pass
+                # persist to rooms.current_electric_index if different
+                try:
+                    if room_doc and int(room_doc.get("current_electric_index", 0)) != current_kwh:
+                        await db.rooms.update_one({"_id": ObjectId(room_doc.get("id"))}, {"$set": {"current_electric_index": current_kwh}})
+                except Exception:
+                    pass
+            else:
+                # fallback to room document's stored index
+                try:
+                    if room_doc:
+                        current_kwh = int(room_doc.get("current_electric_index", 0) or 0)
+                except Exception:
+                    current_kwh = 0
+                used_kwh = 0
 
-            # ensure integers and fallbacks
-            current_kwh = int(current_kwh or 0)
-            used_kwh = int(used_kwh or 0)
-
-            c["electric"] = {"current_kwh": current_kwh, "used_kwh": used_kwh, "month": month_val}
+            c["electric"] = {"current_kwh": int(current_kwh or 0), "used_kwh": int(used_kwh or 0), "month": month_val}
         except Exception:
             c["electric"] = {"current_kwh": 0, "used_kwh": 0, "month": None}
 

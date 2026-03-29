@@ -121,6 +121,7 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+  const initialLastIndices = {{ last_indices|tojson | safe }};
   const roomSelect = document.getElementById('roomSelect');
   const oldIndexInput = document.getElementById('oldIndex');
 
@@ -128,6 +129,15 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!roomId) {
       oldIndexInput.value = '';
       return;
+    }
+    // Use prefetched map when available to avoid an extra fetch
+    try {
+      if (initialLastIndices && Object.prototype.hasOwnProperty.call(initialLastIndices, roomId)) {
+        oldIndexInput.value = initialLastIndices[roomId] ?? 0;
+        return;
+      }
+    } catch (e) {
+      console.error(e);
     }
     try {
       const res = await fetch(`/electric/last/${roomId}`);
