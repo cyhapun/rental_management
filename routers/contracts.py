@@ -570,7 +570,8 @@ async def end_contract(request: Request, contract_id: str):
     import datetime as _dt
     try:
         today_iso = _dt.date.today().isoformat()
-        await db.contracts.update_one({"_id": ObjectId(contract_id)}, {"$set": {"end_date": today_iso}})
+        # set explicit termination_date so dashboard treats this as an actual 'exit'
+        await db.contracts.update_one({"_id": ObjectId(contract_id)}, {"$set": {"termination_date": today_iso, "end_date": today_iso}})
         # refresh room statuses so dashboard/rooms reflect vacancy
         try:
             await _refresh_room_statuses(db)

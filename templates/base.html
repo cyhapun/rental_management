@@ -212,7 +212,15 @@
             try{
               const ts = new Date();
               const pad = (n)=>String(n).padStart(2,'0');
-              const fname = (title ? title.replace(/[^a-z0-9\-_]/gi,'_') : 'capture') + '-' + ts.getFullYear() + pad(ts.getMonth()+1) + pad(ts.getDate()) + '-' + pad(ts.getHours()) + pad(ts.getMinutes()) + pad(ts.getSeconds()) + '.png';
+              function normalizeFilename(s){
+                if (!s) return 'capture';
+                try{
+                  return String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9\-_]/g,'_').toLowerCase();
+                }catch(e){
+                  return String(s).replace(/[^a-zA-Z0-9\-_]/g,'_');
+                }
+              }
+              const fname = normalizeFilename(title) + '-' + ts.getFullYear() + pad(ts.getMonth()+1) + pad(ts.getDate()) + '-' + pad(ts.getHours()) + pad(ts.getMinutes()) + pad(ts.getSeconds()) + '.png';
               const url = URL.createObjectURL(blob);
               const a = document.createElement('a');
               a.href = url;

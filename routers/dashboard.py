@@ -124,36 +124,72 @@ async def dashboard_view(request: Request):
         electric_series_30.append(e_total)
 
     # tenant churn/start series (new contracts and contract ends) for same ranges
+    # Contracts may store dates as strings (ISO) or as date/datetime objects.
+    # We will load contracts once and compute counts robustly. For 'ended' we
+    # only count explicit 'termination_date' values (user-requested behavior).
+    contracts_list = []
+    async for c in db.contracts.find({}):
+        contracts_list.append(c)
+
+    def _parse_to_date(val):
+        if not val:
+            return None
+        try:
+            # date string YYYY-MM-DD or ISO
+            import datetime as _dt
+            if isinstance(val, str):
+                try:
+                    return _dt.date.fromisoformat(val)
+                except Exception:
+                    try:
+                        dt = _dt.datetime.fromisoformat(val)
+                        return dt.date()
+                    except Exception:
+                        return None
+            # datetime.date or datetime.datetime
+            try:
+                if hasattr(val, 'date') and not isinstance(val, str):
+                    # datetime -> date
+                    if isinstance(val, _dt.datetime):
+                        return val.date()
+                    if isinstance(val, _dt.date):
+                        return val
+            except Exception:
+                return None
+        except Exception:
+            return None
+        return None
+
+    # helper to count dates in a target month (YYYY-MM)
+    def _count_in_month(dt_list, year, month):
+        c = 0
+        for d in dt_list:
+            if not d:
+                continue
+            if d.year == year and d.month == month:
+                c += 1
+        return c
+
+    # precompute lists of start_date and termination_date as date objects
+    start_dates = []
+    termination_dates = []
+    for c in contracts_list:
+        sd = _parse_to_date(c.get('start_date'))
+        td = _parse_to_date(c.get('termination_date'))
+        start_dates.append(sd)
+        termination_dates.append(td)
+
     tenant_started_6 = []
     tenant_ended_6 = []
     for yy, mm in months_ago(now, 6):
-        target = f"{yy}-{mm:02d}"
-        # count contracts starting in this month
-        try:
-            started = await db.contracts.count_documents({"start_date": {"$regex": f'^{target}'}})
-        except Exception:
-            started = 0
-        try:
-            ended = await db.contracts.count_documents({"end_date": {"$regex": f'^{target}'}})
-        except Exception:
-            ended = 0
-        tenant_started_6.append(started)
-        tenant_ended_6.append(ended)
+        tenant_started_6.append(_count_in_month(start_dates, yy, mm))
+        tenant_ended_6.append(_count_in_month(termination_dates, yy, mm))
 
     tenant_started_12 = []
     tenant_ended_12 = []
     for yy, mm in months_ago(now, 12):
-        target = f"{yy}-{mm:02d}"
-        try:
-            started = await db.contracts.count_documents({"start_date": {"$regex": f'^{target}'}})
-        except Exception:
-            started = 0
-        try:
-            ended = await db.contracts.count_documents({"end_date": {"$regex": f'^{target}'}})
-        except Exception:
-            ended = 0
-        tenant_started_12.append(started)
-        tenant_ended_12.append(ended)
+        tenant_started_12.append(_count_in_month(start_dates, yy, mm))
+        tenant_ended_12.append(_count_in_month(termination_dates, yy, mm))
 
     # last 30 days tenant starts/ends (per day)
     tenant_labels_30 = []
@@ -161,16 +197,10 @@ async def dashboard_view(request: Request):
     tenant_ended_30 = []
     for d in range(29, -1, -1):
         day = (now - _dt.timedelta(days=d)).date()
-        day_iso = day.isoformat()
         tenant_labels_30.append(day.strftime('%d-%m'))
-        try:
-            s = await db.contracts.count_documents({"start_date": {"$regex": f'^{day_iso}'}})
-        except Exception:
-            s = 0
-        try:
-            e = await db.contracts.count_documents({"end_date": {"$regex": f'^{day_iso}'}})
-        except Exception:
-            e = 0
+        # count exact day matches
+        s = sum(1 for dt in start_dates if dt == day)
+        e = sum(1 for dt in termination_dates if dt == day)
         tenant_started_30.append(s)
         tenant_ended_30.append(e)
 
@@ -221,6 +251,133 @@ async def dashboard_view(request: Request):
     labels = labels_6
     series = paid_series_6
     payments_series = payments_series_6
+
+    # --- All-time monthly series (from earliest recorded month to now)
+    labels_all = []
+    payments_all = []
+    electric_series_all = []
+    tenant_started_all = []
+    tenant_ended_all = []
+    try:
+        # find earliest dates across collections (best-effort)
+        earliest = now.date()
+        # payments
+        try:
+            pdoc = await db.payments.find_one({}, sort=[("payment_date", 1)])
+            if pdoc and pdoc.get('payment_date'):
+                pd = pdoc.get('payment_date')
+                if isinstance(pd, _dt.datetime):
+                    earliest = min(earliest, pd.date())
+                else:
+                    try:
+                        earliest = min(earliest, _dt.date.fromisoformat(str(pd)))
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+        # bills (month string YYYY-MM)
+        try:
+            bdoc = await db.bills.find_one({}, sort=[("month", 1)])
+            if bdoc and bdoc.get('month'):
+                try:
+                    d = _dt.date.fromisoformat(str(bdoc.get('month')) + '-01')
+                    earliest = min(earliest, d)
+                except Exception:
+                    pass
+        except Exception:
+            pass
+        # electric_readings (month)
+        try:
+            edoc = await db.electric_readings.find_one({}, sort=[("month", 1)])
+            if edoc and edoc.get('month'):
+                try:
+                    d = _dt.date.fromisoformat(str(edoc.get('month')) + '-01')
+                    earliest = min(earliest, d)
+                except Exception:
+                    pass
+        except Exception:
+            pass
+        # contracts start_date
+        try:
+            cdoc = await db.contracts.find_one({}, sort=[("start_date", 1)])
+            if cdoc and cdoc.get('start_date'):
+                try:
+                    dval = cdoc.get('start_date')
+                    if isinstance(dval, str):
+                        d = _dt.date.fromisoformat(dval)
+                    elif isinstance(dval, _dt.datetime):
+                        d = dval.date()
+                    elif isinstance(dval, _dt.date):
+                        d = dval
+                    else:
+                        d = None
+                    if d:
+                        earliest = min(earliest, d)
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+        # build month range from earliest.year-month to now.year-month
+        sy, sm = earliest.year, earliest.month
+        ey, em = now.year, now.month
+        cur_y, cur_m = sy, sm
+        months = []
+        while (cur_y < ey) or (cur_y == ey and cur_m <= em):
+            months.append((cur_y, cur_m))
+            if cur_m == 12:
+                cur_y += 1; cur_m = 1
+            else:
+                cur_m += 1
+
+        for yy, mm in months:
+            label = f"{yy}-{mm:02d}"
+            labels_all.append(label)
+            # payments in month
+            start_dt = _dt.datetime(yy, mm, 1)
+            if mm == 12:
+                next_dt = _dt.datetime(yy + 1, 1, 1)
+            else:
+                next_dt = _dt.datetime(yy, mm + 1, 1)
+            pay_total = 0
+            try:
+                pc = db.payments.find({"payment_date": {"$gte": start_dt, "$lt": next_dt}})
+                async for p in pc:
+                    try:
+                        pay_total += int(p.get('amount', 0) or 0)
+                    except Exception:
+                        pass
+            except Exception:
+                pay_total = 0
+            payments_all.append(pay_total)
+
+            # electric usage in month
+            e_total = 0
+            try:
+                ec = db.electric_readings.find({"month": label})
+                async for er in ec:
+                    try:
+                        e_total += int(er.get('usage', 0) or 0)
+                    except Exception:
+                        pass
+            except Exception:
+                e_total = 0
+            electric_series_all.append(e_total)
+
+            # tenant starts/ends in month using precomputed start_dates/termination_dates
+            try:
+                s = _count_in_month(start_dates, yy, mm)
+                e = _count_in_month(termination_dates, yy, mm)
+            except Exception:
+                s = 0; e = 0
+            tenant_started_all.append(s)
+            tenant_ended_all.append(e)
+    except Exception:
+        labels_all = []
+        payments_all = []
+        electric_series_all = []
+        tenant_started_all = []
+        tenant_ended_all = []
 
     # billed total and paid amount current month
     current_month = now.strftime('%Y-%m')
@@ -333,6 +490,10 @@ async def dashboard_view(request: Request):
         labels_30=labels_30,
         payments_30=payments_30,
         electric_series_12=electric_series_12,
+        electric_series_all=electric_series_all,
+        labels_all=labels_all,
+        payments_all=payments_all,
+        electric_labels_all=labels_all,
         electric_labels_30=electric_labels_30,
         electric_series_30=electric_series_30,
         renting_tenants=renting_tenants,
@@ -344,6 +505,8 @@ async def dashboard_view(request: Request):
         tenant_labels_30=tenant_labels_30,
         tenant_started_30=tenant_started_30,
         tenant_ended_30=tenant_ended_30,
+        tenant_started_all=tenant_started_all,
+        tenant_ended_all=tenant_ended_all,
         top_room_labels=top_room_labels,
         top_room_usage=top_room_usage,
         total_electric_all=total_electric_all,
@@ -388,3 +551,27 @@ async def top_electric_by_month(month: str):
         label = room_numbers.get(rid, rid)
         out.append({"room_id": rid, "room_number": label, "usage": usage})
     return {"month": month, "top_rooms": out}
+
+
+@router.get('/dashboard/top-electric-year/{year}')
+async def top_electric_by_year(year: str):
+    """Return monthly totals for a given year, sorted desc (top months)."""
+    db = get_db()
+    # collect usage per month in the year
+    month_map = {}
+    prefix = f"{year}-"
+    async for r in db.electric_readings.find({"month": {"$regex": f'^{prefix}'}}):
+        try:
+            m = str(r.get('month') or '')
+            u = int(r.get('usage', 0) or 0)
+        except Exception:
+            continue
+        if not m:
+            continue
+        month_map[m] = month_map.get(m, 0) + u
+
+    items = sorted(month_map.items(), key=lambda kv: kv[1], reverse=True)
+    out = []
+    for m, usage in items:
+        out.append({"month": m, "usage": usage})
+    return {"year": year, "top_months": out}

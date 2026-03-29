@@ -46,6 +46,25 @@ body{
 .form-control{max-width:420px}
 .btn-primary{min-width:120px}
 
+/* Wider range selectors in dashboard chart headers */
+.bg-panel .d-flex.align-items-center .form-select {
+ 	min-width: 160px;
+}
+.bg-panel .d-flex.align-items-center label {
+	min-width: 56px;
+}
+
+/* Override: make main revenue selector smaller to match other charts */
+#rangeSelect.form-select {
+  min-width: 110px;
+  max-width: 140px;
+}
+
+/* Style for the electric top list panel (compact list) */
+#electricTopList ol { padding-left: 1rem; margin: 0; }
+#electricTopList li { line-height: 1.25; }
+#electricTopList .fw-semibold { font-size: .95rem; }
+
 /* Accent styles */
 .navbar{background: linear-gradient(90deg,#0d6efd 0%, #6610f2 100%)}
 .navbar .navbar-brand{color:#fff}

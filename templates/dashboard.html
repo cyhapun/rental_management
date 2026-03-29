@@ -1,8 +1,7 @@
 {% extends 'base.html' %}
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
-  <h1 class="h3">Tổng quan</h1>
-  <div class="text-muted">Tổng quan nhà trọ</div>
+  <h1 class="h3">Tổng quan nhà trọ</h1>
 </div>
 
 <div class="row g-3 mb-3 metrics-row">
@@ -104,13 +103,13 @@
     <div class="bg-panel">
       <div class="d-flex justify-content-between align-items-center mb-2">
         <h5 class="mb-0">Doanh thu</h5>
-        <div class="small text-muted">Báo cáo và thao tác nhanh</div>
       </div>
-      <div class="d-flex gap-3 align-items-start">
-        <div style="flex:1">
+      <div class="row">
+        <div class="col-md-9">
           <div class="d-flex align-items-center mb-2">
             <label class="me-2 small text-muted mb-0">Phạm vi</label>
             <select id="rangeSelect" class="form-select form-select-sm me-3">
+              <option value="all">Tất cả</option>
               <option value="30">30 ngày</option>
               <option value="6" selected>6 tháng</option>
               <option value="12">1 năm</option>
@@ -119,8 +118,8 @@
           </div>
           <canvas id="revenueChart" height="180"></canvas>
         </div>
-        <div style="width:260px">
-          <div class="card-metric p-3">
+        <div class="col-md-3">
+          <div class="bg-panel p-3">
             <h6 class="mb-2">Thao tác nhanh</h6>
             <div class="d-grid gap-2">
               <a class="btn btn-outline-primary" href="/rooms/">Quản lý phòng</a>
@@ -140,19 +139,60 @@
 <div class="row mt-3">
   <div class="col-12">
     <div class="bg-panel">
-      <div class="d-flex justify-content-between align-items-center">
+      <div class="d-flex justify-content-between align-items-center mb-2">
         <h5 class="mb-0">Tiêu thụ điện</h5>
-        <div class="d-flex align-items-center">
-          <label class="me-2 small text-muted mb-0">Phạm vi</label>
-          <select id="electricRangeSelect" class="form-select form-select-sm me-3">
-            <option value="30">30 ngày</option>
-            <option value="6" selected>6 tháng</option>
-            <option value="12">1 năm</option>
-          </select>
-          <div id="electricTimeUnit" class="small text-muted">Đơn vị: Tháng</div>
+      </div>
+      <div class="row">
+        <div class="col-md-9">
+          <div class="d-flex align-items-center mb-2">
+            <label class="me-2 small text-muted mb-0">Phạm vi</label>
+            <select id="electricRangeSelect" class="form-select form-select-sm me-3">
+              <option value="all">Tất cả</option>
+              <option value="6" selected>6 tháng</option>
+              <option value="12">1 năm</option>
+            </select>
+            <div id="electricTimeUnit" class="small text-muted">Đơn vị: Tháng</div>
+          </div>
+          <canvas id="electricHistoryChart" height="140"></canvas>
+          
+          <div class="small text-muted fst-italic mt-2 text-end">
+            * Ghi chú: Nhấn vào các cột trên biểu đồ để xem chi tiết số điện tiêu thụ của từng tháng.
+          </div>
+          
+        </div>
+        <div class="col-md-3">
+          <div class="bg-panel p-3 h-100 d-flex flex-column">
+            <h6 class="mb-2">Top phòng</h6>
+            <div id="electricTopList" class="small text-muted mb-3">Đang tải...</div>
+            
+            <div class="small text-muted fst-italic mt-auto border-top pt-2">
+              * Nhấn vào tên phòng để xem thông tin chi tiết.
+            </div>
+            
+          </div>
         </div>
       </div>
-      <canvas id="electricHistoryChart" height="140"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="row mt-3">
+  <div class="col-12">
+    <div class="bg-panel">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h5 class="mb-0">Biến động thuê/thoát phòng</h5>
+      </div>
+      <div class="d-flex align-items-center mb-2">
+        <label class="me-2 small text-muted mb-0">Phạm vi</label>
+        <select id="churnRangeSelect" class="form-select form-select-sm me-3">
+          <option value="all">Tất cả</option>
+          <option value="30">30 ngày</option>
+          <option value="6" selected>6 tháng</option>
+          <option value="12">1 năm</option>
+        </select>
+        <div id="churnTimeUnit" class="small text-muted">Đơn vị: Tháng</div>
+      </div>
+      <canvas id="churnChart" height="120"></canvas>
     </div>
   </div>
 </div>
@@ -174,15 +214,6 @@
     <div class="bg-panel">
       <h5>Tình trạng người thuê</h5>
       <canvas id="tenantStatusChart" height="180"></canvas>
-    </div>
-  </div>
-</div>
-
-<div class="row mt-3">
-  <div class="col-12">
-    <div class="bg-panel">
-      <h5>Biến động thuê/thoát phòng</h5>
-      <canvas id="churnChart" height="120"></canvas>
     </div>
   </div>
 </div>
@@ -215,7 +246,11 @@ let revenueChart = new Chart(ctx, {
 });
 
 function updateChart(range){
-  if (range === '30'){
+  if (range === 'all'){
+    revenueChart.data.labels = labels_all;
+    revenueChart.data.datasets = [{label:'Tiền đã nhận', data: payments_all, borderColor:'rgba(40,167,69,0.9)', backgroundColor:'rgba(40,167,69,0.12)', tension:0.3, fill:true}];
+    document.getElementById('timeUnit').innerText = 'Đơn vị: Tất cả';
+  } else if (range === '30'){
     revenueChart.data.labels = labels30;
     revenueChart.data.datasets = [{label:'Tiền đã nhận', data: payments30, borderColor:'rgba(40,167,69,0.9)', backgroundColor:'rgba(40,167,69,0.12)', tension:0.3, fill:true}];
     document.getElementById('timeUnit').innerText = 'Đơn vị: Ngày';
@@ -231,7 +266,7 @@ function updateChart(range){
   revenueChart.update();
 }
 
-document.getElementById('rangeSelect').addEventListener('change', function(e){ updateChart(e.target.value); });
+// mainRange listener created later to synchronize with churn selector
 
 const roomStatusCtx = document.getElementById('roomStatusChart').getContext('2d');
 new Chart(roomStatusCtx, {
@@ -272,7 +307,7 @@ new Chart(tenantStatusCtx, {
   options: {responsive:true}
 });
 
-// top rooms chart removed: use per-month click to fetch top rooms
+// Top rooms data removed from inline chart (shown via modal on click)
 
 // Electric history chart
 const electricLabels6 = {{ electric_labels_6|tojson | safe }};
@@ -290,6 +325,14 @@ const tenantEnded12 = {{ tenant_ended_12|tojson | safe }};
 const tenantLabels30 = {{ tenant_labels_30|tojson | safe }};
 const tenantStarted30 = {{ tenant_started_30|tojson | safe }};
 const tenantEnded30 = {{ tenant_ended_30|tojson | safe }};
+const labels_all = {{ labels_all|tojson | safe }};
+const payments_all = {{ payments_all|tojson | safe }};
+const electricSeriesAll = {{ electric_series_all|tojson | safe }};
+// overall top rooms (all-time) provided by backend
+const topOverallLabels = {{ top_room_labels|tojson | safe }};
+const topOverallUsage = {{ top_room_usage|tojson | safe }};
+const tenantStartedAll = {{ tenant_started_all|tojson | safe }};
+const tenantEndedAll = {{ tenant_ended_all|tojson | safe }};
 const electricCtx = document.getElementById('electricHistoryChart')?.getContext('2d');
 let electricChart = null;
 if (electricCtx){
@@ -303,7 +346,11 @@ if (electricCtx){
 // electric range selector
 function updateElectricChart(range){
   if (!electricChart) return;
-  if (range === '30'){
+  if (range === 'all'){
+    electricChart.data.labels = labels_all;
+    electricChart.data.datasets = [{label:'kWh', data: electricSeriesAll, borderColor:'rgba(255,159,64,0.9)', backgroundColor:'rgba(255,159,64,0.12)', tension:0.3, fill:true}];
+    document.getElementById('electricTimeUnit').innerText = 'Đơn vị: Tất cả';
+  } else if (range === '30'){
     electricChart.data.labels = electricLabels30;
     electricChart.data.datasets = [{label:'kWh', data: electricSeries30, borderColor:'rgba(255,159,64,0.9)', backgroundColor:'rgba(255,159,64,0.12)', tension:0.3, fill:true}];
     document.getElementById('electricTimeUnit').innerText = 'Đơn vị: Ngày';
@@ -319,6 +366,120 @@ function updateElectricChart(range){
   electricChart.update();
 }
 document.getElementById('electricRangeSelect').addEventListener('change', function(e){ updateElectricChart(e.target.value); });
+
+// When electric range changes, also refresh the top panel to show the most recent period/default
+document.getElementById('electricRangeSelect')?.addEventListener('change', function(e){
+  const range = e.target.value;
+  // ensure chart updated
+  setTimeout(()=>{
+    try{
+      const labels = electricChart?.data?.labels || [];
+      const last = labels && labels.length ? labels[labels.length-1] : (new Date().toISOString().slice(0,7));
+      updateElectricTopPanelForLabel(range, last);
+    }catch(e){ console.error(e); }
+  }, 100);
+});
+
+// initial fill for the electric top panel on page load
+try{
+  (function(){
+    const range = document.getElementById('electricRangeSelect')?.value || '6';
+    const labels = electricChart?.data?.labels || [];
+    const last = labels && labels.length ? labels[labels.length-1] : (new Date().toISOString().slice(0,7));
+    updateElectricTopPanelForLabel(range, last);
+  })();
+}catch(e){console.error(e)}
+
+// top rooms small chart removed; modal remains for detailed lists
+
+// Modal & click handler: show top rooms for a clicked month (or top months if year)
+// modal markup
+const modalHtml = `
+<div class="modal fade" id="topElectricModal" tabindex="-1" aria-labelledby="topElectricModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="topElectricModalLabel">Top</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="topElectricModalBody"></div>
+      <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button></div>
+    </div>
+  </div>
+</div>`;
+try{ document.body.insertAdjacentHTML('beforeend', modalHtml); }catch(e){console.error(e)}
+
+function showTopModal(title, bodyHtml){
+  try{
+    const t = document.getElementById('topElectricModalLabel');
+    const b = document.getElementById('topElectricModalBody');
+    if (t) t.innerText = title || 'Top';
+    if (b) b.innerHTML = bodyHtml || '';
+    const modalEl = document.getElementById('topElectricModal');
+    if (modalEl){ const bs = new bootstrap.Modal(modalEl); bs.show(); }
+  }catch(e){console.error(e)}
+}
+
+function renderTopPanelHtml(title, items){
+  const container = document.getElementById('electricTopList');
+  if (!container) return;
+  let html = '';
+  if (!items || !items.length){
+    html = '<div>Không có dữ liệu</div>';
+  } else {
+    html = '<ol class="mb-0 small">' + items.map(x=>`<li class="mb-1">${x.label}: <strong>${x.usage}</strong> kWh</li>`).join('') + '</ol>';
+  }
+  container.innerHTML = `<div class="fw-semibold mb-1">${title}</div>` + html;
+}
+
+async function updateElectricTopPanelForLabel(range, label){
+  const container = document.getElementById('electricTopList');
+  if (!container) return;
+  container.innerHTML = 'Đang tải...';
+  try{
+    if (range === 'all'){
+      // render overall top rooms (precomputed)
+      const items = (topOverallLabels || []).map((lab, i)=>({label: lab, usage: (topOverallUsage||[])[i]||0}));
+      renderTopPanelHtml('Top tất cả thời gian', items);
+      return;
+    }
+    if (range === '12'){
+      // label may contain year or month; pick year
+      const year = String(label).match(/^(\d{4})/)?.[1] || new Date().getFullYear();
+      const res = await fetch(`/electric/dashboard/top-electric-year/${year}`);
+      if (!res.ok) { container.innerHTML = 'Không lấy được dữ liệu'; return; }
+      const data = await res.json();
+      const items = (data.top_months||[]).map(x=>({label:x.month, usage:x.usage}));
+      renderTopPanelHtml(`Top tháng trong ${year}`, items);
+      return;
+    }
+    // otherwise treat label as month string (e.g., YYYY-MM or DD-MM for 30d)
+    const month = label;
+    const res = await fetch(`/electric/dashboard/top-electric/${month}`);
+    if (!res.ok) { container.innerHTML = 'Không lấy được dữ liệu'; return; }
+    const data = await res.json();
+    const items = (data.top_rooms||[]).map(x=>({label:`Phòng ${x.room_number}`, usage:x.usage}));
+    renderTopPanelHtml(`Top phòng ${month}`, items);
+  }catch(e){ console.error(e); container.innerHTML = 'Lỗi hiển thị dữ liệu'; }
+}
+
+// click handler on electric chart
+try{
+  const electricCanvas = document.getElementById('electricHistoryChart');
+  if (electricCanvas && electricChart){
+    electricCanvas.addEventListener('click', async function(evt){
+      try{
+        const pts = electricChart.getElementsAtEventForMode(evt,'nearest',{intersect:true},true);
+        if (!pts || !pts.length) return;
+        const idx = pts[0].index;
+        const label = electricChart.data.labels[idx];
+        const range = document.getElementById('electricRangeSelect').value;
+        // Update inline top panel for the clicked label/range
+        try{ await updateElectricTopPanelForLabel(range, label); }catch(e){ console.error(e); }
+      }catch(e){console.error(e)}
+    });
+  }
+}catch(e){console.error(e)}
 
 // churn chart (new rentals vs departures)
 const churnCtx = document.getElementById('churnChart')?.getContext('2d');
@@ -336,7 +497,10 @@ if (churnCtx){
 
 function updateChurnChart(range){
   if (!churnChart) return;
-  if (range === '30'){
+  if (range === 'all'){
+    churnChart.data.labels = labels_all;
+    churnChart.data.datasets = [{label:'Thuê mới', data: tenantStartedAll, backgroundColor:'rgba(13,110,253,0.85)'},{label:'Thoát', data: tenantEndedAll, backgroundColor:'rgba(220,53,69,0.85)'}];
+  } else if (range === '30'){
     churnChart.data.labels = tenantLabels30;
     churnChart.data.datasets = [{label:'Thuê mới', data: tenantStarted30, backgroundColor:'rgba(13,110,253,0.85)'},{label:'Thoát', data: tenantEnded30, backgroundColor:'rgba(220,53,69,0.85)'}];
   } else if (range === '6'){
@@ -350,7 +514,25 @@ function updateChurnChart(range){
 }
 
 // wire churn chart range to the same selector as revenue so user can choose consistent ranges
-document.getElementById('rangeSelect').addEventListener('change', function(e){ updateChurnChart(e.target.value); });
+const mainRange = document.getElementById('rangeSelect');
+const churnRange = document.getElementById('churnRangeSelect');
+if (mainRange){
+  mainRange.addEventListener('change', function(e){
+    const v = e.target.value;
+    updateChart(v);
+    updateChurnChart(v);
+    // reflect into churn selector if present
+    try{ if (churnRange) churnRange.value = v; }catch(_){}
+  });
+}
+if (churnRange){
+  churnRange.addEventListener('change', function(e){
+    const v = e.target.value;
+    try{ if (mainRange) mainRange.value = v; }catch(_){}
+    updateChart(v);
+    updateChurnChart(v);
+  });
+}
 </script>
 
 {% endblock %}
