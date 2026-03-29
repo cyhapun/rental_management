@@ -92,6 +92,88 @@ async def dashboard_view(request: Request):
                 pass
         electric_series_6.append(e_total)
 
+    # electric consumption for 12 months
+    electric_series_12 = []
+    for yy, mm in months_ago(now, 12):
+        target = month_label(yy, mm)
+        e_total = 0
+        ecursor = db.electric_readings.find({"month": target})
+        async for er in ecursor:
+            try:
+                e_total += int(er.get('usage', 0) or 0)
+            except Exception:
+                pass
+        electric_series_12.append(e_total)
+
+    # electric consumption for last 30 days (per day)
+    electric_labels_30 = []
+    electric_series_30 = []
+    for d in range(29, -1, -1):
+        day = (now - _dt.timedelta(days=d)).date()
+        electric_labels_30.append(day.strftime('%d-%m'))
+        day_iso = day.isoformat()
+        # sum readings whose month or date matches the day (best-effort)
+        e_total = 0
+        # try to find readings with exact day in month field or separate stored date
+        ecursor = db.electric_readings.find({"month": {"$regex": f'^{day_iso[:7]}'}})
+        async for er in ecursor:
+            try:
+                e_total += int(er.get('usage', 0) or 0)
+            except Exception:
+                pass
+        electric_series_30.append(e_total)
+
+    # tenant churn/start series (new contracts and contract ends) for same ranges
+    tenant_started_6 = []
+    tenant_ended_6 = []
+    for yy, mm in months_ago(now, 6):
+        target = f"{yy}-{mm:02d}"
+        # count contracts starting in this month
+        try:
+            started = await db.contracts.count_documents({"start_date": {"$regex": f'^{target}'}})
+        except Exception:
+            started = 0
+        try:
+            ended = await db.contracts.count_documents({"end_date": {"$regex": f'^{target}'}})
+        except Exception:
+            ended = 0
+        tenant_started_6.append(started)
+        tenant_ended_6.append(ended)
+
+    tenant_started_12 = []
+    tenant_ended_12 = []
+    for yy, mm in months_ago(now, 12):
+        target = f"{yy}-{mm:02d}"
+        try:
+            started = await db.contracts.count_documents({"start_date": {"$regex": f'^{target}'}})
+        except Exception:
+            started = 0
+        try:
+            ended = await db.contracts.count_documents({"end_date": {"$regex": f'^{target}'}})
+        except Exception:
+            ended = 0
+        tenant_started_12.append(started)
+        tenant_ended_12.append(ended)
+
+    # last 30 days tenant starts/ends (per day)
+    tenant_labels_30 = []
+    tenant_started_30 = []
+    tenant_ended_30 = []
+    for d in range(29, -1, -1):
+        day = (now - _dt.timedelta(days=d)).date()
+        day_iso = day.isoformat()
+        tenant_labels_30.append(day.strftime('%d-%m'))
+        try:
+            s = await db.contracts.count_documents({"start_date": {"$regex": f'^{day_iso}'}})
+        except Exception:
+            s = 0
+        try:
+            e = await db.contracts.count_documents({"end_date": {"$regex": f'^{day_iso}'}})
+        except Exception:
+            e = 0
+        tenant_started_30.append(s)
+        tenant_ended_30.append(e)
+
     for yy, mm in months_ago(now, 12):
         target = month_label(yy, mm)
         labels_12.append(target)
@@ -250,8 +332,18 @@ async def dashboard_view(request: Request):
         payments_series_12=payments_series_12,
         labels_30=labels_30,
         payments_30=payments_30,
+        electric_series_12=electric_series_12,
+        electric_labels_30=electric_labels_30,
+        electric_series_30=electric_series_30,
         renting_tenants=renting_tenants,
         ended_tenants=ended_tenants,
+        tenant_started_6=tenant_started_6,
+        tenant_ended_6=tenant_ended_6,
+        tenant_started_12=tenant_started_12,
+        tenant_ended_12=tenant_ended_12,
+        tenant_labels_30=tenant_labels_30,
+        tenant_started_30=tenant_started_30,
+        tenant_ended_30=tenant_ended_30,
         top_room_labels=top_room_labels,
         top_room_usage=top_room_usage,
         total_electric_all=total_electric_all,
@@ -267,3 +359,32 @@ async def dashboard_view(request: Request):
         readonly_guest=False,
     )
     return HTMLResponse(content=html)
+
+
+@router.get('/dashboard/top-electric/{month}')
+async def top_electric_by_month(month: str):
+    """Return top rooms by electric usage for a given month."""
+    db = get_db()
+    # aggregate usage per room_id for the requested month
+    usage_map = {}
+    async for r in db.electric_readings.find({"month": month}):
+        try:
+            rid = str(r.get('room_id') or '')
+            u = int(r.get('usage', 0) or 0)
+        except Exception:
+            continue
+        if not rid:
+            continue
+        usage_map[rid] = usage_map.get(rid, 0) + u
+
+    # resolve room numbers
+    room_numbers = {}
+    async for room in db.rooms.find({}):
+        room_numbers[str(room.get('_id'))] = room.get('room_number')
+
+    items = sorted(usage_map.items(), key=lambda kv: kv[1], reverse=True)[:10]
+    out = []
+    for rid, usage in items:
+        label = room_numbers.get(rid, rid)
+        out.append({"room_id": rid, "room_number": label, "usage": usage})
+    return {"month": month, "top_rooms": out}

@@ -559,3 +559,23 @@ async def delete_contract(request: Request, contract_id: str):
         return redirect_with_flash("/contracts/", "Xóa hợp đồng thành công.")
     except Exception:
         return redirect_with_flash("/contracts/", "Xóa hợp đồng thất bại.", "danger")
+
+
+@router.post("/{contract_id}/end")
+async def end_contract(request: Request, contract_id: str):
+    """Mark a contract as ended by setting its end_date to today (ISO date)."""
+    db = get_db()
+    if getattr(request.state, "user_role", None) not in ("admin", "manager"):
+        return redirect_with_flash("/dashboard", "Bạn không có quyền kết thúc hợp đồng", "danger")
+    import datetime as _dt
+    try:
+        today_iso = _dt.date.today().isoformat()
+        await db.contracts.update_one({"_id": ObjectId(contract_id)}, {"$set": {"end_date": today_iso}})
+        # refresh room statuses so dashboard/rooms reflect vacancy
+        try:
+            await _refresh_room_statuses(db)
+        except Exception:
+            pass
+        return redirect_with_flash("/contracts/", "Kết thúc hợp đồng thành công.")
+    except Exception:
+        return redirect_with_flash("/contracts/", "Kết thúc hợp đồng thất bại.", "danger")

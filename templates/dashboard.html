@@ -100,49 +100,59 @@
 </div>
 
 <div class="row">
-  <div class="col-lg-8">
+  <div class="col-12">
     <div class="bg-panel">
       <div class="d-flex justify-content-between align-items-center mb-2">
         <h5 class="mb-0">Doanh thu</h5>
+        <div class="small text-muted">Báo cáo và thao tác nhanh</div>
+      </div>
+      <div class="d-flex gap-3 align-items-start">
+        <div style="flex:1">
+          <div class="d-flex align-items-center mb-2">
+            <label class="me-2 small text-muted mb-0">Phạm vi</label>
+            <select id="rangeSelect" class="form-select form-select-sm me-3">
+              <option value="30">30 ngày</option>
+              <option value="6" selected>6 tháng</option>
+              <option value="12">1 năm</option>
+            </select>
+            <div id="timeUnit" class="small text-muted">Đơn vị: Tháng</div>
+          </div>
+          <canvas id="revenueChart" height="180"></canvas>
+        </div>
+        <div style="width:260px">
+          <div class="card-metric p-3">
+            <h6 class="mb-2">Thao tác nhanh</h6>
+            <div class="d-grid gap-2">
+              <a class="btn btn-outline-primary" href="/rooms/">Quản lý phòng</a>
+              <a class="btn btn-outline-secondary" href="/tenants/">Quản lý người thuê</a>
+              <a class="btn btn-outline-success" href="/bills/">Tạo hóa đơn</a>
+              {% if request.state.user_role == 'admin' %}
+              <a class="btn btn-outline-dark" href="/accounts/">Quản lý tài khoản</a>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row mt-3">
+  <div class="col-12">
+    <div class="bg-panel">
+      <div class="d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Tiêu thụ điện</h5>
         <div class="d-flex align-items-center">
           <label class="me-2 small text-muted mb-0">Phạm vi</label>
-          <select id="rangeSelect" class="form-select form-select-sm me-3">
+          <select id="electricRangeSelect" class="form-select form-select-sm me-3">
             <option value="30">30 ngày</option>
             <option value="6" selected>6 tháng</option>
             <option value="12">1 năm</option>
           </select>
-          <div id="timeUnit" class="small text-muted">Đơn vị: Tháng</div>
+          <div id="electricTimeUnit" class="small text-muted">Đơn vị: Tháng</div>
         </div>
       </div>
-      <canvas id="revenueChart" height="120"></canvas>
-    </div>
-  </div>
-  <div class="col-lg-4">
-    <div class="bg-panel">
-      <h5>Tiêu thụ điện (6 tháng)</h5>
-      <canvas id="electricHistoryChart" height="120"></canvas>
-      <div class="mt-3">
-        <div class="table-responsive small">
-          <table class="table table-sm table-borderless mb-0">
-            <thead><tr><th>Thời gian</th><th class="text-end">kWh</th></tr></thead>
-            <tbody id="electricTableBody">
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </div>
-  <div class="col-lg-4">
-    <div class="bg-panel">
-      <h5>Thao tác nhanh</h5>
-      <div class="d-grid gap-2">
-        <a class="btn btn-outline-primary" href="/rooms/">Quản lý phòng</a>
-        <a class="btn btn-outline-secondary" href="/tenants/">Quản lý người thuê</a>
-        <a class="btn btn-outline-success" href="/bills/">Tạo hóa đơn</a>
-        {% if request.state.user_role == 'admin' %}
-        <a class="btn btn-outline-dark" href="/accounts/">Quản lý tài khoản</a>
-        {% endif %}
-      </div>
+      <canvas id="electricHistoryChart" height="140"></canvas>
     </div>
   </div>
 </div>
@@ -171,8 +181,8 @@
 <div class="row mt-3">
   <div class="col-12">
     <div class="bg-panel">
-      <h5>Top phòng tiêu thụ điện (kWh)</h5>
-      <canvas id="topElectricChart" height="120"></canvas>
+      <h5>Biến động thuê/thoát phòng</h5>
+      <canvas id="churnChart" height="120"></canvas>
     </div>
   </div>
 </div>
@@ -262,50 +272,85 @@ new Chart(tenantStatusCtx, {
   options: {responsive:true}
 });
 
-const topElectricLabels = {{ top_room_labels|tojson | safe }};
-const topElectricData = {{ top_room_usage|tojson | safe }};
-const topElectricCtx = document.getElementById('topElectricChart').getContext('2d');
-new Chart(topElectricCtx, {
-  type: 'bar',
-  data: {
-    labels: topElectricLabels,
-    datasets: [{
-      label: 'kWh',
-      data: topElectricData,
-      backgroundColor: 'rgba(13,202,240,0.6)',
-      borderColor: 'rgba(13,202,240,1)',
-      borderWidth: 1
-    }]
-  },
-  options: {
-    responsive: true,
-    scales: { y: { beginAtZero: true } }
-  }
-});
+// top rooms chart removed: use per-month click to fetch top rooms
 
 // Electric history chart
 const electricLabels6 = {{ electric_labels_6|tojson | safe }};
 const electricSeries6 = {{ electric_series_6|tojson | safe }};
+const electricLabels12 = {{ labels_12|tojson | safe }};
+const electricSeries12 = {{ electric_series_12|tojson | safe }};
+const electricLabels30 = {{ electric_labels_30|tojson | safe }};
+const electricSeries30 = {{ electric_series_30|tojson | safe }};
+
+// churn / tenant start-end series
+const tenantStarted6 = {{ tenant_started_6|tojson | safe }};
+const tenantEnded6 = {{ tenant_ended_6|tojson | safe }};
+const tenantStarted12 = {{ tenant_started_12|tojson | safe }};
+const tenantEnded12 = {{ tenant_ended_12|tojson | safe }};
+const tenantLabels30 = {{ tenant_labels_30|tojson | safe }};
+const tenantStarted30 = {{ tenant_started_30|tojson | safe }};
+const tenantEnded30 = {{ tenant_ended_30|tojson | safe }};
 const electricCtx = document.getElementById('electricHistoryChart')?.getContext('2d');
+let electricChart = null;
 if (electricCtx){
-  new Chart(electricCtx, {
+  electricChart = new Chart(electricCtx, {
     type: 'line',
     data: { labels: electricLabels6, datasets: [{ label: 'kWh', data: electricSeries6, borderColor: 'rgba(255,159,64,0.9)', backgroundColor: 'rgba(255,159,64,0.12)', tension:0.3, fill:true }] },
-    options: { responsive:true, scales:{ y:{ beginAtZero:true } }, plugins:{legend:{display:false}} }
+    options: { responsive:true, scales: { y:{ beginAtZero:true } }, plugins:{legend:{display:false}} }
   });
-  // populate small table below chart for clarity
-  try{
-    const tbody = document.getElementById('electricTableBody');
-    if (tbody && Array.isArray(electricLabels6) && Array.isArray(electricSeries6)){
-      for (let i=0;i<electricLabels6.length;i++){
-        const tr = document.createElement('tr');
-        const td1 = document.createElement('td'); td1.innerText = electricLabels6[i];
-        const td2 = document.createElement('td'); td2.className = 'text-end'; td2.innerText = (electricSeries6[i] || 0) + ' kWh';
-        tr.appendChild(td1); tr.appendChild(td2); tbody.appendChild(tr);
-      }
-    }
-  }catch(e){console.warn(e)}
 }
+
+// electric range selector
+function updateElectricChart(range){
+  if (!electricChart) return;
+  if (range === '30'){
+    electricChart.data.labels = electricLabels30;
+    electricChart.data.datasets = [{label:'kWh', data: electricSeries30, borderColor:'rgba(255,159,64,0.9)', backgroundColor:'rgba(255,159,64,0.12)', tension:0.3, fill:true}];
+    document.getElementById('electricTimeUnit').innerText = 'Đơn vị: Ngày';
+  } else if (range === '6'){
+    electricChart.data.labels = electricLabels6;
+    electricChart.data.datasets = [{label:'kWh', data: electricSeries6, borderColor:'rgba(255,159,64,0.9)', backgroundColor:'rgba(255,159,64,0.12)', tension:0.3, fill:true}];
+    document.getElementById('electricTimeUnit').innerText = 'Đơn vị: Tháng';
+  } else if (range === '12'){
+    electricChart.data.labels = electricLabels12;
+    electricChart.data.datasets = [{label:'kWh', data: electricSeries12, borderColor:'rgba(255,159,64,0.9)', backgroundColor:'rgba(255,159,64,0.12)', tension:0.3, fill:true}];
+    document.getElementById('electricTimeUnit').innerText = 'Đơn vị: Tháng';
+  }
+  electricChart.update();
+}
+document.getElementById('electricRangeSelect').addEventListener('change', function(e){ updateElectricChart(e.target.value); });
+
+// churn chart (new rentals vs departures)
+const churnCtx = document.getElementById('churnChart')?.getContext('2d');
+let churnChart = null;
+if (churnCtx){
+  churnChart = new Chart(churnCtx, {
+    type: 'bar',
+    data: { labels: labels6, datasets: [
+      { label: 'Thuê mới', data: tenantStarted6, backgroundColor: 'rgba(13,110,253,0.85)' },
+      { label: 'Thoát', data: tenantEnded6, backgroundColor: 'rgba(220,53,69,0.85)' }
+    ]},
+    options: { responsive:true, plugins:{legend:{position:'top'}}, scales:{ x:{ stacked:false }, y:{ beginAtZero:true } } }
+  });
+}
+
+function updateChurnChart(range){
+  if (!churnChart) return;
+  if (range === '30'){
+    churnChart.data.labels = tenantLabels30;
+    churnChart.data.datasets = [{label:'Thuê mới', data: tenantStarted30, backgroundColor:'rgba(13,110,253,0.85)'},{label:'Thoát', data: tenantEnded30, backgroundColor:'rgba(220,53,69,0.85)'}];
+  } else if (range === '6'){
+    churnChart.data.labels = labels6;
+    churnChart.data.datasets = [{label:'Thuê mới', data: tenantStarted6, backgroundColor:'rgba(13,110,253,0.85)'},{label:'Thoát', data: tenantEnded6, backgroundColor:'rgba(220,53,69,0.85)'}];
+  } else if (range === '12'){
+    churnChart.data.labels = labels12;
+    churnChart.data.datasets = [{label:'Thuê mới', data: tenantStarted12, backgroundColor:'rgba(13,110,253,0.85)'},{label:'Thoát', data: tenantEnded12, backgroundColor:'rgba(220,53,69,0.85)'}];
+  }
+  churnChart.update();
+}
+
+// wire churn chart range to the same selector as revenue so user can choose consistent ranges
+document.getElementById('rangeSelect').addEventListener('change', function(e){ updateChurnChart(e.target.value); });
 </script>
 
 {% endblock %}

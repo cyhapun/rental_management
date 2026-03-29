@@ -165,6 +165,11 @@
           <input type="hidden" name="month" value="{{ today[:7] }}" />
           <button class="btn btn-sm btn-outline-success me-2" type="submit">Tạo hóa đơn</button>
         </form>
+        {% if c.is_active %}
+        <form action="/contracts/{{ c.id }}/end" method="post" style="display:inline" onsubmit="return confirm('Kết thúc hợp đồng này?');">
+          <button class="btn btn-sm btn-outline-warning me-2" type="submit">Kết thúc</button>
+        </form>
+        {% endif %}
         <form action="/contracts/{{ c.id }}/delete" method="post" style="display:inline" onsubmit="return confirm('Xóa hợp đồng này?');">
           <button class="btn btn-sm btn-outline-danger" type="submit">Xóa</button>
         </form>
