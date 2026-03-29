@@ -131,7 +131,7 @@
         </div>
       </div>
       <div class="flex-grow-1">
-        <canvas id="revenueChart" height="180"></canvas>
+        <canvas id="revenueChart"></canvas>
       </div>
     </div>
   </div>
@@ -246,7 +246,7 @@ let revenueChart = new Chart(ctx, {
             fill: true
         }]
     },
-    options: {responsive:true, plugins:{legend:{display:false}}, scales:{x:{title:{display:true,text:'Thời gian'}}}}
+    options: {responsive:true, maintainAspectRatio: false, plugins:{legend:{display:false}}, scales:{x:{title:{display:true,text:'Thời gian'}}}}
 });
 
 function updateChart(range){
@@ -429,7 +429,7 @@ function renderTopPanelHtml(title, items){
   if (!container) return;
   let html = '';
   if (!items || !items.length){
-    html = '<div>Không ghi nhận được dữ liệu</div>';
+    html = '<div>Chưa có dữ liệu ghi nhận</div>';
   } else {
     html = '<ol class="mb-0 small">' + items.map(x=>`<li class="mb-1">${x.label}: <strong>${x.usage}</strong> kWh</li>`).join('') + '</ol>';
   }
@@ -451,7 +451,7 @@ async function updateElectricTopPanelForLabel(range, label){
       // label may contain year or month; pick year
       const year = String(label).match(/^(\d{4})/)?.[1] || new Date().getFullYear();
       const res = await fetch(`/electric/dashboard/top-electric-year/${year}`);
-      if (!res.ok) { container.innerHTML = 'Không ghi nhận được dữ liệu'; return; }
+      if (!res.ok) { container.innerHTML = 'Chưa có dữ liệu ghi nhận'; return; }
       const data = await res.json();
       const items = (data.top_months||[]).map(x=>({label:x.month, usage:x.usage}));
       renderTopPanelHtml(`Top tháng trong ${year}`, items);
@@ -460,7 +460,7 @@ async function updateElectricTopPanelForLabel(range, label){
     // otherwise treat label as month string (e.g., YYYY-MM or DD-MM for 30d)
     const month = label;
     const res = await fetch(`/electric/dashboard/top-electric/${month}`);
-    if (!res.ok) { container.innerHTML = 'Không ghi nhận được dữ liệu'; return; }
+    if (!res.ok) { container.innerHTML = 'Chưa có dữ liệu ghi nhận'; return; }
     const data = await res.json();
     const items = (data.top_rooms||[]).map(x=>({label:`Phòng ${x.room_number}`, usage:x.usage}));
     renderTopPanelHtml(`Top phòng ${month}`, items);
