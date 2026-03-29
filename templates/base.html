@@ -23,14 +23,16 @@
   </head>
   <body>
     {% set current_path = request.url.path if request and request.url else '' %}
+    {% set user = request.state.user if request and request.state and request.state.user else None %}
     {% set user_role = request.state.user_role if request and request.state and request.state.user_role else None %}
+    {% set user_name = (user.get('full_name') if user and user.get('full_name') else (user.get('username') if user and user.get('username') else None)) %}
     {% set is_login_page = (current_path == '/login') %}
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <nav class="navbar navbar-expand-lg app-header">
       <div class="container-fluid">
         <button class="btn btn-link text-white d-md-none me-2" data-bs-toggle="offcanvas" data-bs-target="#offcanvasNav" aria-controls="offcanvasNav"><i class="fa-solid fa-bars"></i></button>
-        <a class="navbar-brand d-flex align-items-center" href="/dashboard">
-          <img src="/static/images/logo.svg" alt="Logo" style="height: 60px; margin-right: 4px;">
-          Quản lý nhà trọ
+        <a class="app-brand" href="/dashboard">
+          <img src="/static/images/logo.svg" alt="Logo">
+          <span class="brand-title">Quản lý nhà trọ</span>
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
           <span class="navbar-toggler-icon"></span>
@@ -47,8 +49,15 @@
               {% endif %}
             </li>
             <li class="nav-item dropdown">
-              <a class="nav-link dropdown-toggle" href="#" id="userMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                <i class="fa-solid fa-user"></i>
+              <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                {% if user_name %}
+                  <div class="avatar bg-white text-dark rounded-circle d-flex align-items-center justify-content-center me-2" style="width:36px;height:36px;border-radius:50%;font-weight:700;">
+                    {{ user_name[0]|upper }}
+                  </div>
+                  <span class="d-none d-md-inline text-white" style="margin-right:6px">{{ user_name }}</span>
+                {% else %}
+                  <i class="fa-solid fa-user"></i>
+                {% endif %}
               </a>
               <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
                 {% if not user_role %}
@@ -104,6 +113,7 @@
         {% endif %}
 
         <main class="content-with-fixed-toolbar {% if is_login_page %}col-12{% else %}col-md-10 ms-sm-auto{% endif %} px-4 py-4" style="min-height:calc(100vh - 80px);">
+          <div class="app-container">
           {% set flash_msg = request.query_params.get('flash') if request else None %}
           {% if flash_msg %}
             <div id="flash-data" data-flash="{{ flash_msg|e }}" data-level="{{ request.query_params.get('level', 'success') }}"></div>
@@ -111,18 +121,38 @@
               window.addEventListener('load', function () {
                 try {
                   const el = document.getElementById('flash-data');
+                  // create a single, styled Notyf instance with custom types
+                  const notyf = new Notyf({
+                    duration: 4200,
+                    position: { x: 'right', y: 'top' },
+                    ripple: true,
+                    dismissible: true,
+                    types: [
+                      { type: 'success', background: 'linear-gradient(90deg,#10b981,#059669)', icon: { className: 'fa-solid fa-check-circle', tagName: 'i' } },
+                      { type: 'warning', background: 'linear-gradient(90deg,#f59e0b,#d97706)', icon: { className: 'fa-solid fa-triangle-exclamation', tagName: 'i' } },
+                      { type: 'error', background: 'linear-gradient(90deg,#ef4444,#dc2626)', icon: { className: 'fa-solid fa-times-circle', tagName: 'i' } }
+                    ]
+                  });
                   if (!el) return;
                   const msg = el.dataset.flash || '';
                   const level = (el.dataset.level || 'success').toLowerCase();
-                  const notyf = new Notyf({ duration: 3000, position: { x: 'center', y: 'top' } });
-                  if (level === 'danger' || level === 'error') notyf.error(msg);
+                  if (!msg) return;
+                  if (level === 'danger' || level === 'error') notyf.open({ type: 'error', message: msg });
                   else if (level === 'warning') notyf.open({ type: 'warning', message: msg });
-                  else notyf.success(msg);
-                } catch (e) {}
+                  else notyf.open({ type: 'success', message: msg });
+                  // Remove flash parameters from the URL to avoid polluting history
+                  try {
+                    const u = new URL(window.location);
+                    u.searchParams.delete('flash');
+                    u.searchParams.delete('level');
+                    window.history.replaceState({}, document.title, u.pathname + u.search + u.hash);
+                  } catch (e) {}
+                } catch (e) { console.error(e) }
               });
             </script>
           {% endif %}
-          {% block content %}{% endblock %}
+            {% block content %}{% endblock %}
+            </div>
         </main>
       </div>
     </div>

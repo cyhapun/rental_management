@@ -1,5 +1,31 @@
 
-body{font-family:Inter,Arial,Helvetica,sans-serif;margin:0;background:linear-gradient(180deg,#f6f8fc 0%,#eef2f9 100%)}
+:root{
+	--bg-1: #f6f8fc;
+	--bg-2: #eef2f9;
+	--surface: #ffffff;
+	--primary-500: #0d6efd;
+	--primary-600: #0b5ed7;
+	--accent: #0db5a5;
+	--muted: #6c757d;
+	--success: #10b981;
+	--danger: #ef4444;
+	--warning: #f59e0b;
+	--card-radius: 12px;
+	--shadow-1: 0 8px 24px rgba(31,38,135,.06);
+	--shadow-2: 0 6px 20px rgba(17,24,39,.06);
+}
+
+*{box-sizing:border-box}
+
+body{
+	font-family:Inter,Arial,Helvetica,sans-serif;
+	margin:0;
+	color:#0f172a;
+	background: linear-gradient(180deg,var(--bg-1) 0%,var(--bg-2) 100%);
+	-webkit-font-smoothing:antialiased;
+	-moz-osx-font-smoothing:grayscale;
+}
+
 .sidebar{min-height:100vh}
 /* Force header and sidebar to participate in normal document flow (not fixed/sticky) */
 .navbar{position:relative !important; top:auto !important; z-index:auto !important}
@@ -102,3 +128,24 @@ body{font-family:Inter,Arial,Helvetica,sans-serif;margin:0;background:linear-gra
 /* List toggle button states */
 .btn-list-active { background: rgba(13,110,253,0.14); border-color: rgba(13,110,253,0.2); }
 .btn-list-inactive { background: transparent; }
+
+/* Notyf customizations - nicer toast style */
+.notyf { font-family: Inter, Arial, sans-serif; }
+.notyf__toast { border-radius: 12px; box-shadow: 0 10px 30px rgba(2,6,23,0.15); padding: 12px 16px; color: #fff; display:flex; align-items:center; gap:12px; cursor: pointer; }
+.notyf__message { font-size: 0.98rem; font-weight:600; }
+.notyf__icon { font-size:1.25rem; margin-right:6px; opacity:0.95; }
+.notyf--success { background: linear-gradient(90deg,#10b981,#059669); }
+.notyf--error { background: linear-gradient(90deg,#ef4444,#dc2626); }
+.notyf--warning { background: linear-gradient(90deg,#f59e0b,#d97706); }
+.notyf__toast:hover { transform: translateY(-3px); transition: transform .18s ease; }
+
+/* Avatar and navbar tweaks */
+.avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(90deg,var(--primary-500),var(--primary-600));color:#fff;font-weight:700;display:inline-flex;align-items:center;justify-content:center}
+.navbar .dropdown-toggle .avatar{background:linear-gradient(90deg,#ffffff,#ffffff);color:var(--primary-600);border:2px solid rgba(255,255,255,0.12)}
+.navbar .nav-link { color: #fff !important }
+.navbar .nav-link .text-white{color:#fff}
+
+/* App brand (logo + title) */
+.app-brand{display:flex;align-items:center;gap:.6rem;font-weight:700;color:#fff;text-decoration:none}
+.app-brand img{height:48px;width:auto;display:block}
+.app-brand .brand-title{font-size:1.05rem;letter-spacing:.2px;color:#fff}
