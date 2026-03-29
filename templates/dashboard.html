@@ -115,7 +115,7 @@
 </div>
 
 <div class="row g-4 mb-4">
-  <div class="col-12 col-md-6">
+  <div class="col-12 col-lg-6">
     <div class="bg-panel h-100 d-flex flex-column p-4">
       <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-2 border-bottom">
         <h5 class="mb-0 text-primary">Doanh thu</h5>
@@ -136,10 +136,10 @@
     </div>
   </div>
 
-  <div class="col-12 col-md-6">
+  <div class="col-12 col-lg-6">
     <div class="bg-panel h-100 d-flex flex-column p-4">
       <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-2 border-bottom">
-        <h5 class="mb-0 text-primary">Biến động thuê/thoát phòng</h5>
+        <h5 class="mb-0 text-primary">Biến động thuê phòng</h5>
         <div class="d-flex align-items-center mt-2 mt-md-0">
           <label class="me-2 small text-muted mb-0">Phạm vi:</label>
           <select id="churnRangeSelect" class="form-select form-select-sm me-3" style="width: auto;">
@@ -522,23 +522,21 @@ function updateChurnChart(range){
 }
 
 // wire churn chart range to the same selector as revenue so user can choose consistent ranges
+// Tách độc lập selector của biểu đồ Doanh thu và Biểu đồ Biến động
 const mainRange = document.getElementById('rangeSelect');
 const churnRange = document.getElementById('churnRangeSelect');
+
 if (mainRange){
   mainRange.addEventListener('change', function(e){
     const v = e.target.value;
-    updateChart(v);
-    updateChurnChart(v);
-    // reflect into churn selector if present
-    try{ if (churnRange) churnRange.value = v; }catch(_){}
+    updateChart(v); // CHỈ cập nhật biểu đồ doanh thu
   });
 }
+
 if (churnRange){
   churnRange.addEventListener('change', function(e){
     const v = e.target.value;
-    try{ if (mainRange) mainRange.value = v; }catch(_){}
-    updateChart(v);
-    updateChurnChart(v);
+    updateChurnChart(v); // CHỈ cập nhật biểu đồ biến động
   });
 }
 // initialize charts to the currently selected range (default 6 months)
@@ -550,16 +548,18 @@ try{
 
   // Responsive adjustments: make axes/tick fonts smaller on narrow screens and
   // increase canvas height so charts appear larger on mobile.
+// Responsive adjustments: make axes/tick fonts smaller on narrow screens
   function adjustChartsResponsive(){
     const w = window.innerWidth || document.documentElement.clientWidth || 1024;
     const small = w < 576; // bootstrap xs breakpoint
     const tickSize = small ? 10 : 12;
+    
     // helper to apply settings to a chart
-    const applyToChart = (chart, canvasId, mobileHeight, desktopHeight)=>{
+    const applyToChart = (chart)=>{
       try{
         if (!chart) return;
-        const canvas = document.getElementById(canvasId);
-        if (canvas){ canvas.height = small ? mobileHeight : desktopHeight; }
+        // KHÔNG set canvas.height bằng JS nữa, để CSS .chart-container lo việc đó
+        
         if (chart.options && chart.options.scales){
           Object.keys(chart.options.scales).forEach(k=>{
             const s = chart.options.scales[k];
@@ -577,15 +577,23 @@ try{
       }catch(e){console.error(e)}
     };
 
-    applyToChart(revenueChart, 'revenueChart', 260, 180);
-    applyToChart(electricChart, 'electricHistoryChart', 260, 140);
-    applyToChart(churnChart, 'churnChart', 220, 180);
+    applyToChart(revenueChart);
+    applyToChart(electricChart);
+    applyToChart(churnChart);
   }
 
-  // run once and on resize
+  // Chạy lần đầu
   adjustChartsResponsive();
-  window.addEventListener('resize', function(){ setTimeout(adjustChartsResponsive, 120); });
-
+  
+  // Chỉ trigger resize khi chiều RỘNG (width) thay đổi, bỏ qua chiều cao (khi cuộn mobile)
+  let lastWindowWidth = window.innerWidth;
+  window.addEventListener('resize', function(){ 
+    if (window.innerWidth !== lastWindowWidth) {
+        lastWindowWidth = window.innerWidth;
+        setTimeout(adjustChartsResponsive, 120); 
+    }
+  });
+  
 }catch(e){ console.error(e); }
 </script>
 

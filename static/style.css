@@ -152,7 +152,7 @@ body{
 	.metrics-row .card-metric .h4{ font-size:1.05rem; }
 	/* make small charts more compact */
 	.bg-panel { 
-        height: 350px; /* Định nghĩa chiều cao cho khung chứa thay vì canvas */
+        min-height: 350px; 
     }
 	#roomStatusChart, #billStatusChart, #tenantStatusChart{ max-height:130px !important; }
 	/* ensure hero actions (buttons) stack under title and table toolbar stacks vertically */

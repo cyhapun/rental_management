@@ -358,31 +358,31 @@ async def dashboard_view(request: Request):
                 next_dt = _dt.datetime(yy + 1, 1, 1)
             else:
                 next_dt = _dt.datetime(yy, mm + 1, 1)
-                # sum actual paid amounts on bills for this month (fallback to payments collection)
-                pay_total = 0
-                try:
-                    bcur = db.bills.find({"month": label})
-                    async for b in bcur:
+            
+            pay_total = 0
+            try:
+                bcur = db.bills.find({"month": label})
+                async for b in bcur:
+                    try:
+                        paid_amt = int(b.get('paid_amount', 0) or 0)
+                    except Exception:
+                        paid_amt = 0
+                    if paid_amt:
+                        pay_total += paid_amt
+                    else:
                         try:
-                            paid_amt = int(b.get('paid_amount', 0) or 0)
+                            bid = str(b.get('_id'))
+                            pc = db.payments.find({"bill_id": bid})
+                            async for p in pc:
+                                try:
+                                    pay_total += int(p.get('amount', 0) or 0)
+                                except Exception:
+                                    pass
                         except Exception:
-                            paid_amt = 0
-                        if paid_amt:
-                            pay_total += paid_amt
-                        else:
-                            try:
-                                bid = str(b.get('_id'))
-                                pc = db.payments.find({"bill_id": bid})
-                                async for p in pc:
-                                    try:
-                                        pay_total += int(p.get('amount', 0) or 0)
-                                    except Exception:
-                                        pass
-                            except Exception:
-                                pass
-                except Exception:
-                    pay_total = 0
-                payments_all.append(pay_total)
+                            pass
+            except Exception:
+                pay_total = 0
+            payments_all.append(pay_total)
 
             # electric usage in month
             e_total = 0
