@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 
 from deps import get_db
 from security import encrypt_value, verify_password, generate_session_id
+from flash import redirect_with_flash
 
 router = APIRouter()
 
@@ -30,11 +31,11 @@ async def login_post(request: Request, response: Response, username: str = Form(
     db = get_db()
     acct = await db.accounts.find_one({"username": username})
     if not acct:
-        return RedirectResponse(url='/login', status_code=303)
+        return redirect_with_flash('/login', 'Tài khoản không tồn tại', level='danger')
 
     stored_password = acct.get("password") or ""
     if not verify_password(stored_password, password):
-        return RedirectResponse(url='/login', status_code=303)
+        return redirect_with_flash('/login', 'Sai mật khẩu', level='danger')
 
     # Create a server-side session and set an encrypted session cookie.
     session_id = generate_session_id()
@@ -55,14 +56,14 @@ async def login_post(request: Request, response: Response, username: str = Form(
         token = encrypt_value(session_id, require_key=True)
     except RuntimeError:
         # Encryption key missing; fail safe.
-        return RedirectResponse(url='/login', status_code=303)
+        return redirect_with_flash('/login', 'Lỗi hệ thống, không thể đăng nhập', level='danger')
 
     # Cookie security settings - use strict SameSite and secure in production.
     cookie_name = os.getenv("SESSION_COOKIE_NAME", "rental_session")
     cookie_secure = os.getenv("COOKIE_SECURE", "1") in ("1", "true", "True")
     cookie_samesite = os.getenv("COOKIE_SAMESITE", "strict")
 
-    response = RedirectResponse(url='/dashboard', status_code=303)
+    response = redirect_with_flash('/dashboard', 'Đăng nhập thành công', level='success')
     response.set_cookie(
         cookie_name,
         token,

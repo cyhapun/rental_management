@@ -5,6 +5,7 @@ from jinja2 import Environment, FileSystemLoader
 from deps import get_db
 
 from template_filters import money
+import constants
 
 router = APIRouter(tags=["dashboard"]) 
 
@@ -87,6 +88,22 @@ async def dashboard_view(request: Request):
     # total accounts
     total_accounts = await db.accounts.count_documents({})
 
+    # room price statistics
+    room_prices = []
+    async for r in db.rooms.find({}):
+        try:
+            p = int(r.get('price') or 0)
+        except Exception:
+            p = 0
+        room_prices.append(p)
+    room_price_avg = int(sum(room_prices) / len(room_prices)) if room_prices else 0
+    room_price_min = min(room_prices) if room_prices else 0
+    room_price_max = max(room_prices) if room_prices else 0
+
+    # currency / utility constants
+    price_per_kwh = getattr(constants, 'PRICE_PER_KWH', 3000)
+    water_fee = getattr(constants, 'WATER_FEE', 50000)
+
     tpl = env.get_template("dashboard.html")
     html = tpl.render(
         request=request,
@@ -105,6 +122,11 @@ async def dashboard_view(request: Request):
         total_electric_all=total_electric_all,
         total_electric_month=total_electric_month,
         total_accounts=total_accounts,
+        room_price_avg=room_price_avg,
+        room_price_min=room_price_min,
+        room_price_max=room_price_max,
+        price_per_kwh=price_per_kwh,
+        water_fee=water_fee,
         readonly_guest=False,
     )
     return HTMLResponse(content=html)

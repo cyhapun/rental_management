@@ -11,6 +11,9 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- Notyf notifications -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.js"></script>
     <link rel="stylesheet" href="/static/style.css?v=20260327-1" />
   </head>
   <body>
@@ -98,27 +101,18 @@
         <main class="content-with-fixed-toolbar {% if is_login_page %}col-12{% else %}col-md-10 ms-sm-auto{% endif %} px-4 py-4" style="min-height:calc(100vh - 80px);">
           {% set flash_msg = request.query_params.get('flash') if request else None %}
           {% if flash_msg %}
-            {% set level = request.query_params.get('level', 'success') %}
-            {% set toast_bg = 'danger' if level == 'danger' else ('warning' if level == 'warning' else 'success') %}
-            <div class="toast align-items-center text-bg-{{ toast_bg }} border-0 show flash-toast"
-                 role="alert" aria-live="assertive" aria-atomic="true"
-                 style="position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); z-index:1080; min-width:280px;"
-                 data-bs-autohide="true" data-bs-delay="2200">
-              <div class="d-flex">
-                <div class="toast-body">
-                  {{ flash_msg }}
-                </div>
-                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-              </div>
-            </div>
+            <div id="flash-data" data-flash="{{ flash_msg|e }}" data-level="{{ request.query_params.get('level', 'success') }}"></div>
             <script>
               window.addEventListener('load', function () {
                 try {
-                  const el = document.querySelector('.flash-toast');
+                  const el = document.getElementById('flash-data');
                   if (!el) return;
-                  const toast = bootstrap.Toast.getOrCreateInstance(el);
-                  toast.show();
-                  setTimeout(()=>toast.hide(), 2300);
+                  const msg = el.dataset.flash || '';
+                  const level = (el.dataset.level || 'success').toLowerCase();
+                  const notyf = new Notyf({ duration: 2200, position: { x: 'center', y: 'top' } });
+                  if (level === 'danger' || level === 'error') notyf.error(msg);
+                  else if (level === 'warning') notyf.open({ type: 'warning', message: msg });
+                  else notyf.success(msg);
                 } catch (e) {}
               });
             </script>
@@ -130,6 +124,8 @@
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- html2canvas for "print as image" functionality -->
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script>
       // Toggle active/inactive classes for "Hiển thị danh sách" buttons
       (function(){
@@ -154,6 +150,25 @@
       })();
       
       // Sidebar affix removed — using CSS `position: sticky` to avoid horizontal jumps
+    </script>
+    <script>
+      // Print an element as an image (captured via html2canvas)
+      async function printElementAsImage(selector, title) {
+        try {
+          const el = document.querySelector(selector);
+          if (!el) return alert('Không tìm thấy phần tử để in: ' + selector);
+          const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+          const dataUrl = canvas.toDataURL('image/png');
+          const w = window.open('', '_blank');
+          if (!w) return alert('Không thể mở cửa sổ in (chặn pop-up?)');
+          w.document.write('<!doctype html><html><head><title>' + (title||'In') + '</title></head><body style="margin:0;padding:10px;background:#fff">');
+          w.document.write('<div style="text-align:center;margin-bottom:8px;font-family:Inter,Arial,sans-serif"><h3>' + (title||'') + '</h3></div>');
+          w.document.write('<img src="' + dataUrl + '" style="max-width:100%;height:auto;display:block;margin:0 auto"/>');
+          w.document.write('<script>window.onload=function(){setTimeout(function(){window.print();},200);};</script>');
+          w.document.write('</body></html>');
+          w.document.close();
+        } catch (e) { console.error(e); alert('Lỗi khi tạo ảnh: ' + (e && e.message)); }
+      }
     </script>
   </body>
 </html>
