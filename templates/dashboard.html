@@ -1,27 +1,6 @@
 {% extends 'base.html' %}
 {% block extra_css %}
-<style>
-  /* Cố định chiều cao biểu đồ để Chart.js không bị xẹp trên Mobile */
-  .chart-container { position: relative; height: 320px; width: 100%; }
-  .chart-container-small { position: relative; height: 260px; width: 100%; }
-  
-  /* Khối Icon bo góc hiện đại */
-  .icon-shape {
-      width: 48px;
-      height: 48px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 14px;
-      transition: transform 0.2s;
-  }
-  .card-metric:hover .icon-shape { transform: scale(1.1) rotate(5deg); }
-  
-  /* Tùy chỉnh thanh cuộn cho danh sách Top */
-  .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-  .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-  .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-</style>
+<link rel="stylesheet" href="/static/css/dashboard.css">
 {% endblock %}
 
 {% block content %}
@@ -31,17 +10,17 @@
 
 <div class="row mb-4">
   <div class="col-12">
-    <div class="card-metric p-3 d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3" style="border-left-color: var(--accent) !important;">
+    <div class="card-metric p-3 d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3" style="border-left-color: var(--accent) !important; background: linear-gradient(to right, #ffffff, #f8fafc);">
       <div>
         <h6 class="mb-1 fw-bold text-dark">Lối tắt quản lý</h6>
         <div class="small text-muted">Truy cập nhanh các chức năng thường dùng</div>
       </div>
       <div class="d-flex flex-wrap gap-2">
-        <a class="btn btn-primary rounded-pill px-3 shadow-sm" href="/bills/"><i class="fa-solid fa-plus me-1"></i> Tạo hóa đơn</a>
-        <a class="btn btn-light border rounded-pill px-3" href="/rooms/"><i class="fa-solid fa-door-open text-primary me-1"></i> Quản lý phòng</a>
-        <a class="btn btn-light border rounded-pill px-3" href="/tenants/"><i class="fa-solid fa-user-group text-success me-1"></i> Khách thuê</a>
+        <a class="btn btn-primary rounded-pill px-4 shadow-sm" href="/bills/"><i class="fa-solid fa-plus me-1"></i> Tạo hóa đơn</a>
+        <a class="btn btn-light bg-white border rounded-pill px-3 shadow-sm" href="/rooms/"><i class="fa-solid fa-door-open text-primary me-1"></i> Quản lý phòng</a>
+        <a class="btn btn-light bg-white border rounded-pill px-3 shadow-sm" href="/tenants/"><i class="fa-solid fa-user-group text-success me-1"></i> Khách thuê</a>
         {% if request.state.user_role == 'admin' %}
-        <a class="btn btn-light border rounded-pill px-3" href="/accounts/"><i class="fa-solid fa-shield-halved text-secondary me-1"></i> Tài khoản</a>
+        <a class="btn btn-light bg-white border rounded-pill px-3 shadow-sm" href="/accounts/"><i class="fa-solid fa-shield-halved text-secondary me-1"></i> Tài khoản</a>
         {% endif %}
       </div>
     </div>
@@ -168,14 +147,14 @@
       <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-2 border-bottom">
         <h6 class="mb-0 fw-bold"><i class="fa-solid fa-people-arrows text-danger me-2"></i>Biến động thuê phòng</h6>
         <div class="d-flex align-items-center mt-2 mt-md-0 bg-light rounded-pill p-1 ps-3 border">
-        <select id="churnRangeSelect" class="form-select form-select-sm border-0 bg-transparent text-dark fw-semibold pe-4" style="box-shadow: none; cursor: pointer; width: auto; min-width: 110px;">
-          <option value="all">Tất cả</option>
-          <option value="30">30 ngày</option>
-          <option value="6" selected>6 tháng</option>
-          <option value="12">1 năm</option>
-        </select>
-        <span id="churnTimeUnit" class="badge bg-white text-muted border ms-1 px-3 py-2 shadow-sm rounded-pill">Đơn vị: Tháng</span>
-      </div>
+          <select id="churnRangeSelect" class="form-select form-select-sm border-0 bg-transparent text-dark fw-semibold pe-4" style="box-shadow: none; cursor: pointer; width: auto; min-width: 110px;">
+            <option value="all">Tất cả</option>
+            <option value="30">30 ngày</option>
+            <option value="6" selected>6 tháng</option>
+            <option value="12">1 năm</option>
+          </select>
+          <span id="churnTimeUnit" class="badge bg-white text-muted border ms-1 px-3 py-2 shadow-sm rounded-pill">Đơn vị: Tháng</span>
+        </div>
       </div>
       <div class="chart-container">
         <canvas id="churnChart"></canvas>
@@ -190,13 +169,13 @@
       <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-2 border-bottom">
         <h6 class="mb-0 fw-bold"><i class="fa-solid fa-bolt text-warning me-2"></i>Tiêu thụ điện năng</h6>
         <div class="d-flex align-items-center mt-2 mt-md-0 bg-light rounded-pill p-1 ps-3 border">
-        <select id="electricRangeSelect" class="form-select form-select-sm border-0 bg-transparent text-dark fw-semibold pe-4" style="box-shadow: none; cursor: pointer; width: auto; min-width: 110px;">
-          <option value="all">Tất cả</option>
-          <option value="6" selected>6 tháng</option>
-          <option value="12">1 năm</option>
-        </select>
-        <span id="electricTimeUnit" class="badge bg-white text-muted border ms-1 px-3 py-2 shadow-sm rounded-pill">Đơn vị: Tháng</span>
-      </div>
+          <select id="electricRangeSelect" class="form-select form-select-sm border-0 bg-transparent text-dark fw-semibold pe-4" style="box-shadow: none; cursor: pointer; width: auto; min-width: 110px;">
+            <option value="all">Tất cả</option>
+            <option value="6" selected>6 tháng</option>
+            <option value="12">1 năm</option>
+          </select>
+          <span id="electricTimeUnit" class="badge bg-white text-muted border ms-1 px-3 py-2 shadow-sm rounded-pill">Đơn vị: Tháng</span>
+        </div>
       </div>
 
       <div class="row g-4">
@@ -225,65 +204,67 @@
   </div>
 </div>
 
-<div class="row g-3">
+<div class="row g-3 mb-4">
   <div class="col-12 col-md-4">
     <div class="bg-panel h-100 d-flex flex-column align-items-center justify-content-center">
       <h6 class="fw-bold text-muted mb-3 fs-7 text-uppercase w-100 text-center">Tỷ lệ phòng trống</h6>
-      <div style="width: 180px; height: 180px;">
-        <canvas id="roomStatusChart"></canvas>
-      </div>
+      <div class="mini-chart-wrapper"><canvas id="roomStatusChart"></canvas></div>
     </div>
   </div>
   <div class="col-12 col-md-4">
     <div class="bg-panel h-100 d-flex flex-column align-items-center justify-content-center">
       <h6 class="fw-bold text-muted mb-3 fs-7 text-uppercase w-100 text-center">Hóa đơn nợ</h6>
-      <div style="width: 180px; height: 180px;">
-        <canvas id="billStatusChart"></canvas>
-      </div>
+      <div class="mini-chart-wrapper"><canvas id="billStatusChart"></canvas></div>
     </div>
   </div>
   <div class="col-12 col-md-4">
     <div class="bg-panel h-100 d-flex flex-column align-items-center justify-content-center">
       <h6 class="fw-bold text-muted mb-3 fs-7 text-uppercase w-100 text-center">Khách thuê</h6>
-      <div style="width: 180px; height: 180px;">
-        <canvas id="tenantStatusChart"></canvas>
-      </div>
+      <div class="mini-chart-wrapper"><canvas id="tenantStatusChart"></canvas></div>
     </div>
   </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+// Fix triệt để liên kết dữ liệu, dùng default('[]') để tránh lỗi Javascript
 window.dashboardData = {
-  labels6: {{ revenue_labels|tojson | safe }},
-  payments6: {{ payments_series|tojson | safe }},
-  labels12: {{ labels_12|tojson | safe }},
-  payments12: {{ payments_series_12|tojson | safe }},
-  labels30: {{ labels_30|tojson | safe }},
-  payments30: {{ payments_30|tojson | safe }},
-  labels_all: {{ labels_all|tojson | safe }},
-  payments_all: {{ payments_all|tojson | safe }},
-  electric_labels_6: {{ electric_labels_6|tojson | safe }},
-  electric_series_6: {{ electric_series_6|tojson | safe }},
-  electric_labels_12: {{ labels_12|tojson | safe }},
-  electric_series_12: {{ electric_series_12|tojson | safe }},
-  electric_labels_30: {{ electric_labels_30|tojson | safe }},
-  electric_series_30: {{ electric_series_30|tojson | safe }},
-  tenant_started_6: {{ tenant_started_6|tojson | safe }},
-  tenant_ended_6: {{ tenant_ended_6|tojson | safe }},
-  tenant_started_12: {{ tenant_started_12|tojson | safe }},
-  tenant_ended_12: {{ tenant_ended_12|tojson | safe }},
-  tenant_labels_30: {{ tenant_labels_30|tojson | safe }},
-  tenant_started_30: {{ tenant_started_30|tojson | safe }},
-  tenant_ended_30: {{ tenant_ended_30|tojson | safe }},
-  top_room_labels: {{ top_room_labels|tojson | safe }},
-  top_room_usage: {{ top_room_usage|tojson | safe }},
-  occupied: {{ occupied }},
-  available: {{ available }},
-  paid: {{ paid }},
-  unpaid: {{ unpaid }},
-  renting_tenants: {{ renting_tenants }},
-  ended_tenants: {{ ended_tenants }},
+  labels6: {{ revenue_labels | default('[]') | tojson | safe }},
+  payments6: {{ payments_series | default('[]') | tojson | safe }},
+  labels12: {{ labels_12 | default('[]') | tojson | safe }},
+  payments12: {{ payments_series_12 | default('[]') | tojson | safe }},
+  labels30: {{ labels_30 | default('[]') | tojson | safe }},
+  payments30: {{ payments_30 | default('[]') | tojson | safe }},
+  labels_all: {{ labels_all | default('[]') | tojson | safe }},
+  payments_all: {{ payments_all | default('[]') | tojson | safe }},
+  
+  electric_labels_6: {{ electric_labels_6 | default('[]') | tojson | safe }},
+  electric_series_6: {{ electric_series_6 | default('[]') | tojson | safe }},
+  electric_labels_12: {{ labels_12 | default('[]') | tojson | safe }},
+  electric_series_12: {{ electric_series_12 | default('[]') | tojson | safe }},
+  electric_labels_30: {{ electric_labels_30 | default('[]') | tojson | safe }},
+  electric_series_30: {{ electric_series_30 | default('[]') | tojson | safe }},
+  electric_labels_all: {{ labels_all | default('[]') | tojson | safe }},
+  electric_series_all: {{ electric_series_all | default('[]') | tojson | safe }},
+  
+  tenant_started_6: {{ tenant_started_6 | default('[]') | tojson | safe }},
+  tenant_ended_6: {{ tenant_ended_6 | default('[]') | tojson | safe }},
+  tenant_started_12: {{ tenant_started_12 | default('[]') | tojson | safe }},
+  tenant_ended_12: {{ tenant_ended_12 | default('[]') | tojson | safe }},
+  tenant_labels_30: {{ tenant_labels_30 | default('[]') | tojson | safe }},
+  tenant_started_30: {{ tenant_started_30 | default('[]') | tojson | safe }},
+  tenant_ended_30: {{ tenant_ended_30 | default('[]') | tojson | safe }},
+  tenant_started_all: {{ tenant_started_all | default('[]') | tojson | safe }},
+  tenant_ended_all: {{ tenant_ended_all | default('[]') | tojson | safe }},
+  
+  top_room_labels: {{ top_room_labels | default('[]') | tojson | safe }},
+  top_room_usage: {{ top_room_usage | default('[]') | tojson | safe }},
+  occupied: {{ occupied | default(0) }},
+  available: {{ available | default(0) }},
+  paid: {{ paid | default(0) }},
+  unpaid: {{ unpaid | default(0) }},
+  renting_tenants: {{ renting_tenants | default(0) }},
+  ended_tenants: {{ ended_tenants | default(0) }}
 };
 </script>
 <script src="/static/js/dashboard.js"></script>

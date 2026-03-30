@@ -1,12 +1,41 @@
 /* dashboard.css - page specific styles for dashboard */
-.chart-container { position: relative; height: 300px; width: 100%; }
-.chart-container-small { position: relative; height: 200px; width: 100%; }
-@media (min-width: 768px) { .chart-container { height: 250px; } }
 
-/* Range selectors sizing for dashboard */
-#rangeSelect.form-select, #churnRangeSelect.form-select, #electricRangeSelect.form-select { min-width: 110px; max-width: 140px; }
+/* Cố định chiều cao biểu đồ để Chart.js không bị xẹp trên Mobile */
+.chart-container { position: relative; height: 320px; width: 100%; }
+.chart-container-small { position: relative; height: 260px; width: 100%; }
 
-/* Electric top list */
-#electricTopList ol { padding-left: 1rem; margin: 0; }
-#electricTopList li { line-height: 1.25; }
-#electricTopList .fw-semibold { font-size: .95rem; }
+/* Khối Icon bo góc hiện đại */
+.icon-shape {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 14px;
+    transition: transform 0.2s;
+}
+.card-metric {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.card-metric:hover { 
+    transform: translateY(-4px); 
+    box-shadow: 0 12px 24px -4px rgba(0, 0, 0, 0.08); 
+}
+.card-metric:hover .icon-shape { 
+    transform: scale(1.1) rotate(5deg); 
+}
+
+/* Tùy chỉnh thanh cuộn cho danh sách Top (Premium Scrollbar) */
+.custom-scrollbar::-webkit-scrollbar { width: 5px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+/* Các ô biểu đồ nhỏ ở dưới cùng */
+.mini-chart-wrapper {
+    position: relative;
+    width: 100%;
+    max-width: 180px;
+    height: 180px;
+    margin: 0 auto;
+}
