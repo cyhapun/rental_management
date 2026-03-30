@@ -81,7 +81,7 @@
             <a class="nav-link rounded-3 {% if current_path.startswith('/contracts') %}active{% endif %}" href="/contracts/"><i class="fa-solid fa-file-signature me-3"></i>Hợp đồng</a>
             
             <div class="sidebar-heading text-muted text-uppercase fs-7 fw-bold mb-2 mt-4 px-3">Tài chính & Dịch vụ</div>
-            <a class="nav-link rounded-3 {% if current_path.startswith('/electric') %}active{% endif %}" href="/electric/"><i class="fa-solid fa-bolt me-3"></i>Điện nước</a>
+            <a class="nav-link rounded-3 {% if current_path.startswith('/electric') %}active{% endif %}" href="/electric/"><i class="fa-solid fa-bolt me-3"></i>Chỉ số điện</a>
             <a class="nav-link rounded-3 {% if current_path.startswith('/bills') %}active{% endif %}" href="/bills/"><i class="fa-solid fa-file-invoice-dollar me-3"></i>Hóa đơn</a>
             
             {% if user_role == 'admin' %}
@@ -127,7 +127,7 @@
               </a>
               <a href="/electric/" class="mobile-nav-item {% if current_path.startswith('/electric') %}active{% endif %}">
                 <div class="icon-box"><i class="fa-solid fa-bolt"></i></div>
-                <span>Điện nước</span>
+                <span>Chỉ số điện</span>
               </a>
               <a href="/bills/" class="mobile-nav-item {% if current_path.startswith('/bills') %}active{% endif %}">
                 <div class="icon-box"><i class="fa-solid fa-file-invoice-dollar"></i></div>

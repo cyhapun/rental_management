@@ -30,7 +30,7 @@ function openEditReading(btn){
   document.getElementById('edit_month').value = row.dataset.month || '';
   document.getElementById('edit_old_index').value = row.dataset.oldIndex || 0;
   document.getElementById('edit_new_index').value = row.dataset.newIndex || 0;
-  document.getElementById('edit_price').value = row.dataset.price || 2000;
+  document.getElementById('edit_price').value = row.dataset.price || 3000;
   const form = document.getElementById('editReadingForm');
   form.action = `/electric/${id}/update`;
   const modal = new bootstrap.Modal(document.getElementById('editReadingModal'));
@@ -39,32 +39,56 @@ function openEditReading(btn){
 
 function filterElectric(){
   const q = (document.getElementById('electricSearch').value || '').toLowerCase();
-  const rows = document.querySelectorAll('table tbody tr.data-row');
+  const rows = document.querySelectorAll('#electricTableBody tr.data-row');
   const noSearchRow = document.getElementById('noSearchResultRow');
   const emptyDbRow = document.getElementById('emptyDbRow');
   let visibleCount = 0;
+  
   if (emptyDbRow && emptyDbRow.style.display !== 'none') { return; }
-  rows.forEach(r => { if (r.innerText.toLowerCase().includes(q)) { r.style.display = ''; visibleCount++; } else { r.style.display = 'none'; } });
-  if (visibleCount === 0 && rows.length > 0) noSearchRow.style.display = ''; else if (noSearchRow) noSearchRow.style.display = 'none';
+  
+  rows.forEach(r => { 
+    // Dùng textContent thay cho innerText để an toàn với HTML ẩn
+    if (r.textContent.toLowerCase().includes(q)) { 
+        r.style.display = ''; 
+        visibleCount++; 
+    } else { 
+        r.style.display = 'none'; 
+    } 
+  });
+  
+  if (visibleCount === 0 && rows.length > 0) {
+      noSearchRow.style.display = ''; 
+  } else if (noSearchRow) {
+      noSearchRow.style.display = 'none';
+  }
 }
 
 function sortElectric(){
   const sortVal = document.getElementById('electricSort').value;
-  const tbody = document.querySelector('table tbody');
-  const rows = Array.from(tbody.querySelectorAll('tr'));
-  const monthVal = (r)=> (r.children[1].innerText || '').trim();
-  const usageVal = (r)=> parseInt((r.children[4].innerText||'0').trim(),10) || 0;
-  rows.sort((a,b)=>{
-    if (sortVal==='month_desc') return monthVal(b).localeCompare(monthVal(a));
-    if (sortVal==='month_asc') return monthVal(a).localeCompare(monthVal(b));
-    if (sortVal==='usage_desc') return usageVal(b)-usageVal(a);
-    if (sortVal==='usage_asc') return usageVal(a)-usageVal(b);
+  const tbody = document.getElementById('electricTableBody');
+  const rows = Array.from(tbody.querySelectorAll('tr.data-row')); // Chỉ sort các hàng chứa data
+  
+  rows.sort((a,b) => {
+    // Lấy dữ liệu thuần túy từ dataset thay vì moi từ HTML
+    const monthA = a.dataset.month || '';
+    const monthB = b.dataset.month || '';
+    const usageA = parseInt(a.dataset.usage || '0', 10);
+    const usageB = parseInt(b.dataset.usage || '0', 10);
+    
+    if (sortVal === 'month_desc') return monthB.localeCompare(monthA);
+    if (sortVal === 'month_asc') return monthA.localeCompare(monthB);
+    if (sortVal === 'usage_desc') return usageB - usageA;
+    if (sortVal === 'usage_asc') return usageA - usageB;
     return 0;
   });
-  rows.forEach(r=>tbody.appendChild(r));
+  
+  rows.forEach(r => tbody.appendChild(r));
 }
 
 document.addEventListener('DOMContentLoaded', function(){
-  const input = document.getElementById('electricSearch'); if (input) input.addEventListener('input', filterElectric);
-  const s = document.getElementById('electricSort'); if (s) s.addEventListener('change', sortElectric);
+  const input = document.getElementById('electricSearch'); 
+  if (input) input.addEventListener('input', filterElectric);
+  
+  const s = document.getElementById('electricSort'); 
+  if (s) s.addEventListener('change', sortElectric);
 });

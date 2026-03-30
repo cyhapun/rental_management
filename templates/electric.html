@@ -3,119 +3,173 @@
 <link rel="stylesheet" href="/static/css/electric.css">
 {% endblock %}
 {% block content %}
-  <div class="d-flex justify-content-between align-items-center mb-3">
-  <h1 class="h4">Chỉ số điện</h1>
+
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
   <div>
-    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createReadingModal"><i class="fa-solid fa-plus me-1"></i>Thêm chỉ số</button>
+    <h1 class="h4 fw-bold text-dark mb-1"><i class="fa-solid fa-bolt text-warning me-2"></i>Chỉ số điện</h1>
+    <div class="text-muted small">Quản lý và chốt số điện tiêu thụ hàng tháng của các phòng</div>
+  </div>
+  <div class="d-flex gap-2">
+    <button class="btn btn-primary rounded-pill px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#createReadingModal"><i class="fa-solid fa-plus me-1"></i>Thêm chỉ số</button>
+    <button class="btn btn-light border rounded-pill px-3" type="button" data-print-target=".table-responsive" data-print-title="Chi so dien"><i class="fa-solid fa-print text-muted me-1"></i>In ảnh</button>
   </div>
 </div>
 
-<!-- Create reading modal -->
+<div class="bg-panel p-3 mb-4 d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+  <div class="input-group" style="max-width: 400px;">
+    <span class="input-group-text bg-light border-end-0 text-muted"><i class="fa-solid fa-magnifying-glass"></i></span>
+    <input class="form-control border-start-0 bg-light" id="electricSearch" placeholder="Tìm theo phòng / tháng..." />
+  </div>
+
+  <div class="d-flex flex-wrap gap-2">
+    <select class="form-select bg-light border-0 fw-semibold text-dark" id="electricSort" style="width: auto; cursor: pointer; min-width: 200px;">
+      <option value="default">Sắp xếp mặc định</option>
+      <option value="month_desc">Tháng: Mới nhất</option>
+      <option value="month_asc">Tháng: Cũ nhất</option>
+      <option value="usage_desc">Đã dùng: Cao -> Thấp</option>
+      <option value="usage_asc">Đã dùng: Thấp -> Cao</option>
+    </select>
+  </div>
+</div>
+
+<div class="bg-panel p-0 overflow-hidden mb-4">
+  <div class="table-responsive m-0">
+    <table class="table table-hover mb-0" id="electricTable">
+      <thead>
+        <tr>
+          <th>Phòng</th>
+          <th class="text-center">Kỳ thu (Tháng)</th>
+          <th class="text-center">Số cũ</th>
+          <th class="text-center">Số mới</th>
+          <th class="text-center">Đã dùng</th>
+          <th class="text-center">Thao tác</th>
+        </tr>
+      </thead>
+      <tbody id="electricTableBody">
+        {% for r in readings %}
+        <tr class="data-row" data-reading-id="{{ r.id }}" data-month="{{ r.month }}" data-old-index="{{ r.old_index }}" data-new-index="{{ r.new_index }}" data-price="{{ r.price_per_kwh }}" data-usage="{{ r.usage }}">
+          <td>
+            <span class="badge bg-light text-dark border px-2 py-1 fs-6">
+              <i class="fa-solid fa-door-closed text-muted me-1"></i> 
+              {{ r.room.room_number if r.room else r.room_id }}
+            </span>
+          </td>
+          <td class="text-center">
+            <span class="text-primary fw-semibold"><i class="fa-regular fa-calendar-alt me-1"></i>{{ r.month }}</span>
+          </td>
+          <td class="text-center text-muted">{{ r.old_index }}</td>
+          <td class="text-center fw-semibold">{{ r.new_index }}</td>
+          <td class="text-center">
+            <span class="badge bg-warning-subtle text-dark border border-warning-subtle px-2 py-1 fs-6">
+              {{ r.usage }} <small class="text-muted fw-normal ms-1">kWh</small>
+            </span>
+          </td>
+          <td>
+            <div class="d-flex justify-content-center gap-1">
+              <button class="btn action-btn bg-primary-subtle text-primary" type="button" onclick="openEditReading(this)" title="Sửa">
+                <i class="fa-solid fa-pen"></i>
+              </button>
+              <form action="/electric/{{ r.id }}/delete" method="post" style="display:inline" onsubmit="return confirm('Cảnh báo: Bạn có chắc chắn muốn xóa bản ghi chỉ số điện này không?');">
+                <button class="btn action-btn bg-danger-subtle text-danger" type="submit" title="Xóa">
+                  <i class="fa-solid fa-trash-can"></i>
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr id="emptyDbRow">
+          <td colspan="6" class="text-center text-muted py-4">Hiện tại chưa có dữ liệu điện năng.</td>
+        </tr>
+        {% endfor %}
+        
+        <tr id="noSearchResultRow" style="display: none;">
+          <td colspan="6" class="text-center text-muted py-4">Không tìm thấy dữ liệu phù hợp với từ khóa.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
 <div class="modal fade" id="createReadingModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog">
+  <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
-      <div class="modal-header"><h5 class="modal-title">Thêm chỉ số điện</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold"><i class="fa-solid fa-bolt text-warning me-2"></i>Chốt số điện mới</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
       <form action="/electric/add" method="post">
         <div class="modal-body">
-          <div class="mb-2">
-            <select class="form-select" name="room_id" id="roomSelect" required>
-              <option value="" selected disabled>Chọn phòng</option>
-              {% for r in rooms %}
-                <option value="{{ r.id }}">{{ r.room_number }}{% if r.status %} ({{ r.status }}){% endif %}</option>
-              {% endfor %}
-            </select>
+          <div class="row g-3 mb-3">
+            <div class="col-6">
+              <label class="form-label small fw-semibold text-muted">Phòng</label>
+              <select class="form-select bg-light" name="room_id" id="roomSelect" required>
+                <option value="" selected disabled>-- Chọn phòng --</option>
+                {% for r in rooms %}
+                  <option value="{{ r.id }}">P. {{ r.room_number }} {% if r.status == 'occupied' %}(Đang thuê){% endif %}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label small fw-semibold text-muted">Kỳ thu (Tháng)</label>
+              <input class="form-control bg-light" name="month" type="month" value="{{ default_month }}" required />
+            </div>
           </div>
-          <div class="mb-2"><input class="form-control" name="month" type="month" value="{{ default_month }}" required /></div>
-          <div class="mb-2"><input class="form-control" name="old_index" id="oldIndex" placeholder="Chỉ số cũ" type="number" readonly /></div>
-          <div class="mb-2"><input class="form-control" name="new_index" placeholder="Chỉ số mới" type="number" required /></div>
-          <div class="mb-2"><input class="form-control" name="price_per_kwh" placeholder="Giá/kWh" value="3000" /></div>
+          <div class="row g-3 mb-3">
+            <div class="col-6">
+              <label class="form-label small fw-semibold text-muted">Số cũ (Hệ thống tự lấy)</label>
+              <input class="form-control bg-secondary-subtle text-muted" name="old_index" id="oldIndex" placeholder="Chỉ số cũ" type="number" readonly />
+            </div>
+            <div class="col-6">
+              <label class="form-label small fw-semibold text-primary">Số mới (Chỉ số hiện tại)</label>
+              <input class="form-control border-primary shadow-sm" name="new_index" placeholder="Nhập số mới" type="number" required />
+            </div>
+          </div>
+          <div class="mb-2">
+            <label class="form-label small fw-semibold text-muted">Đơn giá (VNĐ/kWh)</label>
+            <input class="form-control bg-light" name="price_per_kwh" placeholder="VD: 3000" value="3000" type="number" required />
+          </div>
         </div>
-        <div class="modal-footer">
-          <button class="btn btn-secondary" data-bs-dismiss="modal" type="button">Hủy</button>
-          <button class="btn btn-primary" type="submit">Thêm</button>
+        <div class="modal-footer bg-light rounded-bottom-4">
+          <button class="btn btn-light border rounded-pill px-4" data-bs-dismiss="modal" type="button">Hủy</button>
+          <button class="btn btn-primary rounded-pill px-4" type="submit">Lưu chỉ số</button>
         </div>
       </form>
     </div>
   </div>
 </div>
 
-<div class="table-toolbar">
-  <div class="input-group mb-2" style="max-width:420px;">
-    <input class="form-control form-control-sm" id="electricSearch" placeholder="Tìm theo phòng / tháng..." />
-    <button class="btn btn-sm btn-light" type="button" onclick="filterElectric()"><i class="fa-solid fa-magnifying-glass"></i></button>
-  </div>
-  <div class="d-flex gap-2 mb-2">
-    <select class="form-select form-select-sm" id="electricSort" style="max-width:230px;">
-      <option value="default">Sắp xếp mặc định</option>
-      <option value="month_desc">Tháng: mới nhất</option>
-      <option value="month_asc">Tháng: cũ nhất</option>
-      <option value="usage_desc">Đã dùng: cao -> thấp</option>
-      <option value="usage_asc">Đã dùng: thấp -> cao</option>
-    </select>
-  </div>
-</div>
-
-<div class="table-responsive">
-  <table class="table table-sm table-striped">
-    <thead>
-      <tr>
-        <th>Phòng</th>
-        <th>Tháng</th>
-        <th>Cũ</th>
-        <th>Mới</th>
-        <th>Đã dùng</th>
-        <th>Thao tác</th>
-      </tr>
-    </thead>
-    <tbody id="electricTableBody">
-      {% for r in readings %}
-      <tr class="data-row" data-reading-id="{{ r.id }}" data-month="{{ r.month }}" data-old-index="{{ r.old_index }}" data-new-index="{{ r.new_index }}" data-price="{{ r.price_per_kwh }}">
-        <td>
-          {% if r.room %}
-            {{ r.room.room_number }}
-          {% else %}
-            {{ r.room_id }}
-          {% endif %}
-        </td>
-        <td>{{ r.month }}</td>
-        <td>{{ r.old_index }}</td>
-        <td>{{ r.new_index }}</td>
-        <td>{{ r.usage }}</td>
-        <td>
-          <button class="btn btn-sm btn-outline-primary me-2" type="button" onclick="openEditReading(this)">Sửa</button>
-          <form action="/electric/{{ r.id }}/delete" method="post" style="display:inline" onsubmit="return confirm('Xóa chỉ số điện này?');">
-            <button class="btn btn-sm btn-outline-danger" type="submit">Xóa</button>
-          </form>
-        </td>
-      </tr>
-      {% else %}
-      <tr id="emptyDbRow">
-        <td colspan="6" class="text-center text-muted py-3">Hiện tại chưa có dữ liệu</td>
-      </tr>
-      {% endfor %}
-      
-      <tr id="noSearchResultRow" style="display: none;">
-        <td colspan="6" class="text-center text-muted py-3">Không tìm thấy dữ liệu phù hợp</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-
-<!-- Modal sửa chỉ số điện -->
 <div class="modal fade" id="editReadingModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog">
+  <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
-      <div class="modal-header"><h5 class="modal-title">Sửa chỉ số điện</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold"><i class="fa-solid fa-pen-to-square text-primary me-2"></i>Sửa chỉ số điện</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
       <form id="editReadingForm" method="post">
         <div class="modal-body">
-          <div class="mb-2"><input class="form-control" id="edit_month" name="month" type="month" required></div>
-          <div class="mb-2"><input class="form-control" id="edit_old_index" name="old_index" type="number" required></div>
-          <div class="mb-2"><input class="form-control" id="edit_new_index" name="new_index" type="number" required></div>
-          <div class="mb-2"><input class="form-control" id="edit_price" name="price_per_kwh" type="number" required></div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-muted">Kỳ thu (Tháng)</label>
+            <input class="form-control bg-light" id="edit_month" name="month" type="month" required>
+          </div>
+          <div class="row g-3 mb-3">
+            <div class="col-6">
+              <label class="form-label small fw-semibold text-muted">Số cũ</label>
+              <input class="form-control bg-light" id="edit_old_index" name="old_index" type="number" required>
+            </div>
+            <div class="col-6">
+              <label class="form-label small fw-semibold text-muted">Số mới</label>
+              <input class="form-control bg-light" id="edit_new_index" name="new_index" type="number" required>
+            </div>
+          </div>
+          <div class="mb-2">
+            <label class="form-label small fw-semibold text-muted">Đơn giá (VNĐ/kWh)</label>
+            <input class="form-control bg-light" id="edit_price" name="price_per_kwh" type="number" required>
+          </div>
         </div>
-        <div class="modal-footer">
-          <button class="btn btn-secondary" data-bs-dismiss="modal" type="button">Hủy</button>
-          <button class="btn btn-primary" type="submit">Lưu</button>
+        <div class="modal-footer bg-light rounded-bottom-4">
+          <button class="btn btn-light border rounded-pill px-4" data-bs-dismiss="modal" type="button">Hủy</button>
+          <button class="btn btn-primary rounded-pill px-4" type="submit">Lưu thay đổi</button>
         </div>
       </form>
     </div>
