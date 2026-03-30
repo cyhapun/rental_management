@@ -1,38 +1,120 @@
 {% extends 'base.html' %}
 
-{% block content %}
-<div class="d-flex justify-content-center align-items-center" style="min-height: 100vh; padding: 2rem;">
+{% block extra_css %}
+<style>
+  /* Căn giữa thẻ đăng nhập giữa màn hình (trừ đi header) */
+  .login-wrapper {
+    min-height: calc(100vh - 120px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+  }
   
-  <div class="card border-0 shadow-sm p-4 w-100 login-card" style="max-width: 640px; border-radius: 15px;">
+  /* Thẻ đăng nhập phong cách hiện đại */
+  .login-card {
+    max-width: 400px;
+    width: 100%;
+    border-radius: 24px;
+    background: var(--bg-surface);
+    box-shadow: var(--shadow-lg);
+    border: 1px solid rgba(0,0,0,0.04);
+    overflow: hidden;
+    animation: slideUpFade 0.4s ease-out forwards;
+  }
+  
+  /* Khối Header của Login với hiệu ứng Gradient mờ */
+  .login-header {
+    background: linear-gradient(135deg, var(--primary-100) 0%, #ffffff 100%);
+    padding: 2.5rem 2rem 1.5rem;
+    text-align: center;
+    border-bottom: 1px solid rgba(0,0,0,0.02);
+  }
+  
+  .login-body {
+    padding: 2rem;
+  }
+
+  /* Tùy chỉnh ô nhập liệu (Input) có chứa Icon */
+  .input-group-custom {
+    border-radius: 12px;
+    border: 1px solid #cbd5e1;
+    overflow: hidden;
+    transition: all 0.2s;
+    background: #fff;
+  }
+  .input-group-custom:focus-within {
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+    border-color: var(--primary-500);
+  }
+  .input-group-custom .input-group-text {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    padding-left: 1rem;
+    padding-right: 0.5rem;
+  }
+  .input-group-custom .form-control {
+    border: none;
+    padding-left: 0.5rem;
+    background: transparent;
+  }
+  .input-group-custom .form-control:focus {
+    box-shadow: none;
+  }
+
+  /* Hiệu ứng trượt lên nhẹ nhàng khi mở trang */
+  @keyframes slideUpFade {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="login-wrapper">
+  <div class="login-card">
     
-    <div class="text-center mb-4">
-      <h2 class="fw-bold text-primary">Chào mừng trở lại!</h2>
-      <p class="text-muted small">Đăng nhập để tiếp tục sử dụng hệ thống</p>
+    <div class="login-header">
+      <div class="d-inline-flex align-items-center justify-content-center p-3 rounded-circle bg-white shadow-sm mb-3" style="width: 72px; height: 72px;">
+        <img src="/static/images/logo.svg" alt="Logo" style="max-width: 100%; max-height: 100%;">
+      </div>
+      <h4 class="fw-bold text-dark mb-1">Quản lý nhà trọ</h4>
+      <p class="text-muted small mb-0">Đăng nhập để tiếp tục vào hệ thống</p>
     </div>
+    
+    <div class="login-body">
+      <form action="/login" method="post">
+        
+        <div class="mb-4">
+          <label class="form-label small fw-semibold text-muted">Tên đăng nhập</label>
+          <div class="input-group input-group-custom">
+            <span class="input-group-text"><i class="fa-solid fa-user"></i></span>
+            <input name="username" class="form-control py-2" placeholder="Nhập tên đăng nhập" required autocomplete="username" />
+          </div>
+        </div>
 
-    <form action="/login" method="post">
-      <div class="form-floating mb-3">
-        <input name="username" class="form-control form-control-lg" id="username" placeholder="Tên đăng nhập" required />
-        <label for="username">Tên đăng nhập</label>
-      </div>
+        <div class="mb-4">
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <label class="form-label small fw-semibold text-muted mb-0">Mật khẩu</label>
+          </div>
+          <div class="input-group input-group-custom">
+            <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+            <input name="password" type="password" class="form-control py-2" placeholder="Nhập mật khẩu" required autocomplete="current-password" />
+          </div>
+        </div>
 
-      <div class="form-floating mb-3">
-        <input name="password" type="password" class="form-control form-control-lg" id="password" placeholder="Mật khẩu" required />
-        <label for="password">Mật khẩu</label>
-      </div>
+        <button class="btn btn-primary w-100 py-2 mb-4 fw-bold rounded-pill shadow-sm" type="submit" style="font-size: 1.05rem;">
+          <i class="fa-solid fa-right-to-bracket me-2"></i> Đăng nhập
+        </button>
+        
+        <div class="text-center pt-2 border-top">
+          <span class="small text-muted">Bạn cần hỗ trợ? <a href="#" class="text-primary fw-semibold text-decoration-none">Liên hệ Admin</a></span>
+        </div>
 
-      <button class="btn btn-primary w-100 py-2 fw-bold" type="submit" style="border-radius: 8px;">
-        Đăng nhập
-      </button>
-    </form>
-
-    <div class="text-center mt-4">
-      <a href="#" class="text-decoration-none small text-muted">Quên mật khẩu?</a>
+      </form>
     </div>
 
   </div>
 </div>
-
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-
 {% endblock %}
