@@ -111,7 +111,7 @@
                 {{ b.contract_display.tenant_name if b.contract_display else 'Khách vãng lai' }}
               </div>
               <div class="small text-muted mt-1">
-                <span class="badge bg-light text-dark border px-2 py-1"><i class="fa-solid fa-door-closed me-1 text-muted"></i> P. {{ b.contract_display.room_number if b.contract_display else '--' }}</span>
+                <span class="badge bg-light text-dark border px-2 py-1">Phòng {{ b.contract_display.room_number if b.contract_display else '--' }}</span>
               </div>
             </div>
           </div>
@@ -154,4 +154,21 @@
     {% endif %}
   </div>
 </div>
+
+<div class="modal fade" id="billViewModal" tabindex="-1" aria-labelledby="billViewModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold" id="billViewModalLabel">Chi tiết Hóa đơn</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+      </div>
+      <div class="modal-body p-0">
+        <iframe id="billViewFrame" style="width: 100%; height: 75vh; border: none;"></iframe>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/static/js/bills.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 {% endblock %}

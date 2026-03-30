@@ -1,5 +1,7 @@
 // bills.js - behaviors for bills page
-async function showBill(billId){
+
+// 1. GẮN HÀM VÀO WINDOW ĐỂ HTML CÓ THỂ GỌI ĐƯỢC
+window.showBill = async function(billId) {
   const frame = document.getElementById('billViewFrame');
   (async ()=>{
     try{
@@ -16,7 +18,7 @@ async function showBill(billId){
       modal.show();
     }catch(e){ console.error(e); try{ new Notyf().error('Không thể tải hóa đơn'); }catch(err){} }
   })();
-}
+};
 
 // Cập nhật: Sử dụng Dataset để tìm kiếm an toàn, không vướng Icon
 function filterBills(){
@@ -64,7 +66,8 @@ document.addEventListener('DOMContentLoaded', function(){
   const s = document.getElementById('billSort'); if (s) s.addEventListener('change', sortBills);
 });
 
-async function captureInvoiceImage(billId, btn){
+// 2. GẮN HÀM VÀO WINDOW ĐỂ HTML CÓ THỂ GỌI ĐƯỢC
+window.captureInvoiceImage = async function(billId, btn) {
   try{
     const origHtml = btn.innerHTML; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
     const resp = await fetch(`/invoice/print/${billId}`, { credentials: 'include' });
@@ -93,4 +96,4 @@ async function captureInvoiceImage(billId, btn){
     setTimeout(()=>{ const f = document.getElementById('invoice-capture-iframe'); if (f) f.remove(); }, 800);
     btn.innerHTML = origHtml;
   }catch(e){ console.error(e); try{ new Notyf().error('Không thể tạo ảnh hóa đơn'); }catch(err){}; btn.innerHTML = origHtml; }
-}
+};

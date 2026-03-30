@@ -1,55 +1,265 @@
 <!doctype html>
-<html>
+<html lang="vi">
   <head>
     <meta charset="utf-8" />
     <title>HÓA ĐƠN TIỀN TRỌ</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
-      :root{--muted:#6c757d}
-      body{font-family: 'Helvetica Neue', Arial, sans-serif; background:#f4f6f9; padding:20px}
-      .invoice{max-width:520px;margin:12px auto;background:#fff;border-radius:10px;padding:18px;box-shadow:0 10px 30px rgba(2,6,23,0.06)}
-      .invoice-header{text-align:center;margin-bottom:8px}
-      .invoice-title{font-size:20px;font-weight:800;letter-spacing:1px}
-      .invoice-sub{color:var(--muted);font-size:0.95rem;margin-bottom:12px}
-      .invoice-body{padding:6px 2px}
-      .invoice-row{display:flex;justify-content:space-between;padding:8px 4px;border-bottom:1px dashed #eee}
-      .invoice-row .label{color:#333}
-      .invoice-row .value{color:#111;font-weight:600}
-      .invoice-row.total{font-size:1.05rem;font-weight:800;border-top:2px solid #e9ecef}
-      .bank-info{text-align:center;margin-top:18px;color:var(--muted)}
-      @media print{body{background:#fff} .invoice{box-shadow:none;border-radius:0}}
+      :root {
+        --primary: #2563eb;
+        --primary-subtle: #eff6ff;
+        --dark: #0f172a;
+        --muted: #64748b;
+        --border: #e2e8f0;
+        --success: #16a34a;
+        --warning-text: #ea580c;
+      }
+      body { 
+        font-family: 'Inter', sans-serif; 
+        background: #f4f7fb; 
+        padding: 2rem 1rem; 
+        color: var(--dark); 
+        margin: 0;
+      }
+      
+      /* Thẻ Hóa đơn chính */
+      .invoice-wrapper { 
+        max-width: 540px; 
+        margin: 0 auto; 
+        background: #ffffff; 
+        border-radius: 20px; 
+        box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08); 
+        overflow: hidden; 
+      }
+      
+      /* Phần đầu (Header) */
+      .invoice-header { 
+        background: var(--primary); 
+        color: #ffffff; 
+        padding: 2rem 1.5rem; 
+        text-align: center; 
+      }
+      .invoice-header h1 { 
+        margin: 0; 
+        font-size: 1.4rem; 
+        font-weight: 800; 
+        letter-spacing: 1px; 
+        text-transform: uppercase;
+      }
+      .invoice-header p { 
+        margin: 0.4rem 0 0; 
+        color: rgba(255,255,255,0.85); 
+        font-size: 0.95rem; 
+        font-weight: 500;
+      }
+      
+      /* Phần nội dung */
+      .invoice-body { 
+        padding: 2rem; 
+      }
+
+      /* Hộp Thông tin khách & phòng */
+      .info-box { 
+        background: #f8fafc; 
+        border-radius: 12px; 
+        padding: 1.25rem; 
+        margin-bottom: 1.5rem; 
+        border: 1px solid var(--border); 
+      }
+      .info-grid { 
+        display: grid; 
+        grid-template-columns: 1fr 1fr; 
+        gap: 1.2rem; 
+      }
+      .info-item { 
+        display: flex; 
+        flex-direction: column; 
+      }
+      .info-label { 
+        font-size: 0.75rem; 
+        color: var(--muted); 
+        font-weight: 600; 
+        text-transform: uppercase; 
+        margin-bottom: 0.3rem; 
+        letter-spacing: 0.5px;
+      }
+      .info-value { 
+        font-weight: 700; 
+        font-size: 0.95rem; 
+      }
+
+      /* Bảng chi tiết */
+      .section-title { 
+        font-size: 1rem; 
+        font-weight: 800; 
+        margin-bottom: 1rem; 
+        color: var(--dark); 
+        display: flex; 
+        align-items: center; 
+        gap: 0.5rem; 
+        padding-top: 0.5rem;
+      }
+      .bill-row { 
+        display: flex; 
+        justify-content: space-between; 
+        padding: 0.8rem 0; 
+        border-bottom: 1px dashed var(--border); 
+      }
+      .bill-row:last-child { border-bottom: none; }
+      .bill-row .desc { color: var(--muted); font-weight: 600; font-size: 0.95rem; }
+      .bill-row .amount { font-weight: 700; font-size: 1rem; color: var(--dark); }
+      
+      /* Chi tiết khối điện nước */
+      .electric-details { 
+        font-size: 0.8rem; 
+        color: var(--muted); 
+        margin-top: 0.35rem; 
+        line-height: 1.5;
+        background: #f1f5f9;
+        padding: 6px 10px;
+        border-radius: 6px;
+        display: inline-block;
+      }
+
+      /* Khối Tổng Tiền */
+      .total-box { 
+        background: var(--primary-subtle); 
+        border-radius: 16px; 
+        padding: 1.5rem; 
+        text-align: center; 
+        margin-top: 1.5rem; 
+        border: 1px dashed rgba(37, 99, 235, 0.3); 
+      }
+      .total-label { 
+        color: var(--primary); 
+        font-weight: 700; 
+        font-size: 0.85rem; 
+        text-transform: uppercase; 
+        letter-spacing: 1px; 
+        margin-bottom: 0.5rem; 
+      }
+      .total-amount { 
+        font-size: 2.2rem; 
+        font-weight: 800; 
+        color: var(--primary); 
+      }
+
+      /* Trạng thái Thanh toán & Ngân hàng */
+      .payment-status { 
+        margin-top: 1.5rem; 
+        padding: 1rem; 
+        border-radius: 12px; 
+        background: #ecfdf5; 
+        color: var(--success); 
+        display: flex; 
+        align-items: center; 
+        justify-content: space-between; 
+        font-weight: 600; 
+        border: 1px solid #bbf7d0; 
+        font-size: 0.9rem;
+      }
+      .bank-info { 
+        margin-top: 1.5rem; 
+        text-align: center; 
+        font-size: 0.9rem; 
+        color: var(--muted); 
+        line-height: 1.6; 
+        padding-top: 1.5rem;
+        border-top: 1px dashed var(--border);
+      }
+      .bank-info strong { color: var(--dark); }
+
+      /* Tối ưu hóa khi lưu ảnh hoặc in ra PDF (Ép trình duyệt giữ nguyên màu nền) */
+      @media print {
+        body { background: #ffffff; padding: 0; }
+        .invoice-wrapper { box-shadow: none; border: none; border-radius: 0; max-width: 100%; margin: 0; }
+        .invoice-header, .total-box, .payment-status, .info-box, .electric-details {
+          -webkit-print-color-adjust: exact !important; 
+          print-color-adjust: exact !important; 
+        }
+      }
     </style>
   </head>
   <body>
-    <div class="invoice">
+    <div class="invoice-wrapper">
+      
       <div class="invoice-header">
-        <div class="invoice-title">HÓA ĐƠN TIỀN TRỌ</div>
-        <div class="invoice-sub">Huỳnh Ngân</div>
+        <h1>HÓA ĐƠN TIỀN TRỌ</h1>
+        <p>Kỳ thu: Tháng {{ bill.month if bill and bill.month else '...' }}</p>
       </div>
 
       <div class="invoice-body">
-        <div class="invoice-row"><div class="label">Người thuê:</div><div class="value">{{ (tenant.full_name if tenant else (bill.contract_display.tenant_name if bill.contract_display and bill.contract_display.tenant_name else 'Rỗng')) }}</div></div>
-        <div class="invoice-row"><div class="label">Số phòng:</div><div class="value">{{ (room.room_number if room else (bill.contract_display.room_number if bill.contract_display and bill.contract_display.room_number else 'Rỗng')) }}</div></div>
-        <div class="invoice-row"><div class="label">Ngày tạo:</div><div class="value">{{ (bill.created_at_fmt or '') or 'Rỗng' }}</div></div>
-        <div class="invoice-row"><div class="label">Chỉ số cũ:</div><div class="value">{{ (bill.prev_index is defined and (bill.prev_index|string)) or (bill.room_current_electric_index is defined and (bill.room_current_electric_index|string)) or 'Rỗng' }}</div></div>
-        <div class="invoice-row"><div class="label">Chỉ số mới:</div><div class="value">{{ (bill.curr_index is defined and (bill.curr_index|string)) or 'Rỗng' }}</div></div>
-        <div class="invoice-row"><div class="label">Tiêu thụ:</div><div class="value">{{ (bill.usage is defined and (bill.usage|string)) or 'Rỗng' }}{% if bill.kwh_price is defined and bill.kwh_price %} x {{ bill.kwh_price | money }}{% endif %}</div></div>
-        <div class="invoice-row"><div class="label">Tiền điện:</div><div class="value">{{ bill.electric_cost | money }}</div></div>
-        <div class="invoice-row"><div class="label">Tiền nước:</div><div class="value">{{ bill.water_cost | money }}</div></div>
-        <div class="invoice-row"><div class="label">Tiền phòng:</div><div class="value">{{ bill.room_price | money }}</div></div>
+        
+        <div class="info-box">
+          <div class="info-grid">
+            <div class="info-item">
+              <span class="info-label">Người thuê</span>
+              <span class="info-value">{{ (tenant.full_name if tenant else (bill.contract_display.tenant_name if bill.contract_display and bill.contract_display.tenant_name else 'Rỗng')) }}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Số phòng</span>
+              <span class="info-value text-primary">Phòng {{ (room.room_number if room else (bill.contract_display.room_number if bill.contract_display and bill.contract_display.room_number else 'Rỗng')) }}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Ngày lập HĐ</span>
+              <span class="info-value">{{ (bill.created_at_fmt or '') or 'Rỗng' }}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Tình trạng</span>
+              {% if bill.status == 'paid' %}
+                <span class="info-value" style="color: var(--success);"><i class="fa-solid fa-circle-check me-1"></i> Đã đóng</span>
+              {% else %}
+                <span class="info-value" style="color: var(--warning-text);"><i class="fa-solid fa-clock me-1"></i> Chưa đóng</span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
 
-        <div class="invoice-row total"><div class="label">Tổng cộng:</div><div class="value">{{ bill.total | money }}</div></div>
+        <div class="section-title"><i class="fa-solid fa-file-invoice" style="color: var(--primary);"></i> Chi tiết thu phí</div>
+        
+        <div class="bill-row">
+          <div class="desc">Tiền phòng (Tháng {{ bill.month if bill and bill.month else '...' }})</div>
+          <div class="amount">{{ bill.room_price | money }}</div>
+        </div>
+        
+        <div class="bill-row">
+          <div>
+            <div class="desc">Tiền điện</div>
+            <div class="electric-details">
+              <strong>CS cũ:</strong> {{ (bill.prev_index is defined and (bill.prev_index|string)) or (bill.room_current_electric_index is defined and (bill.room_current_electric_index|string)) or 'Rỗng' }} 
+              &nbsp;|&nbsp; <strong>CS mới:</strong> {{ (bill.curr_index is defined and (bill.curr_index|string)) or 'Rỗng' }}<br>
+              <strong>Tiêu thụ:</strong> {{ (bill.usage is defined and (bill.usage|string)) or 'Rỗng' }} kWh {% if bill.kwh_price is defined and bill.kwh_price %} <span style="color:#94a3b8">x {{ bill.kwh_price | money }}</span>{% endif %}
+            </div>
+          </div>
+          <div class="amount" style="display: flex; align-items: center;">{{ bill.electric_cost | money }}</div>
+        </div>
+        
+        <div class="bill-row">
+          <div class="desc">Tiền nước</div>
+          <div class="amount">{{ bill.water_cost | money }}</div>
+        </div>
+
+        <div class="total-box">
+          <div class="total-label">Tổng thanh toán</div>
+          <div class="total-amount">{{ bill.total | money }}</div>
+        </div>
 
         {% if bill.paid_at_fmt %}
-        <div class="invoice-row"><div class="label">Ngày trả:</div><div class="value">{{ bill.paid_at_fmt }}</div></div>
-        <div class="invoice-row"><div class="label">Hình thức:</div><div class="value">{{ bill.paid_method or 'Chuyển khoản' }}</div></div>
+        <div class="payment-status">
+          <div><i class="fa-solid fa-circle-check fs-5 me-2" style="vertical-align: text-bottom;"></i> Đã thanh toán ({{ bill.paid_method or 'Chuyển khoản' }})</div>
+          <div style="font-size: 0.8rem; text-align:right;">{{ bill.paid_at_fmt }}</div>
+        </div>
         {% endif %}
 
         <div class="bank-info">
-          <div>TK: 9778847258</div>
-          <div>Vietcombank - Châu Đăng Vinh</div>
+          <strong>CHUYỂN KHOẢN NGÂN HÀNG</strong><br>
+          Ngân hàng Vietcombank<br>
+          STK: <strong style="font-size: 1.1rem;">9778847258</strong><br>
+          Chủ TK: Châu Đăng Vinh
         </div>
+
       </div>
     </div>
   </body>
