@@ -1,312 +1,330 @@
-
-:root{
-	--bg-1: #f6f8fc;
-	--bg-2: #eef2f9;
-	--surface: #ffffff;
-	--primary-500: #0d6efd;
-	--primary-600: #0b5ed7;
-	--accent: #0db5a5;
-	--muted: #6c757d;
-	--success: #10b981;
-	--danger: #ef4444;
-	--warning: #f59e0b;
-	--card-radius: 12px;
-	--shadow-1: 0 8px 24px rgba(31,38,135,.06);
-	--shadow-2: 0 6px 20px rgba(17,24,39,.06);
+:root {
+    /* Color Palette */
+    --bg-main: #f4f7fb; 
+    --bg-surface: #ffffff;
+    --primary-500: #3b82f6; 
+    --primary-600: #2563eb;
+    --primary-100: #eff6ff;
+    --accent: #10b981;
+    --text-dark: #0f172a;
+    --text-muted: #64748b;
+    --success: #22c55e;
+    --danger: #ef4444;
+    --warning: #f59e0b;
+    
+    /* Shadows & Radius */
+    --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.08);
+    --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.05);
+    --shadow-lg: 0 12px 24px rgba(15, 23, 42, 0.08);
+    --card-radius: 16px;
+    --btn-radius: 10px;
 }
 
-*{box-sizing:border-box}
-
-body{
-	font-family:Inter,Arial,Helvetica,sans-serif;
-	margin:0;
-	color:#0f172a;
-	background: linear-gradient(180deg,var(--bg-1) 0%,var(--bg-2) 100%);
-	-webkit-font-smoothing:antialiased;
-	-moz-osx-font-smoothing:grayscale;
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--bg-main);
+    color: var(--text-dark);
+    -webkit-font-smoothing: antialiased;
 }
 
-.sidebar{min-height:100vh}
-/* Header cố định trên cùng */
-.navbar {
-    position: sticky !important;
-    top: 0 !important;
-    z-index: 1050 !important;
+/* =========================================
+   1. HEADER (GLASSMORPHISM)
+========================================= */
+.app-header {
+    background: rgba(255, 255, 255, 0.85) !important;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+    height: 70px;
+    z-index: 1040;
 }
 
-/* Sidebar cố định bên trái khi cuộn (chỉ áp dụng trên màn hình lớn) */
-@media (min-width: 768px) {
-    .sidebar {
-        position: sticky !important;
-        top: 76px !important; 
-        height: calc(100vh - 76px) !important;
-        min-height: calc(100vh - 76px) !important; /* Ghi đè cái min-height: 100vh cũ */
-        align-self: flex-start; /* Quan trọng: Ngăn Bootstrap tự động kéo dài sidebar theo nội dung */
-        overflow-y: auto;
+.app-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    text-decoration: none;
+}
+
+.app-brand img { height: 38px; width: auto; }
+.brand-title {
+    color: var(--text-dark);
+    font-weight: 800;
+    font-size: 1.2rem;
+    letter-spacing: -0.02em;
+}
+
+.profile-trigger {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--primary-500), var(--primary-600));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff !important;
+    font-weight: 700;
+    font-size: 1.1rem;
+    transition: transform 0.2s;
+}
+.profile-trigger:hover { transform: scale(1.05); }
+
+.btn-icon-mobile {
+    width: 42px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    background: #fff;
+    color: var(--primary-600);
+    border: 1px solid rgba(0,0,0,0.05);
+    transition: all 0.2s;
+}
+.btn-icon-mobile:active { transform: scale(0.95); background: var(--primary-100); }
+
+/* =========================================
+   2. DESKTOP SIDEBAR
+========================================= */
+.sidebar {
+    background: var(--bg-main);
+    border-right: 1px solid rgba(0,0,0,0.03);
+    min-height: calc(100vh - 70px);
+    position: sticky;
+    top: 70px;
+    overflow-y: auto;
+}
+
+.sidebar .nav-link {
+    color: var(--text-muted);
+    font-weight: 500;
+    padding: 12px 16px;
+    transition: all 0.2s ease;
+    margin-bottom: 4px;
+}
+
+.sidebar .nav-link:hover {
+    background: rgba(0,0,0,0.03);
+    color: var(--text-dark);
+}
+
+.sidebar .nav-link.active {
+    background: var(--primary-100) !important;
+    color: var(--primary-600) !important;
+    font-weight: 600;
+    box-shadow: none;
+}
+.sidebar .nav-link.active i { color: var(--primary-600); }
+.fs-7 { font-size: 0.8rem; }
+
+/* Tùy chỉnh thanh cuộn cho Sidebar */
+.sidebar::-webkit-scrollbar { width: 5px; }
+.sidebar::-webkit-scrollbar-track { background: transparent; }
+.sidebar::-webkit-scrollbar-thumb { background-color: rgba(0, 0, 0, 0.1); border-radius: 10px; }
+
+/* =========================================
+   3. MOBILE OFFCANVAS (APP GRID UI)
+========================================= */
+.mobile-nav-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+}
+
+.mobile-nav-item {
+    background: var(--bg-surface);
+    padding: 20px 10px;
+    border-radius: 16px;
+    text-decoration: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(0,0,0,0.04);
+    box-shadow: var(--shadow-sm);
+    color: var(--text-muted);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mobile-nav-item .icon-box {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    background: var(--primary-100);
+    color: var(--primary-600);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    margin-bottom: 10px;
+    transition: all 0.2s;
+}
+
+.mobile-nav-item span {
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.mobile-nav-item:active { transform: scale(0.96); }
+
+/* Trạng thái Active */
+.mobile-nav-item.active {
+    background: var(--primary-600);
+    border-color: var(--primary-600);
+    color: #ffffff;
+    box-shadow: 0 8px 20px rgba(37, 99, 235, 0.25);
+}
+
+.mobile-nav-item.active .icon-box {
+    background: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+}
+
+.avatar-circle-white {
+    width: 46px;
+    height: 46px;
+    background: #fff;
+    color: var(--primary-600);
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 1.2rem;
+}
+
+/* =========================================
+   4. COMPONENT & UI POLISH
+========================================= */
+.content-wrapper { min-height: calc(100vh - 70px); }
+
+/* Thẻ Dashboard (Cards) */
+.card-metric {
+    background: var(--bg-surface);
+    border: none;
+    padding: 20px;
+    border-radius: var(--card-radius);
+    box-shadow: var(--shadow-md);
+    border-left: 5px solid var(--primary-500) !important;
+    transition: transform 0.2s ease;
+}
+.card-metric:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+.metric-small { color: var(--text-muted); font-size: 0.9rem; font-weight: 500; }
+
+.bg-panel {
+    background: var(--bg-surface);
+    padding: 20px;
+    border-radius: var(--card-radius);
+    box-shadow: var(--shadow-md);
+    border: 1px solid rgba(0,0,0,0.03);
+}
+
+/* Form & Nút bấm */
+.form-control, .form-select {
+    border-radius: var(--btn-radius);
+    padding: 0.6rem 1rem;
+    border: 1px solid #cbd5e1;
+}
+.form-control:focus, .form-select:focus {
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+    border-color: var(--primary-500);
+}
+.btn { border-radius: var(--btn-radius); font-weight: 500; padding: 0.6rem 1.2rem; }
+.btn-primary { background: var(--primary-600); border: none; }
+.btn-primary:hover { background: #1d4ed8; box-shadow: 0 4px 12px rgba(29, 78, 216, 0.3); }
+
+/* Table */
+.table-responsive { margin-top: 1rem; border-radius: 12px; box-shadow: var(--shadow-sm); }
+.table { background: #fff; margin-bottom: 0; }
+.table thead th { 
+    background: #f8fafc; 
+    border-bottom: 1px solid #e2e8f0; 
+    font-weight: 600; 
+    color: var(--text-muted);
+    padding: 12px 16px;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+}
+.table td { vertical-align: middle; padding: 12px 16px; border-bottom: 1px solid #f1f5f9; }
+.table tbody tr:hover { background-color: #f8fafc; }
+
+/* Thông báo (Notyf) */
+.notyf__toast { border-radius: 12px !important; box-shadow: var(--shadow-lg); }
+
+/* =========================================
+   5. RESPONSIVE QUERIES
+========================================= */
+@media (max-width: 768px) {
+    .metrics-row > [class*='col-'] { flex: 0 0 50%; max-width: 50%; padding: 6px; }
+    .metrics-row .card-metric { padding: 16px; }
+    .card-metric .h4 { font-size: 1.2rem; }
+    
+    .page-hero { flex-direction: column; align-items: stretch; gap: 10px; }
+    .hero-actions { width: 100%; justify-content: space-between; }
+    .hero-actions .btn { flex: 1; }
+    
+    .table-toolbar .input-group { width: 100%; }
+}
+
+@media (max-width: 576px) {
+    .app-brand img { height: 32px; }
+    .brand-title { font-size: 1.1rem; }
+    .mobile-nav-grid { gap: 10px; }
+    .mobile-nav-item { padding: 16px 8px; }
+    .mobile-nav-item .icon-box { width: 42px; height: 42px; font-size: 1.2rem; }
+}
+
+@media (max-width: 768px) {
+    /* 1. Ép Menu chỉ chiếm khoảng 55% màn hình (vừa đủ chuẩn để không bị hẹp quá) */
+    #offcanvasNav {
+        width: 55vw !important; 
+        min-width: 240px; /* Đảm bảo màn hình quá nhỏ thì vẫn giữ một độ rộng tối thiểu */
     }
-}
 
-/* Affix behaviour handled via CSS sticky to avoid layout shifts. */
-.sidebar .nav-link{color:#333;display:block;padding:10px 12px;margin:2px 6px}
-.sidebar .nav-link.active{background:rgba(13,110,253,0.14);color:#0d6efd}
-.sidebar .nav-link.active i{color:#0d6efd}
-.navbar-brand{font-weight:600}
-.card-metric{background:#fff;padding:16px;border-radius:12px;box-shadow:0 8px 24px rgba(31,38,135,.08)}
-.cards{display:flex;gap:12px}
-.table-responsive{margin-top:12px}
-.form-control{max-width:420px}
-.btn-primary{min-width:120px}
-
-/* Wider range selectors in dashboard chart headers */
-.bg-panel .d-flex.align-items-center .form-select {
- 	min-width: 160px;
-}
-.bg-panel .d-flex.align-items-center label {
-	min-width: 56px;
-}
-
-/* Override: make main revenue selector smaller to match other charts */
-#rangeSelect.form-select {
-  min-width: 110px;
-  max-width: 140px;
-}
-
-#churnRangeSelect.form-select {
-  min-width: 110px;
-  max-width: 140px;
-}
-
-#electricRangeSelect.form-select {
-  min-width: 110px;
-  max-width: 140px;
-}
-
-/* Style for the electric top list panel (compact list) */
-#electricTopList ol { padding-left: 1rem; margin: 0; }
-#electricTopList li { line-height: 1.25; }
-#electricTopList .fw-semibold { font-size: .95rem; }
-
-/* Accent styles */
-.navbar{background: linear-gradient(90deg,#0d6efd 0%, #6610f2 100%)}
-.navbar .navbar-brand{color:#fff}
-.card-metric{border-left:6px solid rgba(13,110,253,0.85)}
-.metric-small{color:#6c757d}
-.bg-panel{background: linear-gradient(180deg,#ffffff,#f7f9fc);padding:18px;border-radius:12px;box-shadow:0 6px 20px rgba(17,24,39,.06)}
-
-/* invoice print */
-.invoice { background: #fff; padding: 24px; border-radius: 8px; box-shadow: 0 6px 22px rgba(0,0,0,0.08)}
-.invoice h2{margin-bottom:6px}
-.text-muted-small{color:#6c757d;font-size:0.9rem}
-
-/* UI polish */
-.table { background: #fff; border-radius: 12px; overflow: hidden; box-shadow:0 4px 14px rgba(17,24,39,.06); }
-.table thead th { background: #f3f5f9; border-bottom: 1px solid #e9ecef; font-weight: 600; }
-.table td, .table th { vertical-align: middle; }
-.table tbody tr:hover { background:#f7faff; }
-.btn { border-radius: 10px; font-weight:500; }
-.form-control, .form-select { border-radius: 10px; }
-.badge { border-radius: 999px; padding: .35em .6em; }
-.modal-content { border-radius: 14px; box-shadow:0 18px 40px rgba(17,24,39,.2); }
-.nav-link.active, .nav-link:hover { background: rgba(13,110,253,0.12); border-radius: 10px; font-weight:600; }
-.nav-link.active{box-shadow: inset 3px 0 0 rgba(13,110,253,0.9)}
-.list-group-item.active { border-color:#0d6efd; background:#0d6efd; }
-.row-active-contract td { background: #fffdf2; }
-.form-select option[disabled] { color:#9aa3b2; }
-
-/* Table UI polish */
-.table td, .table th { transition: background .15s ease, color .15s ease; }
-.table .btn-sm { padding: .25rem .5rem; font-size: .82rem; }
-.table thead th { font-size: .92rem; }
-.table tbody tr td:last-child { white-space: nowrap; }
-
-@media (max-width:576px){
-	/* Reduce table density on small screens for readability */
-	.table td, .table th { padding: .45rem .5rem; font-size: .88rem; }
-	/* Avoid sticky table headers on small screens to prevent overlap with offcanvas/menu */
-	.table thead th { position: static; top: auto; z-index: auto; background: #f3f5f9; }
-	.table tbody tr td { vertical-align: middle; }
-}
-
-/* Mobile: scale down metrics cards and allow 2-per-row */
-@media (max-width:768px){
-	.metrics-row > [class*='col-']{ flex: 0 0 50%; max-width:50%; }
-	.metrics-row .card-metric{ padding:10px; }
-	.metrics-row .metric-small{ font-size:0.85rem; }
-	.metrics-row .card-metric .h4{ font-size:1.2rem; }
-}
-
-/* Ensure table page buttons (hero actions / toolbars) appear under the title on most mobile widths */
-@media (max-width:768px){
-	.page-hero{flex-direction:column;align-items:stretch}
-	.page-hero .hero-card > .d-flex{flex-direction:column;align-items:stretch}
-	.hero-actions{width:100%;margin-top:8px;justify-content:flex-start}
-	.hero-actions .btn{width:100%}
-	.table-toolbar{flex-direction:column;align-items:stretch}
-	.table-toolbar .input-group{width:100%}
-}
-
-@media (max-width:480px){
-	.metrics-row > [class*='col-']{ flex: 0 0 50%; max-width:50%; }
-	.metrics-row .card-metric{ padding:8px; }
-	.metrics-row .metric-small{ font-size:0.8rem; }
-	.metrics-row .card-metric .h4{ font-size:1.05rem; }
-	/* make small charts more compact */
-	.bg-panel { 
-        min-height: 350px; 
+    /* 2. Căn giữa Avatar, Tên User và Tiêu đề "Menu quản lý" trong thanh Menu */
+    #offcanvasNav .offcanvas-header .d-flex {
+        flex-direction: column !important; /* Xếp Avatar và Text theo chiều dọc */
+        text-align: center;
+        width: 100%;
+        margin-top: 10px;
     }
-	#roomStatusChart, #billStatusChart, #tenantStatusChart{ max-height:130px !important; }
-	/* ensure hero actions (buttons) stack under title and table toolbar stacks vertically */
-	.hero-actions{flex-direction:column;align-items:stretch}
-	.table-toolbar{flex-direction:column;align-items:stretch}
-	.table-toolbar .input-group{width:100%;}
-}
+    #offcanvasNav .offcanvas-body h6 {
+        text-align: center !important; /* Căn giữa chữ "Menu quản lý" */
+    }
 
-/* Slightly reduce size of small donut/pie charts on medium screens */
-@media (max-width:992px){
-	#roomStatusChart, #billStatusChart, #tenantStatusChart{ max-height:150px; }
-}
+    /* Bố trí lại nút Đóng (X) ra góc phải phía trên cùng */
+    #offcanvasNav .btn-close-white {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+    }
 
-/* Page hero / create-first pattern */
-.page-hero{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:12px}
-.page-hero .hero-card{flex:1;min-width:0;background:linear-gradient(180deg,#ffffff,#f7fbff);padding:14px;border-radius:12px;box-shadow:0 8px 28px rgba(17,24,39,.06);}
-.hero-actions{display:flex;gap:8px;align-items:center}
-.hero-actions .btn{padding:.6rem .9rem}
+    /* 3. Đổi lưới từ 2 cột thành 1 cột (dạng list) do menu đã thu hẹp */
+    .mobile-nav-grid {
+        grid-template-columns: 1fr !important;
+        gap: 10px !important;
+    }
+    
+    .mobile-nav-item {
+        flex-direction: row !important; /* Icon và Chữ nằm ngang cạnh nhau */
+        justify-content: flex-start !important;
+        padding: 12px 16px !important;
+        border-radius: 12px !important;
+    }
+    
+    .mobile-nav-item .icon-box {
+        margin-bottom: 0 !important;
+        margin-right: 14px !important;
+        width: 38px !important;
+        height: 38px !important;
+        font-size: 1.1rem !important;
+    }
 
-/* Mobile-friendly full width buttons */
-@media (max-width:576px){
-	.hero-actions{flex-direction:column;align-items:stretch}
-	.hero-actions .btn{width:100%}
-	.page-hero{flex-direction:column;align-items:stretch}
-	.sidebar{display:none}
-	main{padding-left:12px;padding-right:12px}
-}
-
-/* Collapse spacing for lists */
-.list-collapse{margin-top:8px}
-
-/* Smaller table padding on mobile */
-@media (max-width:768px){
-	.table td, .table th{padding:.5rem .6rem}
-	.cards{flex-direction:column}
-}
-
-/* Ensure modals appear above other UI (offcanvas, toasts, etc.) */
-.modal { z-index: 2000 !important; }
-.modal-backdrop { z-index: 1990 !important; }
-
-/* Login card: full-width inputs */
-.login-card .form-control { max-width: 100% !important; }
-
-/* Toolbar should be part of the document flow and scroll away when user scrolls past it.
-	 This avoids keeping the filters fixed while header/sidebar scroll. */
-.table-toolbar { position: static; top: auto; left: auto; right: auto; z-index: 1030; background-color: transparent; padding: 0; box-shadow: none; }
-
-/* Ensure content padding is normal since toolbar is not fixed */
-.content-with-fixed-toolbar { padding-top: 0; }
-
-/* List toggle button states */
-.btn-list-active { background: rgba(13,110,253,0.14); border-color: rgba(13,110,253,0.2); }
-.btn-list-inactive { background: transparent; }
-
-/* Notyf customizations - nicer toast style */
-.notyf { font-family: Inter, Arial, sans-serif; }
-.notyf__toast { border-radius: 6px !important; box-shadow: 0 10px 30px rgba(2,6,23,0.15); padding: 12px 16px; color: #fff; display:flex; align-items:center; gap:12px; cursor: pointer; }
-.notyf__message { font-size: 0.98rem; font-weight:600; }
-.notyf__icon { font-size:1.25rem; margin-right:6px; opacity:0.95; }
-.notyf__icon > i { border-radius: 4px; }
-/* Ensure icon background does not force circular badge; keep toast rectangular */
-.notyf__icon, .notyf__icon > i { background: transparent !important; border-radius: 2px !important; }
-.notyf--success { background: linear-gradient(90deg,#10b981,#059669); }
-.notyf--error { background: linear-gradient(90deg,#ef4444,#dc2626); }
-.notyf--warning { background: linear-gradient(90deg,#f59e0b,#d97706); }
-.notyf__toast:hover { transform: translateY(-3px); transition: transform .18s ease; }
-
-/* Ensure toasts render above other UI and are not clipped by parent containers */
-.notyf { z-index: 3050 !important; position: fixed !important; overflow: visible !important; }
-.notyf__toast { overflow: visible !important; }
-
-/* Avatar and navbar tweaks */
-.avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(90deg,var(--primary-500),var(--primary-600));color:#fff;font-weight:700;display:inline-flex;align-items:center;justify-content:center}
-.navbar .dropdown-toggle .avatar{background:linear-gradient(90deg,#ffffff,#ffffff);color:var(--primary-600);border:2px solid rgba(255,255,255,0.12)}
-.navbar .nav-link { color: #fff !important }
-.navbar .nav-link .text-white{color:#fff}
-
-/* App brand (logo + title) */
-.app-brand{display:flex;align-items:center;gap:.6rem;font-weight:700;color:#fff;text-decoration:none}
-.app-brand img{height:48px;width:auto;display:block}
-.app-brand .brand-title{font-size:1.05rem;letter-spacing:.2px;color:#fff}
-
-/* Metrics equal-height rows */
-.metrics-row{display:flex;flex-wrap:wrap;margin-left:-.75rem;margin-right:-.75rem}
-.metrics-row > [class*='col-']{display:flex;padding-left:.75rem;padding-right:.75rem}
-.metrics-row .card-metric{flex:1;display:flex;flex-direction:column;justify-content:space-between}
-.metrics-row .card-metric .h4{margin:0}
-
-/* Make Notyf toasts responsive (cap width on mobile) */
-.notyf__toast{max-width:92vw}
-
-@media (max-width:576px){
-	.notyf__toast{padding:8px 10px; border-radius:10px}
-	.notyf__message{font-size:0.95rem}
-	.notyf__icon{font-size:1rem}
-}
-
-/* Strongly ensure icon background does not render as a circular badge */
-.notyf__toast .notyf__icon,
-.notyf__toast .notyf__icon > i {
-	background: transparent !important;
-	padding: 0 !important;
-	width: auto !important;
-	height: auto !important;
-	border-radius: 0 !important;
-	display: inline-flex !important;
-	align-items: center !important;
-	justify-content: center !important;
-}
-
-/* Prevent accidental white circular overlays from Notyf internals */
-.notyf__toast .notyf__icon svg,
-.notyf__toast .notyf__icon i { background: transparent !important; }
-
-/* Extra guards: remove ripples and any leftover backgrounds from Notyf internals */
-.notyf__ripple, .notyf__toast .notyf__ripple { display: none !important; }
-/* Ensure toast variants keep their background even when nested elements exist */
-.notyf__toast.notyf__toast--success, .notyf--success { background: linear-gradient(90deg,#10b981,#059669) !important; }
-.notyf__toast.notyf__toast--error, .notyf--error { background: linear-gradient(90deg,#ef4444,#dc2626) !important; }
-.notyf__toast.notyf__toast--warning, .notyf--warning { background: linear-gradient(90deg,#f59e0b,#d97706) !important; }
-.notyf__toast img, .notyf__toast svg { background: transparent !important; }
-
-/* Tùy chỉnh thanh cuộn cho Sidebar (áp dụng cho Chrome, Edge, Safari) */
-.sidebar::-webkit-scrollbar {
-    width: 6px; /* Làm thanh cuộn mỏng lại */
-}
-
-.sidebar::-webkit-scrollbar-track {
-    background: transparent; /* Ẩn nền thanh cuộn */
-}
-
-.sidebar::-webkit-scrollbar-thumb {
-    background-color: rgba(0, 0, 0, 0.15); /* Màu thanh cuộn nhạt mờ */
-    border-radius: 10px; /* Bo tròn thanh cuộn */
-}
-
-.sidebar::-webkit-scrollbar-thumb:hover {
-    background-color: rgba(0, 0, 0, 0.3); /* Đậm hơn một chút khi di chuột vào */
-}
-
-/* Thêm vào style.css */
-.chart-container {
-    position: relative;
-    height: 300px; /* Chiều cao cố định cho mobile */
-    width: 100%;
-}
-
-.chart-container-small {
-    position: relative;
-    height: 200px;
-    width: 100%;
-}
-
-@media (min-width: 768px) {
-    .chart-container { height: 250px; } /* Chiều cao cho desktop */
+    /* 4. Đưa luôn Logo và Tiêu đề của thanh Header chính ra GIỮA màn hình (Chuẩn App Native) */
+    .app-brand {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+    }
 }

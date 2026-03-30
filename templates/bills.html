@@ -3,79 +3,116 @@
 <link rel="stylesheet" href="/static/css/bills.css">
 {% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <h1 class="h4">Hóa đơn</h1>
-  <form class="d-flex" action="/bills/generate" method="post">
-    <input class="form-control me-2" name="month" type="month" value="{{ default_month }}" required />
-    <select class="form-select me-2" name="contract_id" style="max-width:320px">
-      <option value="">Tạo cho tất cả hợp đồng</option>
-      {% for c in contracts %}
-      <option value="{{ c.id }}">{{ c.display }}</option>
-      {% endfor %}
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+  <div>
+    <h1 class="h3 fw-bold mb-1">Quản lý Hóa đơn</h1>
+    <p class="text-muted small mb-0">Theo dõi và quản lý các khoản thu chi hàng tháng.</p>
+  </div>
+  
+  <div class="dropdown">
+    <button class="btn btn-primary shadow-sm dropdown-toggle w-100" type="button" data-bs-toggle="collapse" data-bs-target="#collapseGenerate">
+      <i class="fa-solid fa-plus me-2"></i>Tạo hóa đơn mới
+    </button>
+  </div>
+</div>
+
+<div class="collapse mb-4" id="collapseGenerate">
+  <div class="card card-body border-0 shadow-sm" style="border-radius: 15px;">
+    <form class="row g-3" action="/bills/generate" method="post">
+      <div class="col-md-4">
+        <label class="form-label small fw-bold">Chọn tháng</label>
+        <input class="form-control" name="month" type="month" value="{{ default_month }}" required />
+      </div>
+      <div class="col-md-5">
+        <label class="form-label small fw-bold">Hợp đồng</label>
+        <select class="form-select" name="contract_id">
+          <option value="">Tất cả hợp đồng</option>
+          {% for c in contracts %}
+          <option value="{{ c.id }}">{{ c.display }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3 d-flex align-items-end">
+        <button class="btn btn-success w-100" type="submit">Xác nhận tạo</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-4" style="border-radius: 15px; overflow: hidden;">
+  <div class="p-3 bg-white border-bottom d-flex flex-wrap align-items-center gap-2">
+    <div class="btn-group shadow-sm">
+      <a class="btn btn-outline-light text-dark border {% if not status %}active{% endif %}" href="/bills/">Tất cả</a>
+      <a class="btn btn-outline-light text-dark border {% if status=='unpaid' %}active bg-warning-subtle{% endif %}" href="/bills/?status=unpaid">Chưa đóng</a>
+      <a class="btn btn-outline-light text-dark border {% if status=='paid' %}active bg-success-subtle{% endif %}" href="/bills/?status=paid">Đã đóng</a>
+    </div>
+
+    <select class="form-select form-select-sm border-0 bg-light ms-md-2" id="billSort" style="max-width:180px; height: 38px;">
+      <option value="month_desc">Mới nhất</option>
+      <option value="month_asc">Cũ nhất</option>
+      <option value="total_desc">Giá cao nhất</option>
     </select>
-    <button class="btn btn-primary" type="submit">Tạo hóa đơn</button>
-  </form>
-</div>
 
-<div class="table-toolbar d-flex align-items-center mb-2 gap-2 flex-wrap">
-  <div class="btn-group" role="group" aria-label="Bộ lọc trạng thái">
-    <a class="btn btn-outline-secondary {% if status=='paid' %}active{% endif %}" href="/bills/?status=paid">Đã đóng</a>
-    <a class="btn btn-outline-secondary {% if status=='unpaid' %}active{% endif %}" href="/bills/?status=unpaid">Chưa đóng</a>
-  </div>
-  <span class="text-muted small">Sắp xếp:</span>
-  <select class="form-select form-select-sm" id="billSort" style="max-width:260px;">
-    <option value="default">Mặc định</option>
-    <option value="month_desc">Tháng: mới nhất</option>
-    <option value="month_asc">Tháng: cũ nhất</option>
-    <option value="total_desc">Tổng tiền: cao -> thấp</option>
-    <option value="total_asc">Tổng tiền: thấp -> cao</option>
-  </select>
-  <div class="input-group ms-auto" style="max-width:360px;">
-    <input class="form-control form-control-sm" id="billSearch" placeholder="Tìm theo tên / phòng / tháng..." />
-    <button class="btn btn-sm btn-light" type="button" onclick="filterBills()"><i class="fa-solid fa-magnifying-glass"></i></button>
-  </div>
-</div>
-
-<div class="table-responsive">
-  {% if not bills %}
-    <div class="alert alert-secondary">Chưa có hóa đơn nào để hiển thị.</div>
-  {% else %}
-  <table class="table table-hover">
-    <thead><tr><th>Người thuê / Phòng</th><th>Tháng</th><th>Tổng</th><th>Đã thanh toán</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
-    <tbody>
-    {% for b in bills %}
-    <tr>
-      <td>
-        {% if b.contract_display and (b.contract_display.tenant_name or b.contract_display.room_number) %}
-          {{ b.contract_display.tenant_name or '' }}{% if b.contract_display.room_number %} - Phòng {{ b.contract_display.room_number }}{% endif %}
-        {% else %}
-          <span class="text-danger">Không phải thông tin người thuê / phòng</span>
-        {% endif %}
-      </td>
-      <td>{{ b.month }}</td>
-      <td>{{ b.total | money }}</td>
-    </tr>
-    {% endfor %}
-    </tbody>
-  </table>
-  {% endif %}
-</div>
-
-<!-- Modal hiển thị hóa đơn -->
-<div class="modal fade" id="billViewModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-xl modal-dialog-scrollable">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Hóa đơn</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body p-0" style="height:80vh;">
-        <iframe id="billViewFrame" src="" style="border:0;width:100%;height:100%;"></iframe>
-      </div>
+    <div class="input-group ms-auto shadow-sm" style="max-width:300px;">
+      <span class="input-group-text bg-white border-end-0"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+      <input class="form-control border-start-0 ps-0" id="billSearch" placeholder="Tìm tên, phòng..." />
     </div>
   </div>
+
+  <div class="table-responsive">
+    {% if not bills %}
+      <div class="p-5 text-center">
+        <img src="https://cdn-icons-png.flaticon.com/512/6598/6598519.png" style="width: 80px; opacity: 0.3;" alt="No data">
+        <p class="text-muted mt-3">Chưa có hóa đơn nào được tạo.</p>
+      </div>
+    {% else %}
+    <table class="table table-hover align-middle mb-0">
+      <thead class="bg-light">
+        <tr>
+          <th class="ps-4">Khách thuê & Phòng</th>
+          <th>Tháng</th>
+          <th>Tổng tiền</th>
+          <th>Trạng thái</th>
+          <th class="text-end pe-4">Thao tác</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for b in bills %}
+      <tr>
+        <td class="ps-4">
+          <div class="fw-bold text-dark">
+            {{ b.contract_display.tenant_name if b.contract_display else 'N/A' }}
+          </div>
+          <div class="small text-muted">Phòng: {{ b.contract_display.room_number if b.contract_display else '--' }}</div>
+        </td>
+        <td><span class="badge bg-light text-dark border">{{ b.month }}</span></td>
+        <td><span class="fw-bold text-primary">{{ b.total | money }}</span></td>
+        <td>
+          {% if b.status == 'paid' %}
+            <span class="badge rounded-pill bg-success-subtle text-success px-3">
+              <i class="fa-solid fa-check-circle me-1"></i> Đã đóng
+            </span>
+          {% else %}
+            <span class="badge rounded-pill bg-danger-subtle text-danger px-3">
+              <i class="fa-solid fa-clock me-1"></i> Chưa đóng
+            </span>
+          {% endif %}
+        </td>
+        <td class="text-end pe-4">
+          <div class="btn-group shadow-sm">
+            <button class="btn btn-sm btn-white border" onclick="showBill('{{ b.id }}')" title="Xem chi tiết">
+              <i class="fa-solid fa-eye text-primary"></i>
+            </button>
+            <button class="btn btn-sm btn-white border" onclick="captureInvoiceImage('{{ b.id }}', this)" title="Lưu ảnh">
+              <i class="fa-solid fa-download text-success"></i>
+            </button>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+  </div>
 </div>
-
-<script src="/static/js/bills.js"></script>
-
 {% endblock %}

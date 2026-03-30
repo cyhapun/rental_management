@@ -27,17 +27,24 @@ function filterBills(){
 function sortBills(){
   const sortVal = document.getElementById('billSort').value;
   const tbody = document.querySelector('table tbody');
+  if(!tbody) return;
   const rows = Array.from(tbody.querySelectorAll('tr'));
-  const monthVal = (r)=> (r.children[1].innerText || '').trim();
-  const totalVal = (r)=> parseInt((r.children[2].innerText || '0').replace(/[^\d]/g,''),10) || 0;
-  rows.sort((a,b)=>{
-    if (sortVal==='month_desc') return monthVal(b).localeCompare(monthVal(a));
-    if (sortVal==='month_asc') return monthVal(a).localeCompare(monthVal(b));
-    if (sortVal==='total_desc') return totalVal(b)-totalVal(a);
-    if (sortVal==='total_asc') return totalVal(a)-totalVal(b);
+  
+  const monthVal = (r) => (r.children[1].innerText || '').trim();
+  const totalVal = (r) => {
+      const text = r.children[2].innerText || '0';
+      return parseInt(text.replace(/[^\d]/g,''), 10) || 0;
+  };
+
+  rows.sort((a,b) => {
+    if (sortVal === 'month_desc') return monthVal(b).localeCompare(monthVal(a));
+    if (sortVal === 'month_asc') return monthVal(a).localeCompare(monthVal(b));
+    if (sortVal === 'total_desc') return totalVal(b) - totalVal(a);
+    if (sortVal === 'total_asc') return totalVal(a) - totalVal(b);
     return 0;
   });
-  rows.forEach(r=>tbody.appendChild(r));
+  
+  rows.forEach(r => tbody.appendChild(r));
 }
 
 document.addEventListener('DOMContentLoaded', function(){

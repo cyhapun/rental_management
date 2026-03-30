@@ -2,24 +2,15 @@
 <html lang="vi">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <link rel="icon" href="/static/images/logo.svg" type="image/svg+xml">
     <title>Quản lý nhà trọ</title>
-    <!-- Google Font -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <!-- Bootstrap CSS -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Font Awesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <!-- Notyf notifications -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.css">
     <script src="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.js"></script>
-    <style>
-      /* Slightly larger notification text and padding */
-      .notyf__message { font-size: 1.15rem; padding: 14px 18px; }
-      .notyf { font-family: Inter, Arial, sans-serif; }
-    </style>
-    <link rel="stylesheet" href="/static/style.css?v=20260327-1" />
+    <link rel="stylesheet" href="/static/style.css?v=20260331" />
     {% block extra_css %}{% endblock %}
   </head>
   <body>
@@ -28,47 +19,52 @@
     {% set user_role = request.state.user_role if request and request.state and request.state.user_role else None %}
     {% set user_name = (user.get('full_name') if user and user.get('full_name') else (user.get('username') if user and user.get('username') else None)) %}
     {% set is_login_page = (current_path == '/login') %}
-    <nav class="navbar navbar-expand-lg app-header">
-      <div class="container-fluid">
-        <button class="btn btn-link text-white d-md-none me-2" data-bs-toggle="offcanvas" data-bs-target="#offcanvasNav" aria-controls="offcanvasNav"><i class="fa-solid fa-bars"></i></button>
+
+    <nav class="navbar navbar-expand-lg app-header sticky-top">
+      <div class="container-fluid px-3">
+        <button class="btn-icon-mobile d-md-none me-2 shadow-sm" data-bs-toggle="offcanvas" data-bs-target="#offcanvasNav" aria-controls="offcanvasNav">
+          <i class="fa-solid fa-bars-staggered"></i>
+        </button>
+        
         <a class="app-brand" href="/dashboard">
-          <img src="/static/images/logo.svg" alt="Logo">
+          <img src="/static/images/logo.svg" alt="Logo" class="mobile-logo-size">
           <span class="brand-title">Quản lý nhà trọ</span>
         </a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-          <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarNav">
-          <ul class="navbar-nav ms-auto">
-            <li class="nav-item d-flex align-items-center me-2">
-              {% if user_role == 'admin' %}
-                <span class="badge bg-light text-dark">Admin</span>
-              {% elif user_role %}
-                <span class="badge bg-secondary text-white">{{ user_role|capitalize }}</span>
+
+        <div class="d-flex align-items-center ms-auto">
+          {% if not is_login_page %}
+          <div class="d-none d-md-flex align-items-center me-3">
+            {% if user_role == 'admin' %}
+              <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2 rounded-pill"><i class="fa-solid fa-crown me-1"></i> Admin</span>
+            {% elif user_role %}
+              <span class="badge bg-secondary-subtle text-secondary px-3 py-2 rounded-pill">{{ user_role|capitalize }}</span>
+            {% endif %}
+          </div>
+          {% endif %}
+
+          <div class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle profile-trigger p-0 shadow-sm" href="#" id="userMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              {% if user_name %}
+                {{ user_name[0]|upper }}
               {% else %}
-                <span class="badge bg-warning text-dark">Guest</span>
+                <i class="fa-solid fa-user"></i>
               {% endif %}
-            </li>
-            <li class="nav-item dropdown">
-              <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                {% if user_name %}
-                  <div class="avatar bg-white text-dark rounded-circle d-flex align-items-center justify-content-center me-2" style="width:36px;height:36px;border-radius:50%;font-weight:700;">
-                    {{ user_name[0]|upper }}
-                  </div>
-                  <span class="d-none d-md-inline text-white" style="margin-right:6px">{{ user_name }}</span>
-                {% else %}
-                  <i class="fa-solid fa-user"></i>
-                {% endif %}
-              </a>
-              <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
-                {% if not user_role %}
-                  <li><a class="dropdown-item" href="/login">Đăng nhập</a></li>
-                {% else %}
-                  <li><a class="dropdown-item" href="/logout">Đăng xuất</a></li>
-                {% endif %}
-              </ul>
-            </li>
-          </ul>
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 mt-2" aria-labelledby="userMenu" style="border-radius: 12px; min-width: 200px;">
+              {% if user_name %}
+              <li class="px-3 py-2 border-bottom mb-2">
+                <div class="fw-bold text-dark">{{ user_name }}</div>
+                <small class="text-muted">{{ user_role|capitalize }}</small>
+              </li>
+              {% endif %}
+              
+              {% if not user_role %}
+                <li><a class="dropdown-item py-2" href="/login"><i class="fa-solid fa-right-to-bracket me-2 text-primary"></i>Đăng nhập</a></li>
+              {% else %}
+                <li><a class="dropdown-item py-2 text-danger" href="/logout"><i class="fa-solid fa-power-off me-2"></i>Đăng xuất</a></li>
+              {% endif %}
+            </ul>
+          </div>
         </div>
       </div>
     </nav>
@@ -76,63 +72,92 @@
     <div class="container-fluid">
       <div class="row">
         {% if not is_login_page %}
-        <aside class="col-md-2 d-none d-md-block bg-light sidebar py-3">
-          <div class="nav flex-column">
-            <a class="nav-link {% if current_path.startswith('/dashboard') %}active{% endif %}" href="/dashboard"><i class="fa-solid fa-chart-line me-2"></i>Tổng quan</a>
-            <a class="nav-link {% if current_path.startswith('/rooms') %}active{% endif %}" href="/rooms/"><i class="fa-solid fa-door-closed me-2"></i>Phòng</a>
-            <a class="nav-link {% if current_path.startswith('/tenants') %}active{% endif %}" href="/tenants/"><i class="fa-solid fa-users me-2"></i>Người thuê</a>
-            <a class="nav-link {% if current_path.startswith('/contracts') %}active{% endif %}" href="/contracts/"><i class="fa-solid fa-file-contract me-2"></i>Hợp đồng</a>
-            <a class="nav-link {% if current_path.startswith('/electric') %}active{% endif %}" href="/electric/"><i class="fa-solid fa-bolt me-2"></i>Điện</a>
-            <a class="nav-link {% if current_path.startswith('/bills') %}active{% endif %}" href="/bills/"><i class="fa-solid fa-file-invoice me-2"></i>Hóa đơn</a>
-              {% if user_role == 'admin' %}
-              <a class="nav-link {% if current_path.startswith('/accounts') %}active{% endif %}" href="/accounts/"><i class="fa-solid fa-user-shield me-2"></i>Tài khoản</a>
-              {% endif %}
+        <aside class="col-md-2 d-none d-md-block sidebar py-4 ps-3 pe-2">
+          <div class="nav flex-column gap-1">
+            <div class="sidebar-heading text-muted text-uppercase fs-7 fw-bold mb-2 px-3">Danh mục chính</div>
+            <a class="nav-link rounded-3 {% if current_path.startswith('/dashboard') %}active{% endif %}" href="/dashboard"><i class="fa-solid fa-chart-pie me-3"></i>Tổng quan</a>
+            <a class="nav-link rounded-3 {% if current_path.startswith('/rooms') %}active{% endif %}" href="/rooms/"><i class="fa-solid fa-door-open me-3"></i>Phòng</a>
+            <a class="nav-link rounded-3 {% if current_path.startswith('/tenants') %}active{% endif %}" href="/tenants/"><i class="fa-solid fa-user-group me-3"></i>Người thuê</a>
+            <a class="nav-link rounded-3 {% if current_path.startswith('/contracts') %}active{% endif %}" href="/contracts/"><i class="fa-solid fa-file-signature me-3"></i>Hợp đồng</a>
+            
+            <div class="sidebar-heading text-muted text-uppercase fs-7 fw-bold mb-2 mt-4 px-3">Tài chính & Dịch vụ</div>
+            <a class="nav-link rounded-3 {% if current_path.startswith('/electric') %}active{% endif %}" href="/electric/"><i class="fa-solid fa-bolt me-3"></i>Điện nước</a>
+            <a class="nav-link rounded-3 {% if current_path.startswith('/bills') %}active{% endif %}" href="/bills/"><i class="fa-solid fa-file-invoice-dollar me-3"></i>Hóa đơn</a>
+            
+            {% if user_role == 'admin' %}
+            <div class="sidebar-heading text-muted text-uppercase fs-7 fw-bold mb-2 mt-4 px-3">Hệ thống</div>
+            <a class="nav-link rounded-3 {% if current_path.startswith('/accounts') %}active{% endif %}" href="/accounts/"><i class="fa-solid fa-user-shield me-3"></i>Tài khoản</a>
+            {% endif %}
           </div>
         </aside>
         {% endif %}
-        <!-- Offcanvas nav for small screens -->
+
         {% if not is_login_page %}
-        <div class="offcanvas offcanvas-start" tabindex="-1" id="offcanvasNav" aria-labelledby="offcanvasNavLabel">
-          <div class="offcanvas-header">
-            <h5 class="offcanvas-title" id="offcanvasNavLabel">Menu</h5>
-            <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        <div class="offcanvas offcanvas-start border-0 shadow" tabindex="-1" id="offcanvasNav" aria-labelledby="offcanvasNavLabel">
+          <div class="offcanvas-header bg-primary text-white" style="border-radius: 0 0 20px 20px;">
+            <div class="d-flex align-items-center gap-3">
+              <div class="avatar-circle-white shadow-sm">
+                {{ user_name[0]|upper if user_name else '<i class="fa-solid fa-user"></i>'|safe }}
+              </div>
+              <div>
+                <h6 class="mb-0 fw-bold">{{ user_name if user_name else 'Khách' }}</h6>
+                <small class="text-white-50">{{ user_role|capitalize if user_role else 'Vui lòng đăng nhập' }}</small>
+              </div>
+            </div>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
           </div>
-          <div class="offcanvas-body">
-            <div class="list-group">
-              <a class="list-group-item list-group-item-action {% if current_path.startswith('/dashboard') %}active{% endif %}" href="/dashboard">Tổng quan</a>
-              <a class="list-group-item list-group-item-action {% if current_path.startswith('/rooms') %}active{% endif %}" href="/rooms/">Phòng</a>
-              <a class="list-group-item list-group-item-action {% if current_path.startswith('/tenants') %}active{% endif %}" href="/tenants/">Người thuê</a>
-              <a class="list-group-item list-group-item-action {% if current_path.startswith('/contracts') %}active{% endif %}" href="/contracts/">Hợp đồng</a>
-              <a class="list-group-item list-group-item-action {% if current_path.startswith('/electric') %}active{% endif %}" href="/electric/">Điện</a>
-              <a class="list-group-item list-group-item-action {% if current_path.startswith('/bills') %}active{% endif %}" href="/bills/">Hóa đơn</a>
+          <div class="offcanvas-body px-4 py-4">
+            <h6 class="text-muted fw-bold mb-3 fs-7 text-uppercase">Menu quản lý</h6>
+            <div class="mobile-nav-grid">
+              <a href="/dashboard" class="mobile-nav-item {% if current_path.startswith('/dashboard') %}active{% endif %}">
+                <div class="icon-box"><i class="fa-solid fa-chart-pie"></i></div>
+                <span>Tổng quan</span>
+              </a>
+              <a href="/rooms/" class="mobile-nav-item {% if current_path.startswith('/rooms') %}active{% endif %}">
+                <div class="icon-box"><i class="fa-solid fa-door-open"></i></div>
+                <span>Phòng</span>
+              </a>
+              <a href="/tenants/" class="mobile-nav-item {% if current_path.startswith('/tenants') %}active{% endif %}">
+                <div class="icon-box"><i class="fa-solid fa-user-group"></i></div>
+                <span>Khách thuê</span>
+              </a>
+              <a href="/contracts/" class="mobile-nav-item {% if current_path.startswith('/contracts') %}active{% endif %}">
+                <div class="icon-box"><i class="fa-solid fa-file-signature"></i></div>
+                <span>Hợp đồng</span>
+              </a>
+              <a href="/electric/" class="mobile-nav-item {% if current_path.startswith('/electric') %}active{% endif %}">
+                <div class="icon-box"><i class="fa-solid fa-bolt"></i></div>
+                <span>Điện nước</span>
+              </a>
+              <a href="/bills/" class="mobile-nav-item {% if current_path.startswith('/bills') %}active{% endif %}">
+                <div class="icon-box"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+                <span>Hóa đơn</span>
+              </a>
               {% if user_role == 'admin' %}
-              <a class="list-group-item list-group-item-action {% if current_path.startswith('/accounts') %}active{% endif %}" href="/accounts/">Tài khoản</a>
+              <a href="/accounts/" class="mobile-nav-item {% if current_path.startswith('/accounts') %}active{% endif %}">
+                <div class="icon-box"><i class="fa-solid fa-user-shield"></i></div>
+                <span>Tài khoản</span>
+              </a>
               {% endif %}
             </div>
           </div>
         </div>
         {% endif %}
 
-        <main class="content-with-fixed-toolbar {% if is_login_page %}col-12{% else %}col-md-10 ms-sm-auto{% endif %} px-4 py-4" style="min-height:calc(100vh - 80px);">
+        <main class="content-wrapper {% if is_login_page %}col-12{% else %}col-md-10 ms-sm-auto{% endif %} px-3 px-md-4 py-4">
           <div class="app-container">
-          {% set flash_msg = request.query_params.get('flash') if request else None %}
-          {% if flash_msg %}
-            <div id="flash-data" data-flash="{{ flash_msg|e }}" data-level="{{ request.query_params.get('level', 'success') }}"></div>
-            <!-- Inline bootstrap alert fallback for accessibility / when Notyf is blocked -->
-            <div id="flash-alert" class="alert {% if request.query_params.get('level','success') in ['danger','error'] %}alert-danger{% elif request.query_params.get('level','success') == 'warning' %}alert-warning{% else %}alert-success{% endif %} alert-dismissible fade show" role="alert" style="position:fixed;top:70px;right:16px;z-index:2200;min-width:220px;max-width:92vw;display:none">
-                <span id="flash-alert-msg">{{ flash_msg|e }}</span>
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-              </div>
-          {% endif %}
+            {% set flash_msg = request.query_params.get('flash') if request else None %}
+            {% if flash_msg %}
+              <div id="flash-data" data-flash="{{ flash_msg|e }}" data-level="{{ request.query_params.get('level', 'success') }}"></div>
+            {% endif %}
+            
             {% block content %}{% endblock %}
-            </div>
+          </div>
         </main>
       </div>
     </div>
 
-    <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- html2canvas for "print as image" functionality -->
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script src="/static/js/base.js"></script>
   </body>
