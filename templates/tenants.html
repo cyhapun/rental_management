@@ -3,133 +3,218 @@
 <link rel="stylesheet" href="/static/css/tenants.css">
 {% endblock %}
 {% block content %}
-<div class="page-hero">
-  <div class="hero-card">
-    <div class="d-flex align-items-center justify-content-between">
-      <div>
-        <h1 class="h4 mb-0">Người thuê</h1>
-        <div class="text-muted-small">Thêm người thuê mới hoặc mở danh sách quản lý</div>
-      </div>
-      <div class="hero-actions">
-        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createTenantModal"><i class="fa-solid fa-plus me-1"></i>Thêm người thuê</button>
-        <button class="btn btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#tenantsListCollapse" aria-expanded="false" aria-controls="tenantsListCollapse"><i class="fa-solid fa-list me-1"></i>Hiển thị danh sách</button>
-        <button class="btn btn-outline-secondary" type="button" data-print-target="#tenantsTable" data-print-title="Danh sách Người thuê"><i class="fa-solid fa-image me-1"></i>In ảnh</button>
-      </div>
-    </div>
+
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
+  <div>
+    <h1 class="h4 fw-bold text-dark mb-1"><i class="fa-solid fa-users text-primary me-2"></i>Khách thuê</h1>
+    <div class="text-muted small">Quản lý thông tin liên hệ và giấy tờ của khách thuê</div>
+  </div>
+  <div class="d-flex gap-2">
+    <button class="btn btn-primary rounded-pill px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#createTenantModal"><i class="fa-solid fa-user-plus me-1"></i>Thêm khách thuê</button>
+    <button class="btn btn-light border rounded-pill px-3" type="button" data-print-target=".table-responsive" data-print-title="Danh sách Khách thuê"><i class="fa-solid fa-print text-muted me-1"></i>In ảnh</button>
   </div>
 </div>
 
-<div class="collapse list-collapse show" id="tenantsListCollapse">
-  <div class="table-toolbar mb-2 d-flex justify-content-between">
-    <div class="input-group w-50">
-      <input class="form-control form-control-sm" placeholder="Tìm kiếm..." id="tenantSearch" value="{{ q }}">
-      <button class="btn btn-sm btn-light" onclick="filterTenants()"><i class="fa-solid fa-magnifying-glass"></i></button>
-    </div>
+<div class="bg-panel p-3 mb-4 d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+  <div class="input-group" style="max-width: 400px;">
+    <span class="input-group-text bg-light border-end-0 text-muted"><i class="fa-solid fa-magnifying-glass"></i></span>
+    <input class="form-control border-start-0 bg-light" placeholder="Tìm theo tên, SĐT, CCCD..." id="tenantSearch" value="{{ q }}">
   </div>
-  <div class="d-flex gap-2 mb-2">
-    <select class="form-select form-select-sm" id="tenantGenderFilter" style="max-width:160px;">
-      <option value="">Lọc giới tính</option>
+
+  <div class="d-flex flex-wrap gap-2">
+    <select class="form-select bg-light border-0 fw-semibold text-dark" id="tenantGenderFilter" style="width: auto; cursor: pointer; min-width: 140px;">
+      <option value="">Giới tính (Tất cả)</option>
       <option value="nam">Nam</option>
       <option value="nữ">Nữ</option>
     </select>
-    <select class="form-select form-select-sm" id="tenantStatusFilter" style="max-width:180px;">
-      <option value="">Lọc tình trạng</option>
+    <select class="form-select bg-light border-0 fw-semibold text-dark" id="tenantStatusFilter" style="width: auto; cursor: pointer; min-width: 160px;">
+      <option value="">Tình trạng (Tất cả)</option>
       <option value="đang thuê">Đang thuê</option>
       <option value="đã kết thúc">Đã kết thúc</option>
     </select>
-    <select class="form-select form-select-sm" id="tenantSort" style="max-width:220px;">
+    <select class="form-select bg-light border-0 fw-semibold text-dark" id="tenantSort" style="width: auto; cursor: pointer; min-width: 170px;">
       <option value="default">Sắp xếp mặc định</option>
-      <option value="name_asc">Tên: A-Z</option>
-      <option value="name_desc">Tên: Z-A</option>
-      <option value="year_asc">Năm sinh: tăng dần</option>
-      <option value="year_desc">Năm sinh: giảm dần</option>
+      <option value="name_asc">Tên: A - Z</option>
+      <option value="name_desc">Tên: Z - A</option>
+      <option value="year_asc">Năm sinh: Tăng dần</option>
+      <option value="year_desc">Năm sinh: Giảm dần</option>
     </select>
   </div>
-
-  <div class="table-responsive">
-  <table class="table table-hover" id="tenantsTable">
-    <thead><tr><th>Họ tên</th><th>SĐT</th><th>Giới tính</th><th>Năm sinh</th><th>Tình trạng</th><th>CCCD</th><th>Thao tác</th></tr></thead>
-    <tbody>
-      {% for t in tenants %}
-      <tr data-tenant-id="{{ t.id|e }}" data-full-name="{{ t.full_name|e }}" data-phone="{{ t.phone|e }}" data-gender="{{ t.gender|e }}" data-birth-year="{{ t.birth_year|e }}" data-rental-status="{{ t.rental_status|e }}" data-cccd-full="{{ t.cccd_full|e }}" data-cccd-masked="{{ t.cccd|e }}">
-        <td>{{ t.full_name }}</td>
-        <td>{{ t.phone }}</td>
-        <td>{{ t.gender }}</td>
-        <td>{{ t.birth_year }}</td>
-        <td>
-          {% if t.rental_status == "Đang thuê" %}
-            <span class="badge bg-warning text-dark">Đang thuê</span>
-          {% else %}
-            <span class="badge bg-secondary">Đã kết thúc</span>
-          {% endif %}
-        </td>
-        <td>
-          <span class="cccd-masked">{{ t.cccd }}</span>
-          <span class="cccd-full" style="display:none;">{{ t.cccd_full }}</span>
-          <button type="button" class="btn btn-sm btn-outline-secondary ms-2" onclick="toggleCccd(this)">Hiện</button>
-        </td>
-        <td>
-          <button type="button" class="btn btn-sm btn-outline-primary me-2" onclick="openEditTenant(this)">Sửa</button>
-          <form action="/tenants/{{ t.id }}/delete" method="post" style="display:inline" onsubmit="return confirm('Xóa người thuê này?');">
-            <button class="btn btn-sm btn-outline-danger">Xóa</button>
-          </form>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
 </div>
 
-<!-- Create Tenant Modal -->
+<div class="bg-panel p-0 overflow-hidden mb-4">
+  <div class="table-responsive m-0">
+    <table class="table table-hover mb-0" id="tenantsTable">
+      <thead>
+        <tr>
+          <th>Họ tên</th>
+          <th>Liên hệ</th>
+          <th class="text-center">Giới tính</th>
+          <th class="text-center">Năm sinh</th>
+          <th>CCCD</th>
+          <th class="text-center">Tình trạng</th>
+          <th class="text-center">Thao tác</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in tenants %}
+        <tr data-tenant-id="{{ t.id|e }}" data-full-name="{{ t.full_name|e }}" data-phone="{{ t.phone|e }}" data-gender="{{ t.gender|e }}" data-birth-year="{{ t.birth_year|e }}" data-rental-status="{{ t.rental_status|e }}" data-cccd-full="{{ t.cccd_full|e }}" data-cccd-masked="{{ t.cccd|e }}">
+          <td>
+            <div class="d-flex align-items-center">
+              <div class="avatar-circle bg-primary-subtle text-primary me-3 shadow-sm d-none d-md-flex" style="width:36px; height:36px; border-radius:10px; align-items:center; justify-content:center; font-weight:bold; font-size:0.95rem;">
+                {{ t.full_name[0]|upper }}
+              </div>
+              <span class="fw-semibold text-dark">{{ t.full_name }}</span>
+            </div>
+          </td>
+          <td>
+            {% if t.phone %}
+              <div class="text-muted"><i class="fa-solid fa-phone me-2" style="font-size: 0.8rem;"></i>{{ t.phone }}</div>
+            {% else %}
+              <span class="text-muted fst-italic">Chưa có</span>
+            {% endif %}
+          </td>
+          <td class="text-center">{{ t.gender }}</td>
+          <td class="text-center">{{ t.birth_year }}</td>
+          <td>
+            <div class="d-flex align-items-center">
+              <span class="cccd-masked me-2 text-dark">{{ t.cccd }}</span>
+              <span class="cccd-full me-2 text-dark" style="display:none;">{{ t.cccd_full }}</span>
+              <button type="button" class="btn-toggle-cccd" onclick="toggleCccd(this)" title="Hiện/Ẩn">
+                <i class="fa-regular fa-eye"></i>
+              </button>
+            </div>
+          </td>
+          <td class="text-center">
+            {% if t.rental_status == "Đang thuê" %}
+              <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1"><i class="fa-solid fa-house-user me-1"></i>Đang thuê</span>
+            {% else %}
+              <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2 py-1">Đã kết thúc</span>
+            {% endif %}
+          </td>
+          <td>
+            <div class="d-flex justify-content-center gap-1">
+              <button type="button" class="btn action-btn bg-primary-subtle text-primary" onclick="openEditTenant(this)" title="Sửa thông tin">
+                <i class="fa-solid fa-pen"></i>
+              </button>
+              <form action="/tenants/{{ t.id }}/delete" method="post" style="display:inline" onsubmit="return confirm('Cảnh báo: Xóa khách thuê này? Bạn nên đảm bảo họ đã thanh toán đủ tiền trước khi xóa.');">
+                <button type="submit" class="btn action-btn bg-danger-subtle text-danger" title="Xóa">
+                  <i class="fa-solid fa-trash-can"></i>
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" class="text-center text-muted py-4">Chưa có dữ liệu khách thuê.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
 <div class="modal fade" id="createTenantModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog">
+  <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
-      <div class="modal-header"><h5 class="modal-title">Thêm / Cập nhật người thuê</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold"><i class="fa-solid fa-user-plus text-primary me-2"></i>Thêm khách thuê mới</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
       <form action="/tenants/create" method="post">
         <div class="modal-body">
-          <div class="mb-2"><input class="form-control" name="full_name" placeholder="Họ và tên" required></div>
-          <div class="mb-2"><input class="form-control" name="cccd" placeholder="CCCD" required></div>
-          <div class="mb-2"><input class="form-control" name="gender" placeholder="Giới tính"></div>
-          <div class="mb-2"><input class="form-control" name="birth_year" placeholder="Năm sinh" type="number"></div>
-          <div class="mb-2"><input class="form-control" name="phone" placeholder="Số điện thoại"></div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-muted">Họ và tên</label>
+            <input class="form-control bg-light" name="full_name" placeholder="Nguyễn Văn A" required>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label small fw-semibold text-muted">Số CCCD</label>
+              <input class="form-control bg-light" name="cccd" placeholder="Nhập đủ 12 số" required>
+            </div>
+            <div class="col-6">
+              <label class="form-label small fw-semibold text-muted">Số điện thoại</label>
+              <input class="form-control bg-light" name="phone" placeholder="09xx xxx xxx">
+            </div>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label small fw-semibold text-muted">Giới tính</label>
+              <select class="form-select bg-light" name="gender">
+                <option value="Nam">Nam</option>
+                <option value="Nữ">Nữ</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label small fw-semibold text-muted">Năm sinh</label>
+              <input class="form-control bg-light" name="birth_year" type="number" placeholder="VD: 1995">
+            </div>
+          </div>
           <div class="mb-2">
-            <select class="form-select" name="rental_status">
+            <label class="form-label small fw-semibold text-muted">Tình trạng</label>
+            <select class="form-select bg-light" name="rental_status">
               <option value="Đang thuê">Đang thuê</option>
               <option value="Đã kết thúc" selected>Đã kết thúc</option>
             </select>
           </div>
         </div>
-        <div class="modal-footer">
-          <button class="btn btn-secondary" data-bs-dismiss="modal" type="button">Hủy</button>
-          <button class="btn btn-primary" type="submit">Lưu</button>
+        <div class="modal-footer bg-light rounded-bottom-4">
+          <button class="btn btn-light border rounded-pill px-4" data-bs-dismiss="modal" type="button">Hủy</button>
+          <button class="btn btn-primary rounded-pill px-4" type="submit">Xác nhận thêm</button>
         </div>
       </form>
     </div>
   </div>
 </div>
 
-<!-- Edit Tenant Modal -->
 <div class="modal fade" id="editTenantModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog">
+  <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
-      <div class="modal-header"><h5 class="modal-title">Sửa người thuê</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold"><i class="fa-solid fa-pen-to-square text-primary me-2"></i>Sửa hồ sơ khách thuê</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
       <form id="editTenantForm" method="post">
         <div class="modal-body">
-          <div class="mb-2"><input class="form-control" id="edit_full_name" name="full_name" placeholder="Họ và tên" required></div>
-          <div class="mb-2"><input class="form-control" id="edit_cccd" name="cccd" placeholder="CCCD" required></div>
-          <div class="mb-2"><input class="form-control" id="edit_gender" name="gender" placeholder="Giới tính"></div>
-          <div class="mb-2"><input class="form-control" id="edit_birth_year" name="birth_year" placeholder="Năm sinh" type="number"></div>
-          <div class="mb-2"><input class="form-control" id="edit_phone" name="phone" placeholder="Số điện thoại"></div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-muted">Họ và tên</label>
+            <input class="form-control bg-light" id="edit_full_name" name="full_name" required>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label small fw-semibold text-muted">Số CCCD</label>
+              <input class="form-control bg-light" id="edit_cccd" name="cccd" required>
+            </div>
+            <div class="col-6">
+              <label class="form-label small fw-semibold text-muted">Số điện thoại</label>
+              <input class="form-control bg-light" id="edit_phone" name="phone">
+            </div>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label small fw-semibold text-muted">Giới tính</label>
+              <select class="form-select bg-light" id="edit_gender" name="gender">
+                <option value="Nam">Nam</option>
+                <option value="Nữ">Nữ</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label small fw-semibold text-muted">Năm sinh</label>
+              <input class="form-control bg-light" id="edit_birth_year" name="birth_year" type="number">
+            </div>
+          </div>
           <div class="mb-2">
-            <select class="form-select" id="edit_rental_status" name="rental_status">
+            <label class="form-label small fw-semibold text-muted">Tình trạng</label>
+            <select class="form-select bg-light" id="edit_rental_status" name="rental_status">
               <option value="Đang thuê">Đang thuê</option>
               <option value="Đã kết thúc">Đã kết thúc</option>
             </select>
           </div>
         </div>
-        <div class="modal-footer">
-          <button class="btn btn-secondary" data-bs-dismiss="modal" type="button">Hủy</button>
-          <button class="btn btn-primary" type="submit">Lưu</button>
+        <div class="modal-footer bg-light rounded-bottom-4">
+          <button class="btn btn-light border rounded-pill px-4" data-bs-dismiss="modal" type="button">Hủy</button>
+          <button class="btn btn-primary rounded-pill px-4" type="submit">Lưu thay đổi</button>
         </div>
       </form>
     </div>
@@ -137,5 +222,4 @@
 </div>
 
 <script src="/static/js/tenants.js"></script>
-
 {% endblock %}
