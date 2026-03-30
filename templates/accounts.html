@@ -3,44 +3,77 @@
 <link rel="stylesheet" href="/static/css/accounts.css">
 {% endblock %}
 {% block content %}
-<div class="page-hero">
-  <div class="hero-card">
-    <div class="d-flex align-items-center justify-content-between">
-      <div>
-        <h1 class="h4 mb-0">Tài khoản</h1>
-        <div class="text-muted-small">Quản lý tài khoản — chỉ Admin có thể tạo, sửa, xóa</div>
-      </div>
-      <div class="hero-actions">
-        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createAccountModal"><i class="fa-solid fa-user-plus me-1"></i>Tạo tài khoản</button>
-      </div>
-    </div>
+
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
+  <div>
+    <h1 class="h4 fw-bold text-dark mb-1"><i class="fa-solid fa-user-shield text-primary me-2"></i>Tài khoản hệ thống</h1>
+    <div class="text-muted small">Quản lý và phân quyền nhân sự (Chỉ Admin mới có quyền thao tác)</div>
+  </div>
+  <div class="d-flex gap-2">
+    <button class="btn btn-primary rounded-pill px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#createAccountModal"><i class="fa-solid fa-user-plus me-1"></i>Tạo tài khoản</button>
   </div>
 </div>
 
-<div class="collapse list-collapse show" id="accountsListCollapse">
-  <div class="table-toolbar mb-2 d-flex justify-content-between">
-    <div class="input-group w-50">
-      <input class="form-control form-control-sm" placeholder="Tìm username..." id="accountSearch">
-      <button class="btn btn-sm btn-light" onclick="filterAccounts()"><i class="fa-solid fa-magnifying-glass"></i></button>
-    </div>
-    <div class="text-muted-small">Tổng tài khoản: <strong>{{ total }}</strong></div>
+<div class="bg-panel p-3 mb-4 d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+  <div class="input-group" style="max-width: 400px;">
+    <span class="input-group-text bg-light border-end-0 text-muted"><i class="fa-solid fa-magnifying-glass"></i></span>
+    <input class="form-control border-start-0 bg-light" placeholder="Tìm kiếm tên đăng nhập..." id="accountSearch">
   </div>
+  <div class="d-flex align-items-center">
+    <span class="badge bg-primary-subtle text-primary px-3 py-2 rounded-pill fs-6 border border-primary-subtle shadow-sm">
+      <i class="fa-solid fa-users-gear me-1"></i> Tổng tài khoản: <strong class="ms-1">{{ total }}</strong>
+    </span>
+  </div>
+</div>
 
-  <div class="table-responsive">
-    <table class="table table-hover" id="accountsTable">
-      <thead><tr><th>Tên đăng nhập</th><th>Vai trò</th><th>Thời gian tạo</th><th>Thao tác</th></tr></thead>
+<div class="bg-panel p-0 overflow-hidden mb-4">
+  <div class="table-responsive m-0">
+    <table class="table table-hover mb-0" id="accountsTable">
+      <thead>
+        <tr>
+          <th>Tên đăng nhập</th>
+          <th class="text-center">Vai trò (Role)</th>
+          <th class="text-center">Ngày tạo</th>
+          <th class="text-center">Thao tác</th>
+        </tr>
+      </thead>
       <tbody>
         {% for a in accounts %}
         <tr data-account-id="{{ a.id }}" data-username="{{ a.username }}" data-role="{{ a.role }}">
-          <td>{{ a.username }}</td>
-          <td>{{ a.role }}</td>
-          <td>{{ a.created_at or '' }}</td>
           <td>
-            <button class="btn btn-sm btn-outline-primary me-2" onclick="openEditAccount(this)">Sửa</button>
-            <form action="/accounts/{{ a.id }}/delete" method="post" style="display:inline" onsubmit="return confirm('Xóa tài khoản này?');">
-              <button class="btn btn-sm btn-outline-danger">Xóa</button>
-            </form>
+            <div class="d-flex align-items-center">
+              <div class="avatar-circle bg-secondary-subtle text-secondary me-3 shadow-sm d-none d-md-flex" style="width:36px; height:36px; border-radius:10px; align-items:center; justify-content:center; font-weight:bold; font-size:0.95rem;">
+                {{ a.username[0]|upper }}
+              </div>
+              <span class="fw-bold text-dark">{{ a.username }}</span>
+            </div>
           </td>
+          <td class="text-center">
+            {% if a.role == 'admin' %}
+              <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-1 rounded-pill"><i class="fa-solid fa-crown me-1"></i> Admin</span>
+            {% else %}
+              <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1 rounded-pill"><i class="fa-solid fa-user-tie me-1"></i> Manager</span>
+            {% endif %}
+          </td>
+          <td class="text-center text-muted">
+            <i class="fa-regular fa-calendar me-1"></i> {{ a.created_at or '---' }}
+          </td>
+          <td>
+            <div class="d-flex justify-content-center gap-1">
+              <button class="btn action-btn bg-primary-subtle text-primary" type="button" onclick="openEditAccount(this)" title="Sửa quyền/mật khẩu">
+                <i class="fa-solid fa-pen"></i>
+              </button>
+              <form action="/accounts/{{ a.id }}/delete" method="post" style="display:inline" onsubmit="return confirm('Cảnh báo: Bạn có chắc chắn muốn xóa tài khoản {{ a.username }} không?');">
+                <button class="btn action-btn bg-danger-subtle text-danger" type="submit" title="Xóa tài khoản">
+                  <i class="fa-solid fa-trash-can"></i>
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="4" class="text-center text-muted py-4">Chưa có dữ liệu tài khoản.</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -48,56 +81,79 @@
   </div>
 </div>
 
-<!-- Create Account Modal -->
 <div class="modal fade" id="createAccountModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
     <div class="modal-content">
-      <div class="modal-header"><h5 class="modal-title">Tạo tài khoản mới</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold"><i class="fa-solid fa-user-plus text-primary me-2"></i>Tạo tài khoản</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
       <form id="createAccountForm" action="/accounts/create" method="post" onsubmit="return validateCreateAccount(this)">
         <div class="modal-body">
-          <div class="mb-2"><input class="form-control" name="username" placeholder="Tên đăng nhập" required></div>
-          <div class="mb-2 input-group">
-            <input class="form-control" id="create_password" name="password" type="password" placeholder="Mật khẩu" required>
-            <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('create_password')"><i class="fa-solid fa-eye"></i></button>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-muted">Tên đăng nhập (Username)</label>
+            <input class="form-control bg-light" name="username" placeholder="Nhập tên đăng nhập" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-muted">Mật khẩu</label>
+            <div class="input-group password-group">
+              <input class="form-control bg-light border-end-0" id="create_password" name="password" type="password" placeholder="Nhập mật khẩu" required>
+              <button class="btn border" type="button" onclick="togglePassword('create_password')"><i class="fa-solid fa-eye"></i></button>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-muted">Xác nhận mật khẩu</label>
+            <input class="form-control bg-light" id="create_password_confirm" name="confirm_password" type="password" placeholder="Nhập lại mật khẩu" required>
           </div>
           <div class="mb-2">
-            <input class="form-control" id="create_password_confirm" name="confirm_password" type="password" placeholder="Xác nhận mật khẩu" required>
-          </div>
-          <div class="mb-2">
-            <select class="form-select" name="role">
-              <option value="admin">admin</option>
-              <option value="manager" selected>manager</option>
+            <label class="form-label small fw-semibold text-muted">Phân quyền (Role)</label>
+            <select class="form-select bg-light" name="role">
+              <option value="admin">Quản trị viên (Admin)</option>
+              <option value="manager" selected>Quản lý (Manager)</option>
             </select>
           </div>
         </div>
-        <div class="modal-footer">
-          <button class="btn btn-secondary" data-bs-dismiss="modal" type="button">Hủy</button>
-          <button class="btn btn-primary" type="submit">Tạo</button>
+        <div class="modal-footer bg-light rounded-bottom-4">
+          <button class="btn btn-light border rounded-pill px-3" data-bs-dismiss="modal" type="button">Hủy</button>
+          <button class="btn btn-primary rounded-pill px-4" type="submit">Xác nhận tạo</button>
         </div>
       </form>
     </div>
   </div>
 </div>
 
-<!-- Edit Account Modal -->
 <div class="modal fade" id="editAccountModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
     <div class="modal-content">
-      <div class="modal-header"><h5 class="modal-title">Sửa tài khoản</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold"><i class="fa-solid fa-user-pen text-primary me-2"></i>Sửa tài khoản</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
       <form id="editAccountForm" method="post">
         <div class="modal-body">
-          <div class="mb-2"><input class="form-control" id="edit_account_username" name="username" placeholder="Tên đăng nhập" required></div>
-          <div class="mb-2 input-group"><input class="form-control" id="edit_account_password" name="password" type="password" placeholder="Mật khẩu (để trống nếu không đổi)"><button class="btn btn-outline-secondary" type="button" onclick="togglePassword('edit_account_password')"><i class="fa-solid fa-eye"></i></button></div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-muted">Tên đăng nhập</label>
+            <input class="form-control bg-light" id="edit_account_username" name="username" readonly>
+            <div class="form-text small">Tên đăng nhập không thể thay đổi.</div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-muted">Mật khẩu mới</label>
+            <div class="input-group password-group">
+              <input class="form-control bg-light border-end-0" id="edit_account_password" name="password" type="password" placeholder="Bỏ trống nếu không đổi">
+              <button class="btn border" type="button" onclick="togglePassword('edit_account_password')"><i class="fa-solid fa-eye"></i></button>
+            </div>
+          </div>
           <div class="mb-2">
-            <select class="form-select" id="edit_account_role" name="role">
-              <option value="admin">admin</option>
-              <option value="manager">manager</option>
+            <label class="form-label small fw-semibold text-muted">Phân quyền (Role)</label>
+            <select class="form-select bg-light" id="edit_account_role" name="role">
+              <option value="admin">Quản trị viên (Admin)</option>
+              <option value="manager">Quản lý (Manager)</option>
             </select>
           </div>
         </div>
-        <div class="modal-footer">
-          <button class="btn btn-secondary" data-bs-dismiss="modal" type="button">Hủy</button>
-          <button class="btn btn-primary" type="submit">Lưu</button>
+        <div class="modal-footer bg-light rounded-bottom-4">
+          <button class="btn btn-light border rounded-pill px-3" data-bs-dismiss="modal" type="button">Hủy</button>
+          <button class="btn btn-primary rounded-pill px-4" type="submit">Lưu thay đổi</button>
         </div>
       </form>
     </div>
@@ -105,5 +161,4 @@
 </div>
 
 <script src="/static/js/accounts.js"></script>
-
 {% endblock %}

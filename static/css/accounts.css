@@ -1,3 +1,62 @@
 /* accounts.css - page specific styles for accounts */
-#accountsTable td, #accountsTable th { vertical-align: middle; }
-.modal .form-control { max-width: 100%; }
+
+#accountsTable td, #accountsTable th { 
+    vertical-align: middle; 
+}
+#accountsTable tbody tr td:last-child { 
+    white-space: nowrap; 
+}
+
+/* Nút thao tác trong bảng */
+.action-btn {
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    transition: all 0.2s;
+    border: none;
+}
+.action-btn:hover {
+    transform: translateY(-2px);
+}
+
+/* Các tùy chỉnh bo góc cho Modal */
+.modal-content {
+    border-radius: 20px;
+    border: none;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+}
+.modal-header {
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    padding: 1.25rem 1.5rem;
+}
+.modal-body {
+    padding: 1.5rem;
+}
+.modal-footer {
+    border-top: 1px solid rgba(0,0,0,0.05);
+    padding: 1rem 1.5rem;
+}
+
+/* Tinh chỉnh ô Password có nút bấm con mắt */
+.password-group .form-control {
+    border-right: none;
+}
+.password-group .form-control:focus + .btn {
+    border-color: var(--primary-500);
+}
+.password-group .btn {
+    border-color: #cbd5e1;
+    border-left: none;
+    background: #f8fafc; /* trùng với bg-light */
+    color: var(--text-muted);
+}
+.password-group .btn:hover {
+    color: var(--primary-600);
+}
+
+@media (max-width:768px){
+  #accountsTable td, #accountsTable th { padding: 0.75rem 0.6rem; }
+}
