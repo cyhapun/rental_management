@@ -20,6 +20,7 @@
       .notyf { font-family: Inter, Arial, sans-serif; }
     </style>
     <link rel="stylesheet" href="/static/style.css?v=20260327-1" />
+    {% block extra_css %}{% endblock %}
   </head>
   <body>
     {% set current_path = request.url.path if request and request.url else '' %}
@@ -119,46 +120,9 @@
             <div id="flash-data" data-flash="{{ flash_msg|e }}" data-level="{{ request.query_params.get('level', 'success') }}"></div>
             <!-- Inline bootstrap alert fallback for accessibility / when Notyf is blocked -->
             <div id="flash-alert" class="alert {% if request.query_params.get('level','success') in ['danger','error'] %}alert-danger{% elif request.query_params.get('level','success') == 'warning' %}alert-warning{% else %}alert-success{% endif %} alert-dismissible fade show" role="alert" style="position:fixed;top:70px;right:16px;z-index:2200;min-width:220px;max-width:92vw;display:none">
-              <span id="flash-alert-msg">{{ flash_msg|e }}</span>
-              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-            <script>
-              window.addEventListener('load', function () {
-                try {
-                  const el = document.getElementById('flash-data');
-                  // create a single, styled Notyf instance with custom types
-                  // adapt position and duration for small screens
-                  const isMobileSmall = (window.innerWidth <= 576);
-                  const notyfPos = isMobileSmall ? { x: 'center', y: 'top' } : { x: 'right', y: 'top' };
-                  const notyfDur = isMobileSmall ? 1800 : 2400;
-                  const notyf = new Notyf({
-                    duration: notyfDur,
-                    position: notyfPos,
-                    ripple: true,
-                    dismissible: true,
-                    types: [
-                      { type: 'success', background: 'linear-gradient(90deg,#10b981,#059669)', icon: { className: 'fa-solid fa-check-circle', tagName: 'i' } },
-                      { type: 'warning', background: 'linear-gradient(90deg,#f59e0b,#d97706)', icon: { className: 'fa-solid fa-triangle-exclamation', tagName: 'i' } },
-                      { type: 'error', background: 'linear-gradient(90deg,#ef4444,#dc2626)', icon: { className: 'fa-solid fa-times-circle', tagName: 'i' } }
-                    ]
-                  });
-                  if (!el) return;
-                  const msg = el.dataset.flash || '';
-                  const level = (el.dataset.level || 'success').toLowerCase();
-                  if (!msg) return;
-                  if (level === 'danger' || level === 'error') notyf.open({ type: 'error', message: msg });
-                  else if (level === 'warning') notyf.open({ type: 'warning', message: msg });
-                  else notyf.open({ type: 'success', message: msg });
-                  // Remove flash parameters from the URL to avoid polluting history
-                  try {
-                    const u = new URL(window.location);
-                    u.searchParams.delete('flash');
-                    u.searchParams.delete('level');
-                    window.history.replaceState({}, document.title, u.pathname + u.search + u.hash);
-                  } catch (e) {}
-                } catch (e) { console.error(e) }
-              });
-            </script>
+                <span id="flash-alert-msg">{{ flash_msg|e }}</span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+              </div>
           {% endif %}
             {% block content %}{% endblock %}
             </div>
@@ -170,154 +134,6 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <!-- html2canvas for "print as image" functionality -->
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-    <script>
-      // Toggle active/inactive classes for "Hiển thị danh sách" buttons
-      (function(){
-        try{
-          document.addEventListener('DOMContentLoaded', function(){
-            const buttons = Array.from(document.querySelectorAll('button[data-bs-toggle="collapse"][data-bs-target]'));
-            buttons.forEach(btn=>{
-              const target = document.querySelector(btn.getAttribute('data-bs-target'));
-              if (!target || !target.classList.contains('list-collapse')) return;
-              const setActive = (isActive)=>{
-                btn.classList.toggle('btn-list-active', isActive);
-                btn.classList.toggle('btn-list-inactive', !isActive);
-              };
-              // initialize
-              setActive(target.classList.contains('show'));
-              // listen to bootstrap collapse events
-              target.addEventListener('shown.bs.collapse', ()=> setActive(true));
-              target.addEventListener('hidden.bs.collapse', ()=> setActive(false));
-            });
-          });
-        }catch(e){console.error(e)}
-      })();
-      
-      // Sidebar affix removed — using CSS `position: sticky` to avoid horizontal jumps
-    </script>
-    <script>
-      // Capture an element as an image and trigger download (table-only)
-      async function printElementAsImage(selector, title) {
-        try {
-          const el = document.querySelector(selector);
-          if (!el) return alert('Không tìm thấy phần tử để in: ' + selector);
-
-          // Prefer capturing the surrounding .table-responsive if present to include full table layout
-          const sourceContainer = el.closest('.table-responsive') || el;
-
-          // Clone node so we can modify it for printing (remove action column, expand width)
-          const cloneWrapper = document.createElement('div');
-          cloneWrapper.style.position = 'absolute';
-          cloneWrapper.style.left = '-9999px';
-          cloneWrapper.style.top = '0';
-          cloneWrapper.style.overflow = 'visible';
-          cloneWrapper.style.background = '#ffffff';
-          cloneWrapper.style.padding = '12px';
-
-          // Deep clone the source container
-          const clone = sourceContainer.cloneNode(true);
-
-          // If clone contains a table, remove the action column (header containing 'Thao tác' or last column)
-          const tbl = clone.querySelector('table') || clone;
-          if (tbl && tbl.querySelector) {
-            const thead = tbl.querySelector('thead');
-            let actionIndex = -1;
-            if (thead) {
-              const ths = Array.from(thead.querySelectorAll('th'));
-              ths.forEach((th, idx) => {
-                const txt = (th.innerText || th.textContent || '').trim().toLowerCase();
-                if (txt.includes('thao tác') || txt.includes('thao_tac') || txt.includes('thao-tac')) actionIndex = idx;
-              });
-            }
-            // fallback remove last column
-            if (actionIndex === -1) {
-              // try to detect last header cell if any
-              try{
-                const lastTh = thead && thead.querySelector('th:last-child');
-                if (lastTh) actionIndex = Array.from(thead.querySelectorAll('th')).length - 1;
-              }catch(e){}
-            }
-            if (actionIndex > -1) {
-              // remove the header cell
-              try{ thead.querySelectorAll('th')[actionIndex].remove(); }catch(e){}
-              // remove each row's cell at that index
-              const rows = tbl.querySelectorAll('tbody tr');
-              rows.forEach(r => {
-                const cells = r.querySelectorAll('td');
-                if (cells && cells.length > actionIndex) {
-                  cells[actionIndex].remove();
-                }
-              });
-            }
-          }
-
-          // Ensure table/cloned container expands to full width and shows overflow
-          clone.style.width = 'auto';
-          const tables = clone.querySelectorAll('table');
-          tables.forEach(t => {
-            t.style.width = 'auto';
-            t.style.tableLayout = 'auto';
-            t.style.maxWidth = 'none';
-            t.style.overflow = 'visible';
-          });
-
-          cloneWrapper.appendChild(clone);
-          document.body.appendChild(cloneWrapper);
-
-          // choose scale to capture high-res but limit to reasonable size
-          const scale = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
-
-          // Use html2canvas on the offscreen clone; ensure scrollY is 0 to avoid crop offsets
-          const canvas = await html2canvas(cloneWrapper, { scale: scale, useCORS: true, backgroundColor: '#ffffff', scrollY: 0, allowTaint: true });
-          if (!canvas) {
-            cloneWrapper.remove();
-            return alert('Không thể tạo ảnh từ phần tử');
-          }
-
-          // Clean up clone before download
-          cloneWrapper.remove();
-
-          // Convert to blob and trigger download
-          canvas.toBlob(function(blob){
-            try{
-              const ts = new Date();
-              const pad = (n)=>String(n).padStart(2,'0');
-              function normalizeFilename(s){
-                if (!s) return 'capture';
-                try{
-                  return String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9\-_]/g,'_').toLowerCase();
-                }catch(e){
-                  return String(s).replace(/[^a-zA-Z0-9\-_]/g,'_');
-                }
-              }
-              const fname = normalizeFilename(title) + '-' + ts.getFullYear() + pad(ts.getMonth()+1) + pad(ts.getDate()) + '-' + pad(ts.getHours()) + pad(ts.getMinutes()) + pad(ts.getSeconds()) + '.png';
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = fname;
-              document.body.appendChild(a);
-              a.click();
-              a.remove();
-              setTimeout(()=>URL.revokeObjectURL(url), 1000);
-              try{ new Notyf({position: (window.innerWidth<=576?{x:'center',y:'top'}:{x:'right',y:'top'})}).success('Đã lưu ảnh: ' + fname); }catch(e){}
-            }catch(e){ console.error('download error', e); alert('Lỗi khi lưu ảnh: ' + (e && e.message)); }
-          }, 'image/png');
-        } catch (e) { console.error(e); alert('Lỗi khi tạo ảnh: ' + (e && e.message)); }
-      }
-    </script>
-    <script>
-      // Attach print button handlers for elements with data-print-target
-      document.addEventListener('DOMContentLoaded', function(){
-        try{
-          document.querySelectorAll('[data-print-target]').forEach(btn=>{
-            btn.addEventListener('click', function(e){
-              const target = btn.getAttribute('data-print-target');
-              const title = btn.getAttribute('data-print-title') || '';
-              printElementAsImage(target, title);
-            });
-          });
-        }catch(e){console.error('print binding error', e)}
-      });
-    </script>
+    <script src="/static/js/base.js"></script>
   </body>
 </html>

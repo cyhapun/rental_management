@@ -1,0 +1,12 @@
+/* dashboard.css - page specific styles for dashboard */
+.chart-container { position: relative; height: 300px; width: 100%; }
+.chart-container-small { position: relative; height: 200px; width: 100%; }
+@media (min-width: 768px) { .chart-container { height: 250px; } }
+
+/* Range selectors sizing for dashboard */
+#rangeSelect.form-select, #churnRangeSelect.form-select, #electricRangeSelect.form-select { min-width: 110px; max-width: 140px; }
+
+/* Electric top list */
+#electricTopList ol { padding-left: 1rem; margin: 0; }
+#electricTopList li { line-height: 1.25; }
+#electricTopList .fw-semibold { font-size: .95rem; }
