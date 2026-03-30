@@ -8,8 +8,10 @@
 .row-active-contract td {
     background-color: rgba(59, 130, 246, 0.02) !important;
 }
+
+/* Đã sửa lỗi html2canvas lấp đầy màu ô do dùng box-shadow, chuyển sang dùng border-left */
 .row-active-contract td:first-child {
-    box-shadow: inset 4px 0 0 var(--primary-500);
+    border-left: 4px solid var(--primary-500) !important;
 }
 
 /* Căn giữa theo chiều dọc cho bảng */
