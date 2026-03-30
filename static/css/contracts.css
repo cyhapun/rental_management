@@ -1,5 +1,50 @@
 /* contracts.css - page specific styles for contracts */
-.row-active-contract td { background: #fffdf2; }
 
-/* contract table spacing */
-#contractsTable td, #contractsTable th { vertical-align: middle; }
+/* Đánh dấu hợp đồng đang hiệu lực bằng dải viền bên trái và nền siêu nhạt */
+.row-active-contract {
+    position: relative;
+    transition: all 0.2s;
+}
+.row-active-contract td {
+    background-color: rgba(59, 130, 246, 0.02) !important;
+}
+.row-active-contract td:first-child {
+    box-shadow: inset 4px 0 0 var(--primary-500);
+}
+
+/* Căn giữa theo chiều dọc cho bảng */
+#contractsTable td, #contractsTable th { 
+    vertical-align: middle; 
+}
+
+/* Các tùy chỉnh bo góc cho Modal */
+.modal-content {
+    border-radius: 20px;
+    border: none;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+}
+.modal-header {
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    padding: 1.25rem 1.5rem;
+}
+.modal-body {
+    padding: 1.5rem;
+}
+.modal-footer {
+    border-top: 1px solid rgba(0,0,0,0.05);
+    padding: 1rem 1.5rem;
+}
+
+/* Nút thao tác trong bảng */
+.action-btn {
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    transition: all 0.2s;
+}
+.action-btn:hover {
+    transform: translateY(-2px);
+}
