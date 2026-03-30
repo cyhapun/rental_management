@@ -19,7 +19,7 @@ env.filters["money"] = money
 def _fix_id(doc):
     if not doc:
         return None
-    doc["id"] = str(doc.get("_id"))
+    doc["id"] = str(doc.pop("_id"))
     return doc
 
 
@@ -46,10 +46,44 @@ async def list_rooms(request: Request, q: str = ""):
                 pass
         # Keep backward compatibility for old rooms without this field.
         r["current_electric_index"] = r.get("current_electric_index", 0)
-        rooms.append(_fix_id(r))
+        # build JSON-serializable copy: convert Mongo _id to string id and drop raw _id
+        serializable = dict(r)
+        if serializable.get("_id") is not None:
+            try:
+                serializable["id"] = str(serializable.get("_id"))
+            except Exception:
+                serializable["id"] = None
+            serializable.pop("_id", None)
+        rooms.append(serializable)
     tpl = env.get_template("rooms.html")
     html = tpl.render(request=request, rooms=rooms, q=q or "")
     return HTMLResponse(content=html)
+
+
+@router.get("/_list")
+async def list_rooms_json(q: str = ""):
+    db = get_db()
+    query = {}
+    if q:
+        try:
+            query = {"room_number": int(str(q).strip())}
+        except Exception:
+            query = {"room_number": -999999999}
+    cursor = db.rooms.find(query)
+    rooms = []
+    async for r in cursor:
+        # Normalize legacy room_number string -> int for consistent schema.
+        room_num = r.get("room_number")
+        if isinstance(room_num, str):
+            try:
+                parsed_room_num = int(room_num.strip())
+                await db.rooms.update_one({"_id": r.get("_id")}, {"$set": {"room_number": parsed_room_num}})
+                r["room_number"] = parsed_room_num
+            except Exception:
+                pass
+        r["current_electric_index"] = r.get("current_electric_index", 0)
+        rooms.append(_fix_id(r))
+    return rooms
 
 
 @router.post("/create")

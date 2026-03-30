@@ -44,27 +44,10 @@
   <div class="table-responsive">
   <table class="table table-striped" id="roomsTable">
     <thead><tr><th>Phòng</th><th>Giá</th><th>Chỉ số điện hiện tại</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
-    <tbody>
-    {% for r in rooms %}
-    <tr data-room-id="{{ r.id }}" data-room-number="{{ r.room_number }}" data-room-price="{{ r.price }}" data-room-electric-index="{{ r.current_electric_index or 0 }}" data-room-status="{{ r.status }}">
-      <td>{{ r.room_number }}</td>
-      <td>{{ r.price | money }}</td>
-      <td>{{ r.current_electric_index or 0 }}</td>
-      <td>
-        {% if r.status == 'occupied' %}
-          <span class="badge bg-warning text-dark">Đang thuê</span>
-        {% else %}
-          <span class="badge bg-success">Trống</span>
-        {% endif %}
-      </td>
-      <td>
-        <button type="button" class="btn btn-sm btn-outline-primary me-2" onclick="openEditRoom(this)">Sửa</button>
-        <form action="/rooms/{{ r.id }}/delete" method="post" style="display:inline">
-          <button class="btn btn-sm btn-outline-danger">Xóa</button>
-        </form>
-      </td>
-    </tr>
-    {% endfor %}
+    <tbody id="roomsBody" data-auto-load="true" data-initial-q="{{ q }}">
+      <tr id="rooms-loading">
+        <td colspan="5" class="text-center text-muted">Đang tải dữ liệu…</td>
+      </tr>
     </tbody>
   </table>
 </div>

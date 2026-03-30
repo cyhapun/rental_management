@@ -31,7 +31,42 @@ document.addEventListener('DOMContentLoaded', function(){
   if (input){ input.addEventListener('input', filterRooms); input.addEventListener('keydown', (e)=>{ if (e.key === 'Enter'){ e.preventDefault(); filterRooms(); }}); }
   const st = document.getElementById('roomStatusFilter'); if (st) st.addEventListener('change', filterRooms);
   const sort = document.getElementById('roomSort'); if (sort) sort.addEventListener('change', sortRooms);
+  // Auto-load data if tbody requests it
+  const tbody = document.getElementById('roomsBody');
+  if (tbody && tbody.dataset && tbody.dataset.autoLoad === 'true'){
+    const initialQ = tbody.dataset.initialQ || '';
+    loadRooms(initialQ).then(()=>{ sortRooms(); filterRooms(); });
+  }
 });
+
+async function loadRooms(q){
+  const tbody = document.getElementById('roomsBody');
+  if (!tbody) return;
+  // show loading
+  tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Đang tải dữ liệu…</td></tr>';
+  try{
+    const resp = await fetch(`/rooms/_list?q=${encodeURIComponent(q||'')}`);
+    if (!resp.ok) throw new Error('Fetch failed');
+    const rooms = await resp.json();
+    tbody.innerHTML = '';
+    const nf = new Intl.NumberFormat('vi-VN');
+    rooms.forEach(r=>{
+      const tr = document.createElement('tr');
+      tr.dataset.roomId = r.id || '';
+      tr.dataset.roomNumber = r.room_number || '';
+      tr.dataset.roomPrice = r.price || '';
+      tr.dataset.roomElectricIndex = r.current_electric_index || 0;
+      tr.dataset.roomStatus = r.status || '';
+      const priceText = r.price != null ? nf.format(r.price) : '';
+      const statusHtml = (r.status === 'occupied') ? '<span class="badge bg-warning text-dark">Đang thuê</span>' : '<span class="badge bg-success">Trống</span>';
+      tr.innerHTML = `<td>${r.room_number || ''}</td><td>${priceText}</td><td>${r.current_electric_index || 0}</td><td>${statusHtml}</td><td><button type="button" class="btn btn-sm btn-outline-primary me-2" onclick="openEditRoom(this)">Sửa</button><form action="/rooms/${r.id}/delete" method="post" style="display:inline"><button class="btn btn-sm btn-outline-danger">Xóa</button></form></td>`;
+      tbody.appendChild(tr);
+    });
+  }catch(e){
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Lỗi khi tải dữ liệu</td></tr>';
+    console.error('loadRooms error', e);
+  }
+}
 
 function openEditRoom(btn){
   const row = btn.closest('tr');
