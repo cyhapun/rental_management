@@ -3,95 +3,127 @@
 <link rel="stylesheet" href="/static/css/rooms.css">
 {% endblock %}
 {% block content %}
-<div class="page-hero">
-  <div class="hero-card">
-    <div class="d-flex align-items-center justify-content-between">
-      <div>
-        <h1 class="h4 mb-0">Phòng</h1>
-        <div class="text-muted-small">Quản lý phòng trọ — tạo phòng mới hoặc mở danh sách</div>
-      </div>
-      <div class="hero-actions">
-        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createRoomModal"><i class="fa-solid fa-plus me-1"></i>Tạo phòng mới</button>
-        <button class="btn btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#roomsListCollapse" aria-expanded="false" aria-controls="roomsListCollapse"><i class="fa-solid fa-list me-1"></i>Hiển thị danh sách</button>
-        <button class="btn btn-outline-secondary" type="button" data-print-target="#roomsTable" data-print-title="Danh sách Phòng"><i class="fa-solid fa-image me-1"></i>In ảnh</button>
-      </div>
-    </div>
+
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
+  <div>
+    <h1 class="h4 fw-bold text-dark mb-1"><i class="fa-solid fa-door-open text-primary me-2"></i>Quản lý Phòng</h1>
+    <div class="text-muted small">Tạo phòng mới, cập nhật giá và chỉ số điện</div>
+  </div>
+  <div class="d-flex gap-2">
+    <button class="btn btn-primary rounded-pill px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#createRoomModal"><i class="fa-solid fa-plus me-1"></i>Thêm phòng</button>
+    <button class="btn btn-light border rounded-pill px-3" type="button" data-print-target=".table-responsive" data-print-title="Danh sách Phòng"><i class="fa-solid fa-print text-muted me-1"></i>In ảnh</button>
   </div>
 </div>
 
-<div class="collapse list-collapse show" id="roomsListCollapse">
-  <div class="table-toolbar mb-2 d-flex justify-content-between">
-    <div class="input-group w-50">
-      <input class="form-control form-control-sm" placeholder="Tìm số phòng..." id="roomSearch" value="{{ q }}">
-      <button class="btn btn-sm btn-light" onclick="filterRooms()"><i class="fa-solid fa-magnifying-glass"></i></button>
-    </div>
+<div class="bg-panel p-3 mb-4 d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+  <div class="input-group" style="max-width: 400px;">
+    <span class="input-group-text bg-light border-end-0 text-muted"><i class="fa-solid fa-magnifying-glass"></i></span>
+    <input class="form-control border-start-0 bg-light" placeholder="Tìm theo số phòng..." id="roomSearch" value="{{ q }}">
   </div>
-  <div class="d-flex gap-2 mb-2">
-    <select class="form-select form-select-sm" id="roomStatusFilter" style="max-width:170px;">
-      <option value="">Lọc trạng thái</option>
+
+  <div class="d-flex flex-wrap gap-2">
+    <select class="form-select bg-light border-0 fw-semibold text-dark" id="roomStatusFilter" style="width: auto; cursor: pointer; min-width: 160px;">
+      <option value="">Tất cả trạng thái</option>
       <option value="Đang thuê">Đang thuê</option>
       <option value="Trống">Trống</option>
     </select>
-    <select class="form-select form-select-sm" id="roomSort" style="max-width:220px;">
+    <select class="form-select bg-light border-0 fw-semibold text-dark" id="roomSort" style="width: auto; cursor: pointer; min-width: 180px;">
       <option value="default">Sắp xếp mặc định</option>
-      <option value="room_asc">Phòng: tăng dần</option>
-      <option value="room_desc">Phòng: giảm dần</option>
-      <option value="price_asc">Giá: thấp đến cao</option>
-      <option value="price_desc">Giá: cao đến thấp</option>
+      <option value="room_asc">Số phòng: Tăng dần</option>
+      <option value="room_desc">Số phòng: Giảm dần</option>
+      <option value="price_asc">Giá phòng: Thấp đến cao</option>
+      <option value="price_desc">Giá phòng: Cao đến thấp</option>
     </select>
   </div>
-
-  <div class="table-responsive">
-  <table class="table table-striped" id="roomsTable">
-    <thead><tr><th>Phòng</th><th>Giá</th><th>Chỉ số điện hiện tại</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
-    <tbody id="roomsBody" data-auto-load="true" data-initial-q="{{ q }}">
-      <tr id="rooms-loading">
-        <td colspan="5" class="text-center text-muted">Đang tải dữ liệu…</td>
-      </tr>
-    </tbody>
-  </table>
 </div>
 
-<!-- Create Room Modal -->
+<div class="bg-panel p-0 overflow-hidden mb-4">
+  <div class="table-responsive m-0">
+    <table class="table table-hover mb-0" id="roomsTable">
+      <thead>
+        <tr>
+          <th>Phòng</th>
+          <th>Giá thuê (VNĐ)</th>
+          <th>Chỉ số điện (kWh)</th>
+          <th class="text-center">Trạng thái</th>
+          <th>Thao tác</th>
+        </tr>
+      </thead>
+      <tbody id="roomsBody" data-auto-load="true" data-initial-q="{{ q }}">
+        <tr id="rooms-loading">
+          <td colspan="5" class="text-center text-muted py-4">
+            <span class="spinner-border spinner-border-sm text-primary me-2" role="status" aria-hidden="true"></span>
+            Đang tải dữ liệu phòng...
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
 <div class="modal fade" id="createRoomModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
     <div class="modal-content">
-      <div class="modal-header"><h5 class="modal-title">Thêm phòng</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold"><i class="fa-solid fa-door-closed text-primary me-2"></i>Thêm phòng mới</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
       <form action="/rooms/create" method="post">
         <div class="modal-body">
-          <div class="mb-2"><input class="form-control" name="room_number" placeholder="Số phòng" type="number" min="1" required></div>
-          <div class="mb-2"><input class="form-control" name="price" placeholder="Giá" type="number" required></div>
-          <div class="mb-2"><input class="form-control" name="current_electric_index" placeholder="Chỉ số điện hiện tại" type="number" min="0" value="0"></div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-muted">Số phòng</label>
+            <input class="form-control bg-light" name="room_number" placeholder="VD: 101" type="number" min="1" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-muted">Giá thuê (VNĐ)</label>
+            <input class="form-control bg-light" name="price" placeholder="VD: 3000000" type="number" required>
+          </div>
+          <div class="mb-2">
+            <label class="form-label small fw-semibold text-muted">Chỉ số điện ban đầu (kWh)</label>
+            <input class="form-control bg-light" name="current_electric_index" placeholder="VD: 0" type="number" min="0" value="0">
+          </div>
         </div>
-        <div class="modal-footer">
-          <button class="btn btn-secondary" data-bs-dismiss="modal" type="button">Hủy</button>
-          <button class="btn btn-primary" type="submit">Tạo</button>
+        <div class="modal-footer bg-light rounded-bottom-4">
+          <button class="btn btn-light border rounded-pill px-3" data-bs-dismiss="modal" type="button">Hủy</button>
+          <button class="btn btn-primary rounded-pill px-4" type="submit">Xác nhận tạo</button>
         </div>
       </form>
     </div>
   </div>
 </div>
 
-<!-- Edit Room Modal -->
 <div class="modal fade" id="editRoomModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
     <div class="modal-content">
-      <div class="modal-header"><h5 class="modal-title">Sửa phòng</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold"><i class="fa-solid fa-pen-to-square text-primary me-2"></i>Sửa thông tin phòng</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
       <form id="editRoomForm" method="post">
         <div class="modal-body">
-          <div class="mb-2"><input class="form-control" id="edit_room_number" name="room_number" placeholder="Số phòng" type="number" min="1" required></div>
-          <div class="mb-2"><input class="form-control" id="edit_room_price" name="price" placeholder="Giá" type="number" required></div>
-          <div class="mb-2"><input class="form-control" id="edit_room_electric_index" name="current_electric_index" placeholder="Chỉ số điện hiện tại" type="number" min="0" required></div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-muted">Số phòng</label>
+            <input class="form-control bg-light" id="edit_room_number" name="room_number" type="number" min="1" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-muted">Giá thuê (VNĐ)</label>
+            <input class="form-control bg-light" id="edit_room_price" name="price" type="number" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-muted">Chỉ số điện (kWh)</label>
+            <input class="form-control bg-light" id="edit_room_electric_index" name="current_electric_index" type="number" min="0" required>
+          </div>
           <div class="mb-2">
-            <select class="form-select" id="edit_room_status" name="status">
-              <option value="available">available</option>
-              <option value="occupied">occupied</option>
+            <label class="form-label small fw-semibold text-muted">Trạng thái phòng</label>
+            <select class="form-select bg-light" id="edit_room_status" name="status">
+              <option value="available">Trống (Available)</option>
+              <option value="occupied">Đang thuê (Occupied)</option>
             </select>
           </div>
         </div>
-        <div class="modal-footer">
-          <button class="btn btn-secondary" data-bs-dismiss="modal" type="button">Hủy</button>
-          <button class="btn btn-primary" type="submit">Lưu</button>
+        <div class="modal-footer bg-light rounded-bottom-4">
+          <button class="btn btn-light border rounded-pill px-3" data-bs-dismiss="modal" type="button">Hủy</button>
+          <button class="btn btn-primary rounded-pill px-4" type="submit">Lưu thay đổi</button>
         </div>
       </form>
     </div>
@@ -99,5 +131,4 @@
 </div>
 
 <script src="/static/js/rooms.js"></script>
-
 {% endblock %}
