@@ -1,0 +1,6 @@
+/* tenants.css - page specific styles for tenants */
+.cccd-masked { font-family: monospace; }
+.cccd-full { font-family: monospace; }
+
+/* table small adjustments */
+#tenantsTable td, #tenantsTable th { vertical-align: middle; }

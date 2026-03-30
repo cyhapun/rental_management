@@ -1,0 +1,3 @@
+/* accounts.css - page specific styles for accounts */
+#accountsTable td, #accountsTable th { vertical-align: middle; }
+.modal .form-control { max-width: 100%; }

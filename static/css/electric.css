@@ -1,0 +1,6 @@
+/* electric.css - page specific styles for electric readings */
+#electricTableBody .data-row td { vertical-align: middle; }
+#noSearchResultRow, #emptyDbRow { text-align: center; }
+
+/* modal sizing tweaks for edit reading */
+#editReadingModal .modal-dialog { max-width: 520px; }

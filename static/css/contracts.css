@@ -1,0 +1,5 @@
+/* contracts.css - page specific styles for contracts */
+.row-active-contract td { background: #fffdf2; }
+
+/* contract table spacing */
+#contractsTable td, #contractsTable th { vertical-align: middle; }

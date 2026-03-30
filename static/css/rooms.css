@@ -1,0 +1,8 @@
+/* rooms.css - page specific styles for rooms */
+#roomsTable td, #roomsTable th { vertical-align: middle; }
+#roomsTable tbody tr td:last-child { white-space: nowrap; }
+
+/* Smaller paddings for rooms table on mobile */
+@media (max-width:768px){
+  #roomsTable td, #roomsTable th{padding:.5rem .6rem}
+}
