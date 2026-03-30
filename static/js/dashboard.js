@@ -2,6 +2,15 @@
 (function(){
   const D = window.dashboardData || {};
 
+  // Mã màu chuẩn Design System
+  const colorPrimary = 'rgba(59, 130, 246, 0.85)';
+  const colorPrimaryLight = 'rgba(59, 130, 246, 0.15)';
+  const colorSuccess = 'rgba(16, 185, 129, 0.85)';
+  const colorSuccessLight = 'rgba(16, 185, 129, 0.15)';
+  const colorDanger = 'rgba(239, 68, 68, 0.85)';
+  const colorWarning = 'rgba(245, 158, 11, 0.85)';
+  const colorMuted = 'rgba(148, 163, 184, 0.85)';
+
   const labels6 = D.labels6 || [];
   const payments6 = D.payments6 || [];
   const labels12 = D.labels12 || [];
@@ -11,13 +20,16 @@
   const labels_all = D.labels_all || [];
   const payments_all = D.payments_all || [];
 
+  Chart.defaults.font.family = "'Inter', sans-serif";
+  Chart.defaults.color = '#64748b';
+
   const ctx = document.getElementById('revenueChart')?.getContext('2d');
   let revenueChart = null;
   if (ctx){
     revenueChart = new Chart(ctx, {
       type: 'line',
-      data: { labels: labels6, datasets: [{ label: 'Tiền đã nhận', data: payments6, borderColor: 'rgba(40,167,69,0.9)', backgroundColor: 'rgba(40,167,69,0.12)', tension: 0.3, fill: true }] },
-      options: { responsive: true, maintainAspectRatio: false, plugins:{legend:{display:false}}, scales:{x:{title:{display:true,text:'Thời gian'}}} }
+      data: { labels: labels6, datasets: [{ label: 'Tiền đã nhận', data: payments6, borderColor: colorSuccess, backgroundColor: colorSuccessLight, tension: 0.4, fill: true, pointBackgroundColor: '#fff', pointBorderColor: colorSuccess, pointRadius: 4 }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins:{legend:{display:false}}, scales:{x:{grid:{display:false}}, y:{border:{dash:[4,4]}, grid:{color:'#f1f5f9'}}} }
     });
   }
 
@@ -25,34 +37,34 @@
     if (!revenueChart) return;
     if (range === 'all'){
       revenueChart.data.labels = labels_all;
-      revenueChart.data.datasets = [{label:'Tiền đã nhận', data: payments_all, borderColor:'rgba(40,167,69,0.9)', backgroundColor:'rgba(40,167,69,0.12)', tension:0.3, fill:true}];
+      revenueChart.data.datasets[0].data = payments_all;
       try{ document.getElementById('timeUnit').innerText = 'Đơn vị: Tháng'; }catch(e){}
     } else if (range === '30'){
       revenueChart.data.labels = labels30;
-      revenueChart.data.datasets = [{label:'Tiền đã nhận', data: payments30, borderColor:'rgba(40,167,69,0.9)', backgroundColor:'rgba(40,167,69,0.12)', tension:0.3, fill:true}];
+      revenueChart.data.datasets[0].data = payments30;
       try{ document.getElementById('timeUnit').innerText = 'Đơn vị: Ngày'; }catch(e){}
     } else if (range === '6'){
       revenueChart.data.labels = labels6;
-      revenueChart.data.datasets = [{label:'Tiền đã nhận', data: payments6, borderColor:'rgba(40,167,69,0.9)', backgroundColor:'rgba(40,167,69,0.12)', tension:0.3, fill:true}];
+      revenueChart.data.datasets[0].data = payments6;
       try{ document.getElementById('timeUnit').innerText = 'Đơn vị: Tháng'; }catch(e){}
     } else if (range === '12'){
       revenueChart.data.labels = labels12;
-      revenueChart.data.datasets = [{label:'Tiền đã nhận', data: payments12, borderColor:'rgba(40,167,69,0.9)', backgroundColor:'rgba(40,167,69,0.12)', tension:0.3, fill:true}];
+      revenueChart.data.datasets[0].data = payments12;
       try{ document.getElementById('timeUnit').innerText = 'Đơn vị: Tháng'; }catch(e){}
     }
     revenueChart.update();
   }
 
-  // small doughnuts/pies
+  // Small Doughnuts/Pies
   try{
     const roomStatusCtx = document.getElementById('roomStatusChart')?.getContext('2d');
-    if (roomStatusCtx){ new Chart(roomStatusCtx, { type: 'doughnut', data: { labels: ['Đang thuê', 'Trống'], datasets: [{ data: [D.occupied||0, D.available||0], backgroundColor: ['rgba(255,193,7,0.85)', 'rgba(25,135,84,0.8)'] }] }, options: {responsive:true} }); }
+    if (roomStatusCtx){ new Chart(roomStatusCtx, { type: 'doughnut', data: { labels: ['Đang thuê', 'Trống'], datasets: [{ data: [D.occupied||0, D.available||0], backgroundColor: [colorPrimary, colorMuted], borderWidth: 0 }] }, options: {responsive:true, cutout: '70%', plugins:{legend:{position:'bottom'}}} }); }
 
     const billStatusCtx = document.getElementById('billStatusChart')?.getContext('2d');
-    if (billStatusCtx){ new Chart(billStatusCtx, { type: 'doughnut', data: { labels: ['Đã đóng', 'Chưa đóng'], datasets: [{ data: [D.paid||0, D.unpaid||0], backgroundColor: ['rgba(13,110,253,0.85)', 'rgba(220,53,69,0.8)'] }] }, options: {responsive:true} }); }
+    if (billStatusCtx){ new Chart(billStatusCtx, { type: 'doughnut', data: { labels: ['Đã đóng', 'Chưa đóng'], datasets: [{ data: [D.paid||0, D.unpaid||0], backgroundColor: [colorSuccess, colorDanger], borderWidth: 0 }] }, options: {responsive:true, cutout: '70%', plugins:{legend:{position:'bottom'}}} }); }
 
     const tenantStatusCtx = document.getElementById('tenantStatusChart')?.getContext('2d');
-    if (tenantStatusCtx){ new Chart(tenantStatusCtx, { type: 'pie', data: { labels: ['Đang thuê', 'Đã kết thúc'], datasets: [{ data: [D.renting_tenants||0, D.ended_tenants||0], backgroundColor: ['rgba(255,193,7,0.85)', 'rgba(108,117,125,0.8)'] }] }, options: {responsive:true} }); }
+    if (tenantStatusCtx){ new Chart(tenantStatusCtx, { type: 'doughnut', data: { labels: ['Đang thuê', 'Đã kết thúc'], datasets: [{ data: [D.renting_tenants||0, D.ended_tenants||0], backgroundColor: [colorPrimary, colorMuted], borderWidth: 0 }] }, options: {responsive:true, cutout: '70%', plugins:{legend:{position:'bottom'}}} }); }
   }catch(e){console.error(e)}
 
   // Electric chart handling
@@ -60,26 +72,26 @@
   const electricCtx = document.getElementById('electricHistoryChart')?.getContext('2d');
   let electricChart = null;
   if (electricCtx){
-    electricChart = new Chart(electricCtx, { type: 'line', data: { labels: E.electric_labels_6||[], datasets: [{ label: 'kWh', data: E.electric_series_6||[], borderColor: 'rgba(255,159,64,0.9)', backgroundColor: 'rgba(255,159,64,0.12)', tension:0.3, fill:true }] }, options: { responsive:true, maintainAspectRatio: false, scales: { y:{ beginAtZero:true } }, plugins:{legend:{display:false}} } });
+    electricChart = new Chart(electricCtx, { type: 'bar', data: { labels: E.electric_labels_6||[], datasets: [{ label: 'kWh', data: E.electric_series_6||[], backgroundColor: colorWarning, borderRadius: 6 }] }, options: { responsive:true, maintainAspectRatio: false, scales: { x:{grid:{display:false}}, y:{ beginAtZero:true, grid:{color:'#f1f5f9'} } }, plugins:{legend:{display:false}} } });
   }
 
   function updateElectricChart(range){
     if (!electricChart) return;
     if (range === 'all'){
       electricChart.data.labels = E.labels_all || [];
-      electricChart.data.datasets = [{label:'kWh', data: E.electricSeriesAll || [], borderColor:'rgba(255,159,64,0.9)', backgroundColor:'rgba(255,159,64,0.12)', tension:0.3, fill:true}];
+      electricChart.data.datasets[0].data = E.electricSeriesAll || [];
       try{ document.getElementById('electricTimeUnit').innerText = 'Đơn vị: Tháng'; }catch(e){}
     } else if (range === '30'){
       electricChart.data.labels = E.electric_labels_30 || [];
-      electricChart.data.datasets = [{label:'kWh', data: E.electric_series_30 || [], borderColor:'rgba(255,159,64,0.9)', backgroundColor:'rgba(255,159,64,0.12)', tension:0.3, fill:true}];
+      electricChart.data.datasets[0].data = E.electric_series_30 || [];
       try{ document.getElementById('electricTimeUnit').innerText = 'Đơn vị: Ngày'; }catch(e){}
     } else if (range === '6'){
       electricChart.data.labels = E.electric_labels_6 || [];
-      electricChart.data.datasets = [{label:'kWh', data: E.electric_series_6 || [], borderColor:'rgba(255,159,64,0.9)', backgroundColor:'rgba(255,159,64,0.12)', tension:0.3, fill:true}];
+      electricChart.data.datasets[0].data = E.electric_series_6 || [];
       try{ document.getElementById('electricTimeUnit').innerText = 'Đơn vị: Tháng'; }catch(e){}
     } else if (range === '12'){
       electricChart.data.labels = E.electric_labels_12 || [];
-      electricChart.data.datasets = [{label:'kWh', data: E.electric_series_12 || [], borderColor:'rgba(255,159,64,0.9)', backgroundColor:'rgba(255,159,64,0.12)', tension:0.3, fill:true}];
+      electricChart.data.datasets[0].data = E.electric_series_12 || [];
       try{ document.getElementById('electricTimeUnit').innerText = 'Đơn vị: Tháng'; }catch(e){}
     }
     electricChart.update();
@@ -91,13 +103,24 @@
   function renderTopPanelHtml(title, items){
     const container = document.getElementById('electricTopList'); if (!container) return;
     let html = '';
-    if (!items || !items.length){ html = '<div>Chưa có dữ liệu ghi nhận</div>'; }
-    else { html = '<ol class="mb-0 small">' + items.map(x=>`<li class="mb-1">${x.label}: <strong>${x.usage}</strong> kWh</li>`).join('') + '</ol>'; }
-    container.innerHTML = `<div class="fw-semibold mb-1">${title}</div>` + html;
+    if (!items || !items.length){ html = '<div class="text-muted fst-italic py-3 text-center">Chưa có dữ liệu</div>'; }
+    else { 
+        html = items.map((x, i)=>`
+            <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+                <div class="d-flex align-items-center">
+                    <span class="badge bg-secondary-subtle text-secondary me-2 rounded-circle" style="width:24px;height:24px;display:flex;align-items:center;justify-content:center;">${i+1}</span>
+                    <span class="fw-semibold text-dark">${x.label}</span>
+                </div>
+                <strong class="text-warning">${x.usage} <small class="text-muted fw-normal">kWh</small></strong>
+            </div>
+        `).join(''); 
+    }
+    container.innerHTML = `<div class="fw-bold text-dark mb-3">${title}</div>` + html;
   }
 
   async function updateElectricTopPanelForLabel(range, label){
-    const container = document.getElementById('electricTopList'); if (!container) return; container.innerHTML = 'Đang tải...';
+    const container = document.getElementById('electricTopList'); if (!container) return; 
+    container.innerHTML = '<div class="text-center py-3"><span class="spinner-border spinner-border-sm text-primary"></span></div>';
     try{
       if (range === 'all'){
         const items = (E.top_room_labels||[]).map((lab, i)=>({label: lab, usage: (E.top_room_usage||[])[i]||0}));
@@ -106,17 +129,17 @@
       if (range === '12'){
         const year = String(label).match(/^(\d{4})/)?.[1] || new Date().getFullYear();
         const res = await fetch(`/electric/dashboard/top-electric-year/${year}`);
-        if (!res.ok) { container.innerHTML = 'Chưa có dữ liệu ghi nhận'; return; }
+        if (!res.ok) { container.innerHTML = 'Chưa có dữ liệu'; return; }
         const data = await res.json();
         const items = (data.top_months||[]).map(x=>({label:x.month, usage:x.usage}));
-        renderTopPanelHtml(`Top tháng trong ${year}`, items); return;
+        renderTopPanelHtml(`Tháng dùng nhiều năm ${year}`, items); return;
       }
       const month = label;
       const res = await fetch(`/electric/dashboard/top-electric/${month}`);
-      if (!res.ok) { container.innerHTML = 'Chưa có dữ liệu ghi nhận'; return; }
+      if (!res.ok) { container.innerHTML = 'Chưa có dữ liệu'; return; }
       const data = await res.json();
       const items = (data.top_rooms||[]).map(x=>({label:`Phòng ${x.room_number}`, usage:x.usage}));
-      renderTopPanelHtml(`Top phòng ${month}`, items);
+      renderTopPanelHtml(`Top phòng tháng ${month}`, items);
     }catch(e){ console.error(e); container.innerHTML = 'Lỗi hiển thị dữ liệu'; }
   }
 
@@ -140,26 +163,30 @@
   const churnCtx = document.getElementById('churnChart')?.getContext('2d');
   let churnChart = null;
   if (churnCtx){
-    churnChart = new Chart(churnCtx, { type: 'bar', data: { labels: labels6, datasets: [ { label: 'Thuê mới', data: D.tenant_started_6||[], backgroundColor: 'rgba(13,110,253,0.85)' }, { label: 'Thoát', data: D.tenant_ended_6||[], backgroundColor: 'rgba(220,53,69,0.85)' } ] }, options: { responsive:true, maintainAspectRatio: false, plugins:{legend:{position:'top'}}, scales:{ x:{ stacked:false }, y:{ beginAtZero:true } } } });
+    churnChart = new Chart(churnCtx, { type: 'bar', data: { labels: labels6, datasets: [ { label: 'Thuê mới', data: D.tenant_started_6||[], backgroundColor: colorPrimary, borderRadius: 4 }, { label: 'Trả phòng', data: D.tenant_ended_6||[], backgroundColor: colorDanger, borderRadius: 4 } ] }, options: { responsive:true, maintainAspectRatio: false, plugins:{legend:{position:'top'}}, scales:{ x:{ stacked:false, grid:{display:false} }, y:{ beginAtZero:true, grid:{color:'#f1f5f9'} } } } });
   }
 
   function updateChurnChart(range){
     if (!churnChart) return;
     if (range === 'all'){
       churnChart.data.labels = labels_all;
-      churnChart.data.datasets = [{label:'Thuê mới', data: D.tenantStartedAll||[], backgroundColor:'rgba(13,110,253,0.85)'},{label:'Thoát', data: D.tenantEndedAll||[], backgroundColor:'rgba(220,53,69,0.85)'}];
+      churnChart.data.datasets[0].data = D.tenantStartedAll||[];
+      churnChart.data.datasets[1].data = D.tenantEndedAll||[];
       try{ document.getElementById('churnTimeUnit').innerText = 'Đơn vị: Tháng'; }catch(e){}
     } else if (range === '30'){
       churnChart.data.labels = D.tenant_labels_30 || [];
-      churnChart.data.datasets = [{label:'Thuê mới', data: D.tenant_started_30||[], backgroundColor:'rgba(13,110,253,0.85)'},{label:'Thoát', data: D.tenant_ended_30||[], backgroundColor:'rgba(220,53,69,0.85)'}];
+      churnChart.data.datasets[0].data = D.tenant_started_30||[];
+      churnChart.data.datasets[1].data = D.tenant_ended_30||[];
       try{ document.getElementById('churnTimeUnit').innerText = 'Đơn vị: Ngày'; }catch(e){}
     } else if (range === '6'){
       churnChart.data.labels = labels6;
-      churnChart.data.datasets = [{label:'Thuê mới', data: D.tenant_started_6||[], backgroundColor:'rgba(13,110,253,0.85)'},{label:'Thoát', data: D.tenant_ended_6||[], backgroundColor:'rgba(220,53,69,0.85)'}];
+      churnChart.data.datasets[0].data = D.tenant_started_6||[];
+      churnChart.data.datasets[1].data = D.tenant_ended_6||[];
       try{ document.getElementById('churnTimeUnit').innerText = 'Đơn vị: Tháng'; }catch(e){}
     } else if (range === '12'){
       churnChart.data.labels = labels12;
-      churnChart.data.datasets = [{label:'Thuê mới', data: D.tenant_started_12||[], backgroundColor:'rgba(13,110,253,0.85)'},{label:'Thoát', data: D.tenant_ended_12||[], backgroundColor:'rgba(220,53,69,0.85)'}];
+      churnChart.data.datasets[0].data = D.tenant_started_12||[];
+      churnChart.data.datasets[1].data = D.tenant_ended_12||[];
       try{ document.getElementById('churnTimeUnit').innerText = 'Đơn vị: Tháng'; }catch(e){}
     }
     churnChart.update();
@@ -176,20 +203,11 @@
     updateChart(initialRange);
     updateChurnChart(initialRange);
     updateElectricChart(document.getElementById('electricRangeSelect')?.value || '6');
-
-    function adjustChartsResponsive(){
-      const w = window.innerWidth || document.documentElement.clientWidth || 1024;
-      const small = w < 576;
-      const tickSize = small ? 10 : 12;
-      const applyToChart = (chart)=>{
-        try{ if (!chart) return; if (chart.options && chart.options.scales){ Object.keys(chart.options.scales).forEach(k=>{ const s = chart.options.scales[k]; s.ticks = s.ticks || {}; s.ticks.font = s.ticks.font || {}; s.ticks.font.size = tickSize; }); } if (chart.options && chart.options.plugins && chart.options.plugins.legend && chart.options.plugins.legend.labels){ chart.options.plugins.legend.labels.font = chart.options.plugins.legend.labels.font || {}; chart.options.plugins.legend.labels.font.size = tickSize; } chart.resize(); chart.update(); }catch(e){console.error(e)} };
-      applyToChart(revenueChart);
-      applyToChart(electricChart);
-      applyToChart(churnChart);
+    
+    // Gọi thử danh sách Top của tháng gần nhất
+    if(E.electric_labels_6 && E.electric_labels_6.length > 0) {
+       updateElectricTopPanelForLabel('6', E.electric_labels_6[E.electric_labels_6.length - 1]);
     }
-    adjustChartsResponsive();
-    let lastWindowWidth = window.innerWidth;
-    window.addEventListener('resize', function(){ if (window.innerWidth !== lastWindowWidth) { lastWindowWidth = window.innerWidth; setTimeout(adjustChartsResponsive, 120); } });
   }catch(e){ console.error(e); }
 
 })();
