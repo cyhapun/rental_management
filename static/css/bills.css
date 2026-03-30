@@ -1,47 +1,54 @@
 /* bills.css - page specific styles for bills */
-.invoice { background: #fff; padding: 24px; border-radius: 8px; box-shadow: 0 6px 22px rgba(0,0,0,0.08); }
-.bill-iframe { border:0;width:100%;height:100%; }
-
-/* bills.css - Tối ưu giao diện hóa đơn */
-
-/* Badge trạng thái kiểu hiện đại */
-.bg-success-subtle { background-color: #dcfce7 !important; color: #166534 !important; }
-.bg-danger-subtle { background-color: #fee2e2 !important; color: #991b1b !important; }
-.bg-warning-subtle { background-color: #fef9c3 !important; color: #854d0e !important; }
-
-/* Tùy chỉnh bảng */
-.table thead th {
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    font-weight: 700;
-    padding: 15px 10px;
-    border-bottom: 1px solid #f1f5f9;
+.invoice { 
+    background: #fff; 
+    padding: 24px; 
+    border-radius: 8px; 
+    box-shadow: 0 6px 22px rgba(0,0,0,0.08); 
+}
+.bill-iframe { 
+    border: 0; 
+    width: 100%; 
+    height: 100%; 
 }
 
-/* Biến bảng thành Card trên Mobile */
+/* Căn giữa theo chiều dọc cho bảng */
+#billsTable td, #billsTable th { 
+    vertical-align: middle; 
+}
+
+/* Nút thao tác trong bảng */
+.action-btn {
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    transition: all 0.2s;
+    border: none;
+}
+.action-btn:hover {
+    transform: translateY(-2px);
+}
+
+/* Biến bảng thành dạng Thẻ (Card) khi xem trên Mobile */
 @media (max-width: 768px) {
-    .table-responsive table, 
-    .table-responsive thead, 
-    .table-responsive tbody, 
-    .table-responsive th, 
-    .table-responsive td, 
-    .table-responsive tr { 
+    #billsTable table, #billsTable thead, #billsTable tbody, #billsTable th, #billsTable td, #billsTable tr { 
         display: block; 
     }
     
-    .table-responsive thead { display: none; } /* Ẩn tiêu đề bảng */
+    #billsTable thead { display: none; } /* Ẩn tiêu đề bảng */
     
-    .table-responsive tr {
+    #billsTable tr.data-row {
         margin-bottom: 15px;
-        border: 1px solid #f1f5f9;
-        border-radius: 12px;
-        padding: 10px;
+        border: 1px solid rgba(0,0,0,0.05);
+        border-radius: 16px;
+        padding: 12px;
         background: #fff;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        box-shadow: var(--shadow-sm);
     }
     
-    .table-responsive td {
+    #billsTable td {
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -50,26 +57,31 @@
         text-align: right;
     }
     
-    .table-responsive td::before {
-        content: attr(data-label); /* Bạn có thể thêm data-label vào HTML nếu muốn hiện tên cột */
+    #billsTable td::before {
+        content: attr(data-label);
         font-weight: 600;
         text-align: left;
-        color: #64748b;
+        color: var(--text-muted);
         font-size: 0.85rem;
     }
 
-    .table-responsive td:first-child {
-        border-bottom: 1px solid #f1f5f9;
+    /* Tùy chỉnh dòng đầu tiên (Tên khách) trên mobile */
+    #billsTable td:first-child {
+        border-bottom: 1px dashed rgba(0,0,0,0.08);
         margin-bottom: 5px;
-        display: block;
+        display: flex;
+        justify-content: flex-start;
         text-align: left;
+        padding-bottom: 12px;
     }
+    #billsTable td:first-child::before { content: none; }
     
-    .table-responsive td:last-child {
+    /* Dòng thao tác cuối cùng trên mobile */
+    #billsTable td:last-child {
         justify-content: center;
-        padding-top: 10px;
+        padding-top: 12px;
+        border-top: 1px dashed rgba(0,0,0,0.08);
+        margin-top: 5px;
     }
+    #billsTable td:last-child::before { content: none; }
 }
-
-.btn-white { background: #fff; }
-.btn-white:hover { background: #f8fafc; }

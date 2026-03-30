@@ -3,108 +3,147 @@
 <link rel="stylesheet" href="/static/css/bills.css">
 {% endblock %}
 {% block content %}
+
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
   <div>
-    <h1 class="h3 fw-bold mb-1">Quản lý Hóa đơn</h1>
-    <p class="text-muted small mb-0">Theo dõi và quản lý các khoản thu chi hàng tháng.</p>
+    <h1 class="h4 fw-bold text-dark mb-1"><i class="fa-solid fa-file-invoice-dollar text-primary me-2"></i>Quản lý Hóa đơn</h1>
+    <p class="text-muted small mb-0">Theo dõi, tạo mới và quản lý các khoản thu chi hàng tháng.</p>
   </div>
-  
-  <div class="dropdown">
-    <button class="btn btn-primary shadow-sm dropdown-toggle w-100" type="button" data-bs-toggle="collapse" data-bs-target="#collapseGenerate">
-      <i class="fa-solid fa-plus me-2"></i>Tạo hóa đơn mới
+  <div>
+    <button class="btn btn-primary rounded-pill px-4 shadow-sm w-100" type="button" data-bs-toggle="collapse" data-bs-target="#collapseGenerate">
+      <i class="fa-solid fa-plus me-2"></i>Tạo hóa đơn
     </button>
   </div>
 </div>
 
 <div class="collapse mb-4" id="collapseGenerate">
-  <div class="card card-body border-0 shadow-sm" style="border-radius: 15px;">
-    <form class="row g-3" action="/bills/generate" method="post">
-      <div class="col-md-4">
-        <label class="form-label small fw-bold">Chọn tháng</label>
-        <input class="form-control" name="month" type="month" value="{{ default_month }}" required />
-      </div>
-      <div class="col-md-5">
-        <label class="form-label small fw-bold">Hợp đồng</label>
-        <select class="form-select" name="contract_id">
-          <option value="">Tất cả hợp đồng</option>
-          {% for c in contracts %}
-          <option value="{{ c.id }}">{{ c.display }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="col-md-3 d-flex align-items-end">
-        <button class="btn btn-success w-100" type="submit">Xác nhận tạo</button>
-      </div>
-    </form>
+  <div class="bg-panel p-4 position-relative overflow-hidden">
+    <i class="fa-solid fa-receipt position-absolute text-primary" style="font-size: 150px; opacity: 0.03; right: -20px; top: -20px; z-index: 0;"></i>
+    
+    <div class="position-relative" style="z-index: 1;">
+      <h6 class="fw-bold text-dark mb-3">Thông tin khởi tạo</h6>
+      <form class="row g-3" action="/bills/generate" method="post">
+        <div class="col-md-4">
+          <label class="form-label small fw-semibold text-muted">Kỳ thu (Tháng)</label>
+          <input class="form-control bg-light" name="month" type="month" value="{{ default_month }}" required />
+        </div>
+        <div class="col-md-5">
+          <label class="form-label small fw-semibold text-muted">Hợp đồng áp dụng</label>
+          <select class="form-select bg-light" name="contract_id">
+            <option value="">-- Tất cả hợp đồng (Tạo hàng loạt) --</option>
+            {% for c in contracts %}
+            <option value="{{ c.id }}">{{ c.display }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3 d-flex align-items-end">
+          <button class="btn btn-success rounded-pill px-4 w-100 shadow-sm" type="submit">Xác nhận tạo</button>
+        </div>
+      </form>
+    </div>
   </div>
 </div>
 
-<div class="card border-0 shadow-sm mb-4" style="border-radius: 15px; overflow: hidden;">
-  <div class="p-3 bg-white border-bottom d-flex flex-wrap align-items-center gap-2">
-    <div class="btn-group shadow-sm">
-      <a class="btn btn-outline-light text-dark border {% if not status %}active{% endif %}" href="/bills/">Tất cả</a>
-      <a class="btn btn-outline-light text-dark border {% if status=='unpaid' %}active bg-warning-subtle{% endif %}" href="/bills/?status=unpaid">Chưa đóng</a>
-      <a class="btn btn-outline-light text-dark border {% if status=='paid' %}active bg-success-subtle{% endif %}" href="/bills/?status=paid">Đã đóng</a>
+<div class="bg-panel p-3 mb-4 d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+  
+  <div class="d-flex bg-light rounded-pill p-1 border shadow-sm" style="width: fit-content;">
+    <a class="btn btn-sm rounded-pill px-3 fw-semibold {% if status == 'all' or status not in ['paid', 'unpaid'] %}bg-white text-primary shadow-sm{% else %}text-muted border-0{% endif %}" href="/bills/?status=all">
+      Tất cả
+    </a>
+    
+    <a class="btn btn-sm rounded-pill px-3 fw-semibold {% if status == 'unpaid' %}bg-white text-danger shadow-sm{% else %}text-muted border-0{% endif %}" href="/bills/?status=unpaid">
+      Chưa đóng
+    </a>
+    
+    <a class="btn btn-sm rounded-pill px-3 fw-semibold {% if status == 'paid' %}bg-white text-success shadow-sm{% else %}text-muted border-0{% endif %}" href="/bills/?status=paid">
+      Đã đóng
+    </a>
+  </div>
+
+  <div class="d-flex flex-wrap gap-2">
+    <div class="input-group" style="max-width: 250px;">
+      <span class="input-group-text bg-light border-end-0 text-muted"><i class="fa-solid fa-magnifying-glass"></i></span>
+      <input class="form-control border-start-0 bg-light" id="billSearch" placeholder="Tìm tên, phòng..." />
     </div>
 
-    <select class="form-select form-select-sm border-0 bg-light ms-md-2" id="billSort" style="max-width:180px; height: 38px;">
+    <select class="form-select bg-light border-0 fw-semibold text-dark" id="billSort" style="width: auto; cursor: pointer; min-width: 150px;">
       <option value="month_desc">Mới nhất</option>
       <option value="month_asc">Cũ nhất</option>
       <option value="total_desc">Giá cao nhất</option>
+      <option value="total_asc">Giá thấp nhất</option>
     </select>
-
-    <div class="input-group ms-auto shadow-sm" style="max-width:300px;">
-      <span class="input-group-text bg-white border-end-0"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
-      <input class="form-control border-start-0 ps-0" id="billSearch" placeholder="Tìm tên, phòng..." />
-    </div>
   </div>
+</div>
 
-  <div class="table-responsive">
+<div class="bg-panel p-0 overflow-hidden mb-4">
+  <div class="table-responsive m-0">
     {% if not bills %}
       <div class="p-5 text-center">
-        <img src="https://cdn-icons-png.flaticon.com/512/6598/6598519.png" style="width: 80px; opacity: 0.3;" alt="No data">
-        <p class="text-muted mt-3">Chưa có hóa đơn nào được tạo.</p>
+        <i class="fa-solid fa-box-open text-muted mb-3" style="font-size: 3rem; opacity: 0.5;"></i>
+        <p class="text-muted fw-semibold mb-0">Chưa có hóa đơn nào được tạo.</p>
       </div>
     {% else %}
-    <table class="table table-hover align-middle mb-0">
-      <thead class="bg-light">
+    <table class="table table-hover mb-0" id="billsTable">
+      <thead>
         <tr>
           <th class="ps-4">Khách thuê & Phòng</th>
-          <th>Tháng</th>
-          <th>Tổng tiền</th>
-          <th>Trạng thái</th>
-          <th class="text-end pe-4">Thao tác</th>
+          <th class="text-center">Kỳ thu</th>
+          <th class="text-end">Tổng tiền (VNĐ)</th>
+          <th class="text-center">Trạng thái</th>
+          <th class="text-center pe-4">Thao tác</th>
         </tr>
       </thead>
-      <tbody>
+      <tbody id="billsTableBody">
       {% for b in bills %}
-      <tr>
+      <tr class="data-row" data-tenant-name="{{ b.contract_display.tenant_name if b.contract_display else '' }}" data-room="{{ b.contract_display.room_number if b.contract_display else '' }}" data-month="{{ b.month }}" data-total="{{ b.total }}">
+        
         <td class="ps-4">
-          <div class="fw-bold text-dark">
-            {{ b.contract_display.tenant_name if b.contract_display else 'N/A' }}
+          <div class="d-flex align-items-center">
+            <div class="avatar-circle bg-primary-subtle text-primary me-3 shadow-sm d-none d-md-flex" style="width:36px; height:36px; border-radius:10px; align-items:center; justify-content:center; font-weight:bold; font-size:0.95rem;">
+              {% if b.contract_display and b.contract_display.tenant_name %}
+                {{ b.contract_display.tenant_name[0]|upper }}
+              {% else %}
+                <i class="fa-solid fa-user"></i>
+              {% endif %}
+            </div>
+            <div>
+              <div class="fw-bold text-dark">
+                {{ b.contract_display.tenant_name if b.contract_display else 'Khách vãng lai' }}
+              </div>
+              <div class="small text-muted mt-1">
+                <span class="badge bg-light text-dark border px-2 py-1"><i class="fa-solid fa-door-closed me-1 text-muted"></i> P. {{ b.contract_display.room_number if b.contract_display else '--' }}</span>
+              </div>
+            </div>
           </div>
-          <div class="small text-muted">Phòng: {{ b.contract_display.room_number if b.contract_display else '--' }}</div>
         </td>
-        <td><span class="badge bg-light text-dark border">{{ b.month }}</span></td>
-        <td><span class="fw-bold text-primary">{{ b.total | money }}</span></td>
-        <td>
+        
+        <td class="text-center" data-label="Kỳ thu">
+          <span class="text-primary fw-semibold"><i class="fa-regular fa-calendar-alt me-1"></i>{{ b.month }}</span>
+        </td>
+        
+        <td class="text-end" data-label="Tổng tiền">
+          <span class="fw-bold text-dark fs-6">{{ b.total | money }}</span>
+        </td>
+        
+        <td class="text-center" data-label="Trạng thái">
           {% if b.status == 'paid' %}
-            <span class="badge rounded-pill bg-success-subtle text-success px-3">
-              <i class="fa-solid fa-check-circle me-1"></i> Đã đóng
+            <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1 rounded-pill">
+              <i class="fa-solid fa-circle-check me-1"></i> Đã đóng
             </span>
           {% else %}
-            <span class="badge rounded-pill bg-danger-subtle text-danger px-3">
+            <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-1 rounded-pill">
               <i class="fa-solid fa-clock me-1"></i> Chưa đóng
             </span>
           {% endif %}
         </td>
-        <td class="text-end pe-4">
-          <div class="btn-group shadow-sm">
-            <button class="btn btn-sm btn-white border" onclick="showBill('{{ b.id }}')" title="Xem chi tiết">
-              <i class="fa-solid fa-eye text-primary"></i>
+        
+        <td class="text-center pe-4">
+          <div class="d-flex justify-content-center gap-1">
+            <button class="btn action-btn bg-primary-subtle text-primary" onclick="showBill('{{ b.id }}')" title="Xem chi tiết Hóa đơn">
+              <i class="fa-solid fa-eye"></i>
             </button>
-            <button class="btn btn-sm btn-white border" onclick="captureInvoiceImage('{{ b.id }}', this)" title="Lưu ảnh">
-              <i class="fa-solid fa-download text-success"></i>
+            <button class="btn action-btn bg-success-subtle text-success" onclick="captureInvoiceImage('{{ b.id }}', this)" title="Lưu/Tải ảnh Hóa đơn">
+              <i class="fa-solid fa-download"></i>
             </button>
           </div>
         </td>

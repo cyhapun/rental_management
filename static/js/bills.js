@@ -18,29 +18,41 @@ async function showBill(billId){
   })();
 }
 
+// Cập nhật: Sử dụng Dataset để tìm kiếm an toàn, không vướng Icon
 function filterBills(){
   const q = (document.getElementById('billSearch').value || '').toLowerCase();
-  const rows = document.querySelectorAll('table tbody tr');
-  rows.forEach(r=>{ r.style.display = r.innerText.toLowerCase().includes(q) ? '' : 'none'; });
+  const rows = document.querySelectorAll('#billsTableBody tr.data-row');
+  
+  rows.forEach(r => { 
+      const tName = (r.dataset.tenantName || '').toLowerCase();
+      const room = (r.dataset.room || '').toLowerCase();
+      const month = (r.dataset.month || '').toLowerCase();
+      
+      if (tName.includes(q) || room.includes(q) || month.includes(q)) {
+          r.style.display = '';
+      } else {
+          r.style.display = 'none';
+      }
+  });
 }
 
+// Cập nhật: Sử dụng Dataset để sắp xếp chính xác giá trị
 function sortBills(){
   const sortVal = document.getElementById('billSort').value;
-  const tbody = document.querySelector('table tbody');
+  const tbody = document.getElementById('billsTableBody');
   if(!tbody) return;
-  const rows = Array.from(tbody.querySelectorAll('tr'));
+  const rows = Array.from(tbody.querySelectorAll('tr.data-row'));
   
-  const monthVal = (r) => (r.children[1].innerText || '').trim();
-  const totalVal = (r) => {
-      const text = r.children[2].innerText || '0';
-      return parseInt(text.replace(/[^\d]/g,''), 10) || 0;
-  };
-
   rows.sort((a,b) => {
-    if (sortVal === 'month_desc') return monthVal(b).localeCompare(monthVal(a));
-    if (sortVal === 'month_asc') return monthVal(a).localeCompare(monthVal(b));
-    if (sortVal === 'total_desc') return totalVal(b) - totalVal(a);
-    if (sortVal === 'total_asc') return totalVal(a) - totalVal(b);
+    const monthA = a.dataset.month || '';
+    const monthB = b.dataset.month || '';
+    const totalA = parseInt(a.dataset.total || '0', 10);
+    const totalB = parseInt(b.dataset.total || '0', 10);
+
+    if (sortVal === 'month_desc') return monthB.localeCompare(monthA);
+    if (sortVal === 'month_asc') return monthA.localeCompare(monthB);
+    if (sortVal === 'total_desc') return totalB - totalA;
+    if (sortVal === 'total_asc') return totalA - totalB;
     return 0;
   });
   

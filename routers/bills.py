@@ -18,7 +18,7 @@ env.filters["money"] = money
 
 
 @router.get("/")
-async def list_bills(request: Request, status: str = "unpaid"):
+async def list_bills(request: Request, status: str = "all"):
     db = get_db()
     q = {}
     if status in ("paid", "unpaid"):
