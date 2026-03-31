@@ -196,17 +196,30 @@ async def list_contracts(request: Request):
 
     latest_contract_ids = {str(v.get("_id")) for v in latest_by_room.values()}
 
+    def _to_iso_date(d):
+        if not d:
+            return None
+        try:
+            dt = datetime.date.fromisoformat(str(d))
+            return dt.isoformat()
+        except Exception:
+            try:
+                dt = datetime.datetime.fromisoformat(str(d))
+                if dt.tzinfo is None:
+                    dt = dt + datetime.timedelta(hours=7)
+                return dt.date().isoformat()
+            except Exception:
+                return None
+
     def _fmt_date_iso(d):
         if not d:
             return None
         try:
-            # try date only
             dt = datetime.date.fromisoformat(str(d))
             return dt.strftime("%d/%m/%Y")
         except Exception:
             try:
                 dt = datetime.datetime.fromisoformat(str(d))
-                # treat as UTC if naive, convert to +7
                 if dt.tzinfo is None:
                     dt = dt + datetime.timedelta(hours=7)
                 else:
@@ -214,21 +227,6 @@ async def list_contracts(request: Request):
                 return dt.strftime("%d/%m/%Y")
             except Exception:
                 return str(d)
-
-        def _to_iso_date(d):
-            if not d:
-                return None
-            try:
-                dt = datetime.date.fromisoformat(str(d))
-                return dt.isoformat()
-            except Exception:
-                try:
-                    dt = datetime.datetime.fromisoformat(str(d))
-                    if dt.tzinfo is None:
-                        dt = dt + datetime.timedelta(hours=7)
-                    return dt.date().isoformat()
-                except Exception:
-                    return None
 
     for c in all_contracts:
         c["id"] = str(c.get("_id"))
@@ -389,34 +387,44 @@ async def list_contracts(request: Request):
     async for r in db.rooms.find({}).sort("room_number", 1):
         r["id"] = str(r.get("_id"))
         rooms.append({"id": r.get("id"), "room_number": r.get("room_number"), "price": r.get("price"), "status": r.get("status")})
-    warnings = []
-    today_due = []
+        
+    upcoming_dues = []
     today_str = today.isoformat()
+    
     for c in contracts:
         if not c.get("is_active"):
             continue
-        start = c.get("start_date")
+            
+        start_iso = c.get("start_date_iso")
+        if not start_iso:
+            continue
+            
         try:
-            start_date = datetime.date.fromisoformat(str(start))
+            start_date = datetime.date.fromisoformat(str(start_iso))
         except Exception:
             continue
+            
         due = _next_due_date(start_date, today)
         days_left = (due - today).days
-        entry = {
-            "room_number": c.get("room", {}).get("room_number") if c.get("room") else c.get("room_id"),
-            "tenant_name": c.get("tenant", {}).get("full_name") if c.get("tenant") else c.get("tenant_id"),
-            "due_date": due.isoformat(),
-        }
-        if days_left == 1:
-            warnings.append(entry)
-        elif days_left == 0:
-            today_due.append(entry)
+        
+        # Lấy tất cả các phòng đến hạn từ hôm nay (0 ngày) đến 2 ngày nữa
+        if 0 <= days_left <= 2:
+            entry = {
+                "room_number": c.get("room", {}).get("room_number") if c.get("room") else c.get("room_id"),
+                "tenant_name": c.get("tenant", {}).get("full_name") if c.get("tenant") else c.get("tenant_id"),
+                "due_date": due.isoformat(),
+                "days_left": days_left
+            }
+            upcoming_dues.append(entry)
+            
+    # Sắp xếp danh sách theo số ngày còn lại tăng dần (0 ngày -> 1 ngày -> 2 ngày)
+    upcoming_dues.sort(key=lambda x: x["days_left"])
+
     tpl = env.get_template("contracts.html")
     html = tpl.render(
         request=request,
         contracts=contracts,
-        warnings=warnings,
-        today_due=today_due,
+        upcoming_dues=upcoming_dues,  
         tenants=tenants,
         rooms=rooms,
         active_room_ids=list(active_room_ids),
