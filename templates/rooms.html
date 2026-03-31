@@ -69,6 +69,7 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <form action="/rooms/create" method="post">
+        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token if request and request.state and request.state.csrf_token else '' }}">
         <div class="modal-body">
           <div class="mb-3">
             <label class="form-label small fw-semibold text-muted">Số phòng</label>
@@ -100,6 +101,7 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <form id="editRoomForm" method="post">
+        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token if request and request.state and request.state.csrf_token else '' }}">
         <div class="modal-body">
           <div class="mb-3">
             <label class="form-label small fw-semibold text-muted">Số phòng</label>

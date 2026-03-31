@@ -72,6 +72,65 @@ async def auth_middleware(request: Request, call_next):
     # Keep backward-compatible `user_role` for templates that expect it.
     request.state.user = account
     request.state.user_role = account.get("role", "user")
+    # expose csrf token to templates from server-side session (do NOT store readable cookie)
+    try:
+        request.state.csrf_token = session_doc.get('csrf_token')
+    except Exception:
+        request.state.csrf_token = None
+
+    # CSRF protection (double-submit pattern + server-side token verification)
+    # For unsafe methods, verify token from header or form matches session's csrf_token.
+    unsafe_methods = ("POST", "PUT", "PATCH", "DELETE")
+    if request.method in unsafe_methods:
+        # Allow public endpoints to manage their own checks
+        # Try header first (for AJAX/JSON clients)
+        try:
+            session_csrf = session_doc.get('csrf_token')
+            content_type = request.headers.get('content-type', '')
+            token_match = False
+
+            # check JSON/AJAX header
+            header_token = request.headers.get('x-csrf-token') or request.headers.get('x-xsrf-token')
+            if header_token and session_csrf and header_token == session_csrf:
+                token_match = True
+                return await call_next(request)
+
+            # For form submissions, we need to read the body to extract csrf_token
+            if 'application/x-www-form-urlencoded' in content_type or 'multipart/form-data' in content_type:
+                body = await request.body()
+                try:
+                    from urllib.parse import parse_qs
+
+                    params = parse_qs(body.decode('utf-8', errors='ignore'))
+                    form_token = params.get('csrf_token', [None])[0]
+                except Exception:
+                    form_token = None
+
+                if form_token and session_csrf and form_token == session_csrf:
+                    token_match = True
+
+                # recreate request for downstream since body consumed
+                async def receive():
+                    return {"type": "http.request", "body": body, "more_body": False}
+
+                if not token_match:
+                    from fastapi.responses import JSONResponse
+
+                    return JSONResponse({"detail": "CSRF token missing or invalid"}, status_code=403)
+
+                new_request = Request(request.scope, receive)
+                return await call_next(new_request)
+
+            # If not form/json, reject if header not present
+            if not token_match:
+                from fastapi.responses import JSONResponse
+
+                return JSONResponse({"detail": "CSRF token missing or invalid"}, status_code=403)
+        except Exception:
+            # On any error in CSRF checking, reject request for safety
+            from fastapi.responses import JSONResponse
+
+            return JSONResponse({"detail": "CSRF validation failed"}, status_code=403)
 
     # Only /accounts should be admin-only; managers have access to other pages
     admin_only_prefixes = ("/accounts",)

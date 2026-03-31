@@ -85,6 +85,7 @@
     
     <div class="login-body">
       <form action="/login" method="post">
+        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token if request and request.state and request.state.csrf_token else '' }}">
         
         <div class="mb-4">
           <label class="form-label small fw-semibold text-muted">Tên đăng nhập</label>

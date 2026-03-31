@@ -14,6 +14,7 @@
     {% block extra_css %}{% endblock %}
   </head>
   <body>
+    {# CSRF input helper removed; templates render hidden input directly to avoid Jinja macro scope issues #}
     {% set current_path = request.url.path if request and request.url else '' %}
     {% set user = request.state.user if request and request.state and request.state.user else None %}
     {% set user_role = request.state.user_role if request and request.state and request.state.user_role else None %}
@@ -160,5 +161,6 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script src="/static/js/base.js"></script>
+    {# CSRF token injected server-side into forms; no client-side injection needed #}
   </body>
 </html>

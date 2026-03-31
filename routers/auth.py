@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from deps import get_db
 from security import encrypt_value, verify_password, generate_session_id
 from flash import redirect_with_flash
+import secrets
 
 router = APIRouter()
 
@@ -49,6 +50,8 @@ async def login_post(request: Request, response: Response, username: str = Form(
         # bind user agent and remote address to session for extra security
         "user_agent": request.headers.get('user-agent'),
         "remote_addr": (request.client.host if request.client else None),
+        # CSRF token associated with this session
+        "csrf_token": secrets.token_urlsafe(32),
     }
     await db.sessions.insert_one(session_doc)
 
@@ -73,6 +76,7 @@ async def login_post(request: Request, response: Response, username: str = Form(
         max_age=8 * 3600,
         path='/',
     )
+    # CSRF token remains stored server-side in session_doc; do NOT set a readable cookie here
     return response
 
 
@@ -95,4 +99,5 @@ async def logout(request: Request):
 
     response = RedirectResponse(url='/login')
     response.delete_cookie(cookie_name)
+    # CSRF token stored server-side will be removed when session doc deleted; do not rely on cookie
     return response
