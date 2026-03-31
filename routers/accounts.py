@@ -25,22 +25,34 @@ def _fix(doc):
     return {"id": str(doc.get("_id")), "username": doc.get("username"), "role": doc.get("role", "manager"), "created_at": created_str}
 
 
+# 1. API Trả về khung HTML siêu nhẹ
 @router.get("/", response_class=HTMLResponse)
 async def list_accounts(request: Request):
+    tpl = env.get_template("accounts.html")
+    # KHÔNG truy vấn database và truyền 'accounts' ở đây nữa
+    html = tpl.render(request=request)
+    return HTMLResponse(content=html)
+
+
+# 2. API Trả về dữ liệu JSON (để Javascript gọi ngầm)
+@router.get("/_data")
+async def get_accounts_data(request: Request):
     db = get_db()
+    # Nếu muốn bảo mật hơn, có thể check quyền admin tại đây:
+    # if getattr(request.state, 'user_role', None) != 'admin':
+    #     return {"accounts": [], "total": 0}
+        
     cursor = db.accounts.find({})
     accts = []
     async for a in cursor:
         accts.append(_fix(a))
-    tpl = env.get_template("accounts.html")
-    html = tpl.render(request=request, accounts=accts, total=len(accts))
-    return HTMLResponse(content=html)
+    
+    return {"accounts": accts, "total": len(accts)}
 
 
 @router.post("/create")
 async def create_account(request: Request, username: str = Form(...), password: str = Form(...), confirm_password: str = Form(...), role: str = Form('manager')):
     db = get_db()
-    # enforce admin role
     if getattr(request.state, 'user_role', None) != 'admin':
         return redirect_with_flash('/dashboard', 'Bạn không có quyền để tạo tài khoản', 'danger')
     try:
