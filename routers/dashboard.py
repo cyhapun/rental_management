@@ -3,7 +3,6 @@ from fastapi.responses import HTMLResponse
 import os
 from jinja2 import Environment, FileSystemLoader
 from deps import get_db
-
 from template_filters import money
 import constants
 
@@ -13,12 +12,21 @@ TEMPLATES_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "t
 env = Environment(loader=FileSystemLoader(TEMPLATES_DIR))
 env.filters["money"] = money
 
-
-@router.get("/dashboard")
+# 1. API Trả về khung HTML (Load ngay lập tức)
+@router.get("/dashboard", response_class=HTMLResponse)
 async def dashboard_view(request: Request):
-    role = getattr(request.state, "user_role", "guest")
+    tpl = env.get_template("dashboard.html")
+    # Chỉ truyền role để check quyền ẩn/hiện menu, không truyền data
+    html = tpl.render(request=request)
+    return HTMLResponse(content=html)
 
+# 2. API Trả về JSON Dữ liệu (Sẽ được gọi ngầm qua Javascript)
+@router.get("/dashboard/_data")
+async def dashboard_data_api():
     db = get_db()
+    import datetime as _dt
+    now = _dt.datetime.now()
+    
     total_rooms = await db.rooms.count_documents({})
     occupied = await db.rooms.count_documents({"status": "occupied"})
     available = await db.rooms.count_documents({"status": "available"})
@@ -509,57 +517,52 @@ async def dashboard_view(request: Request):
     price_per_kwh = getattr(constants, 'PRICE_PER_KWH', 3000)
     water_fee = getattr(constants, 'WATER_FEE', 50000)
 
-    tpl = env.get_template("dashboard.html")
-    html = tpl.render(
-        request=request,
-        total_rooms=total_rooms,
-        occupied=occupied,
-        available=available,
-        paid=paid,
-        unpaid=unpaid,
-        revenue=payments_series[-1] if payments_series else 0,
-        revenue_labels=labels,
-        revenue_series=series,
-        billed_total_current_month=billed_total_current_month,
-        payments_series=payments_series,
-        paid_amount_current_month=paid_amount_current_month,
-        labels_12=labels_12,
-        payments_series_12=payments_series_12,
-        labels_30=labels_30,
-        payments_30=payments_30,
-        electric_series_12=electric_series_12,
-        electric_series_all=electric_series_all,
-        labels_all=labels_all,
-        payments_all=payments_all,
-        electric_labels_all=labels_all,
-        electric_labels_30=electric_labels_30,
-        electric_series_30=electric_series_30,
-        renting_tenants=renting_tenants,
-        ended_tenants=ended_tenants,
-        tenant_started_6=tenant_started_6,
-        tenant_ended_6=tenant_ended_6,
-        tenant_started_12=tenant_started_12,
-        tenant_ended_12=tenant_ended_12,
-        tenant_labels_30=tenant_labels_30,
-        tenant_started_30=tenant_started_30,
-        tenant_ended_30=tenant_ended_30,
-        tenant_started_all=tenant_started_all,
-        tenant_ended_all=tenant_ended_all,
-        top_room_labels=top_room_labels,
-        top_room_usage=top_room_usage,
-        total_electric_all=total_electric_all,
-        total_electric_month=total_electric_month,
-        total_accounts=total_accounts,
-        room_price_avg=room_price_avg,
-        room_price_min=room_price_min,
-        room_price_max=room_price_max,
-        price_per_kwh=price_per_kwh,
-        water_fee=water_fee,
-        electric_labels_6=labels_6,
-        electric_series_6=electric_series_6,
-        readonly_guest=False,
-    )
-    return HTMLResponse(content=html)
+    return {
+        "total_rooms": total_rooms,
+        "occupied": occupied,
+        "available": available,
+        "paid": paid,
+        "unpaid": unpaid,
+        "paid_amount_current_month": paid_amount_current_month,
+        "room_price_avg": room_price_avg,
+        "price_per_kwh": price_per_kwh,
+        "water_fee": water_fee,
+        "total_accounts": total_accounts,
+        
+        # Dữ liệu cho Chart.js
+        "labels6": labels_6,
+        "payments6": payments_series_6,
+        "labels12": labels_12,
+        "payments12": payments_series_12,
+        "labels30": labels_30,
+        "payments30": payments_30,
+        "labels_all": labels_all,
+        "payments_all": payments_all,
+        
+        "electric_labels_6": labels_6,
+        "electric_series_6": electric_series_6,
+        "electric_labels_12": labels_12,
+        "electric_series_12": electric_series_12,
+        "electric_labels_30": electric_labels_30,
+        "electric_series_30": electric_series_30,
+        "electric_labels_all": labels_all,
+        "electric_series_all": electric_series_all,
+        
+        "tenant_started_6": tenant_started_6,
+        "tenant_ended_6": tenant_ended_6,
+        "tenant_started_12": tenant_started_12,
+        "tenant_ended_12": tenant_ended_12,
+        "tenant_labels_30": tenant_labels_30,
+        "tenant_started_30": tenant_started_30,
+        "tenant_ended_30": tenant_ended_30,
+        "tenant_started_all": tenant_started_all,
+        "tenant_ended_all": tenant_ended_all,
+        
+        "top_room_labels": top_room_labels,
+        "top_room_usage": top_room_usage,
+        "renting_tenants": renting_tenants,
+        "ended_tenants": ended_tenants
+    }
 
 
 @router.get('/dashboard/top-electric/{month}')

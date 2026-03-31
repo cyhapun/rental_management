@@ -33,7 +33,9 @@
       <div class="d-flex justify-content-between align-items-center">
         <div>
           <div class="metric-small mb-1">Tổng số phòng</div>
-          <strong class="h4 fw-bold mb-0 text-dark">{{ total_rooms }}</strong>
+          <strong class="h4 fw-bold mb-0 text-dark" id="val-total-rooms">
+            <span class="spinner-border spinner-border-sm text-primary"></span>
+          </strong>
         </div>
         <div class="icon-shape bg-primary-subtle text-primary"><i class="fa-solid fa-house fs-5"></i></div>
       </div>
@@ -44,7 +46,9 @@
       <div class="d-flex justify-content-between align-items-center">
         <div>
           <div class="metric-small mb-1">Đang thuê</div>
-          <strong class="h4 fw-bold mb-0 text-dark">{{ occupied }}</strong>
+          <strong class="h4 fw-bold mb-0 text-dark" id="val-occupied">
+            <span class="spinner-border spinner-border-sm text-success"></span>
+          </strong>
         </div>
         <div class="icon-shape bg-success-subtle text-success"><i class="fa-solid fa-user-check fs-5"></i></div>
       </div>
@@ -55,7 +59,9 @@
       <div class="d-flex justify-content-between align-items-center">
         <div>
           <div class="metric-small mb-1">HĐ chưa đóng</div>
-          <strong class="h4 fw-bold mb-0 text-danger">{{ unpaid }}</strong>
+          <strong class="h4 fw-bold mb-0 text-danger" id="val-unpaid">
+            <span class="spinner-border spinner-border-sm text-danger"></span>
+          </strong>
         </div>
         <div class="icon-shape bg-danger-subtle text-danger"><i class="fa-solid fa-file-invoice-dollar fs-5"></i></div>
       </div>
@@ -66,7 +72,9 @@
       <div class="d-flex justify-content-between align-items-center">
         <div>
           <div class="metric-small mb-1">Thu tháng này</div>
-          <strong class="h5 fw-bold mb-0 text-info">{{ paid_amount_current_month | money }}</strong>
+          <strong class="h5 fw-bold mb-0 text-info" id="val-paid-month">
+            <span class="spinner-border spinner-border-sm text-info"></span>
+          </strong>
         </div>
         <div class="icon-shape bg-info-subtle text-info"><i class="fa-solid fa-coins fs-5"></i></div>
       </div>
@@ -80,7 +88,9 @@
       <div class="d-flex justify-content-between align-items-center">
         <div>
           <div class="metric-small mb-1">Giá phòng (TB)</div>
-          <strong class="h6 fw-bold mb-0 text-dark">{{ room_price_avg | money }}</strong>
+          <strong class="h6 fw-bold mb-0 text-dark" id="val-room-price">
+            <span class="spinner-border spinner-border-sm text-secondary"></span>
+          </strong>
         </div>
         <div class="icon-shape bg-secondary-subtle text-secondary"><i class="fa-solid fa-tag fs-5"></i></div>
       </div>
@@ -91,7 +101,9 @@
       <div class="d-flex justify-content-between align-items-center">
         <div>
           <div class="metric-small mb-1">Giá điện / kWh</div>
-          <strong class="h6 fw-bold mb-0 text-dark">{{ price_per_kwh | money }}</strong>
+          <strong class="h6 fw-bold mb-0 text-dark" id="val-price-kwh">
+            <span class="spinner-border spinner-border-sm text-warning"></span>
+          </strong>
         </div>
         <div class="icon-shape bg-warning-subtle text-warning"><i class="fa-solid fa-bolt fs-5"></i></div>
       </div>
@@ -102,7 +114,9 @@
       <div class="d-flex justify-content-between align-items-center">
         <div>
           <div class="metric-small mb-1">Nước (phòng)</div>
-          <strong class="h6 fw-bold mb-0 text-dark">{{ water_fee | money }}</strong>
+          <strong class="h6 fw-bold mb-0 text-dark" id="val-water-fee">
+            <span class="spinner-border spinner-border-sm text-info"></span>
+          </strong>
         </div>
         <div class="icon-shape bg-info-subtle text-info"><i class="fa-solid fa-water fs-5"></i></div>
       </div>
@@ -113,7 +127,9 @@
       <div class="d-flex justify-content-between align-items-center">
         <div>
           <div class="metric-small mb-1">Tài khoản</div>
-          <strong class="h6 fw-bold mb-0 text-dark">{{ total_accounts }}</strong>
+          <strong class="h6 fw-bold mb-0 text-dark" id="val-total-accounts">
+            <span class="spinner-border spinner-border-sm text-dark"></span>
+          </strong>
         </div>
         <div class="icon-shape bg-dark-subtle text-dark"><i class="fa-solid fa-users-gear fs-5"></i></div>
       </div>
@@ -136,8 +152,11 @@
           <span id="timeUnit" class="badge bg-white text-muted border ms-1 px-3 py-2 shadow-sm rounded-pill">Đơn vị: Tháng</span>
         </div>
       </div>
-      <div class="chart-container">
-        <canvas id="revenueChart"></canvas>
+      <div class="chart-container position-relative">
+        <div class="chart-loading position-absolute top-50 start-50 translate-middle d-flex align-items-center text-muted z-1 w-100 justify-content-center">
+          <span class="spinner-border spinner-border-sm text-primary me-2"></span> Đang khởi tạo biểu đồ...
+        </div>
+        <canvas id="revenueChart" class="position-relative z-2"></canvas>
       </div>
     </div>
   </div>
@@ -156,8 +175,11 @@
           <span id="churnTimeUnit" class="badge bg-white text-muted border ms-1 px-3 py-2 shadow-sm rounded-pill">Đơn vị: Tháng</span>
         </div>
       </div>
-      <div class="chart-container">
-        <canvas id="churnChart"></canvas>
+      <div class="chart-container position-relative">
+        <div class="chart-loading position-absolute top-50 start-50 translate-middle d-flex align-items-center text-muted z-1 w-100 justify-content-center">
+          <span class="spinner-border spinner-border-sm text-danger me-2"></span> Đang khởi tạo biểu đồ...
+        </div>
+        <canvas id="churnChart" class="position-relative z-2"></canvas>
       </div>
     </div>
   </div>
@@ -180,8 +202,11 @@
 
       <div class="row g-4">
         <div class="col-12 col-md-8 d-flex flex-column">
-          <div class="chart-container-small">
-            <canvas id="electricHistoryChart"></canvas>
+          <div class="chart-container-small position-relative">
+            <div class="chart-loading position-absolute top-50 start-50 translate-middle d-flex align-items-center text-muted z-1 w-100 justify-content-center">
+              <span class="spinner-border spinner-border-sm text-warning me-2"></span> Đang khởi tạo biểu đồ...
+            </div>
+            <canvas id="electricHistoryChart" class="position-relative z-2"></canvas>
           </div>
           <div class="small text-muted mt-2 d-flex align-items-center justify-content-end">
             <i class="fa-solid fa-hand-pointer text-primary me-2"></i> Nhấn vào cột để xem chi tiết tháng.
@@ -189,11 +214,11 @@
         </div>
 
         <div class="col-12 col-md-4 d-flex flex-column">
-          <h6 class="fw-bold text-muted mb-3 fs-7 text-uppercase">Phòng dùng nhiều nhất</h6>
+          <h6 class="fw-bold text-muted mb-3 fs-7 text-uppercase">TOP tiêu thụ</h6>
           <div class="flex-grow-1 p-3 rounded-4 bg-light border custom-scrollbar" style="overflow-y: auto; max-height: 260px;">
             <div id="electricTopList" class="small text-dark mb-0">
-              <div class="d-flex align-items-center text-muted">
-                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+              <div class="d-flex align-items-center text-muted justify-content-center mt-4">
+                <span class="spinner-border spinner-border-sm text-primary me-2" role="status" aria-hidden="true"></span>
                 Đang tải dữ liệu...
               </div>
             </div>
@@ -208,64 +233,38 @@
   <div class="col-12 col-md-4">
     <div class="bg-panel h-100 d-flex flex-column align-items-center justify-content-center">
       <h6 class="fw-bold text-muted mb-3 fs-7 text-uppercase w-100 text-center">Tỷ lệ phòng trống</h6>
-      <div class="mini-chart-wrapper"><canvas id="roomStatusChart"></canvas></div>
+      <div class="mini-chart-wrapper position-relative w-100">
+        <div class="chart-loading position-absolute top-50 start-50 translate-middle d-flex align-items-center text-muted z-1 w-100 justify-content-center small">
+          <span class="spinner-border spinner-border-sm text-secondary me-2"></span> Đang tải...
+        </div>
+        <canvas id="roomStatusChart" class="position-relative z-2"></canvas>
+      </div>
     </div>
   </div>
   <div class="col-12 col-md-4">
     <div class="bg-panel h-100 d-flex flex-column align-items-center justify-content-center">
       <h6 class="fw-bold text-muted mb-3 fs-7 text-uppercase w-100 text-center">Hóa đơn nợ</h6>
-      <div class="mini-chart-wrapper"><canvas id="billStatusChart"></canvas></div>
+      <div class="mini-chart-wrapper position-relative w-100">
+        <div class="chart-loading position-absolute top-50 start-50 translate-middle d-flex align-items-center text-muted z-1 w-100 justify-content-center small">
+          <span class="spinner-border spinner-border-sm text-danger me-2"></span> Đang tải...
+        </div>
+        <canvas id="billStatusChart" class="position-relative z-2"></canvas>
+      </div>
     </div>
   </div>
   <div class="col-12 col-md-4">
     <div class="bg-panel h-100 d-flex flex-column align-items-center justify-content-center">
       <h6 class="fw-bold text-muted mb-3 fs-7 text-uppercase w-100 text-center">Khách thuê</h6>
-      <div class="mini-chart-wrapper"><canvas id="tenantStatusChart"></canvas></div>
+      <div class="mini-chart-wrapper position-relative w-100">
+        <div class="chart-loading position-absolute top-50 start-50 translate-middle d-flex align-items-center text-muted z-1 w-100 justify-content-center small">
+          <span class="spinner-border spinner-border-sm text-success me-2"></span> Đang tải...
+        </div>
+        <canvas id="tenantStatusChart" class="position-relative z-2"></canvas>
+      </div>
     </div>
   </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-// Fix triệt để liên kết dữ liệu, dùng default('[]') để tránh lỗi Javascript
-window.dashboardData = {
-  labels6: {{ revenue_labels | default('[]') | tojson | safe }},
-  payments6: {{ payments_series | default('[]') | tojson | safe }},
-  labels12: {{ labels_12 | default('[]') | tojson | safe }},
-  payments12: {{ payments_series_12 | default('[]') | tojson | safe }},
-  labels30: {{ labels_30 | default('[]') | tojson | safe }},
-  payments30: {{ payments_30 | default('[]') | tojson | safe }},
-  labels_all: {{ labels_all | default('[]') | tojson | safe }},
-  payments_all: {{ payments_all | default('[]') | tojson | safe }},
-  
-  electric_labels_6: {{ electric_labels_6 | default('[]') | tojson | safe }},
-  electric_series_6: {{ electric_series_6 | default('[]') | tojson | safe }},
-  electric_labels_12: {{ labels_12 | default('[]') | tojson | safe }},
-  electric_series_12: {{ electric_series_12 | default('[]') | tojson | safe }},
-  electric_labels_30: {{ electric_labels_30 | default('[]') | tojson | safe }},
-  electric_series_30: {{ electric_series_30 | default('[]') | tojson | safe }},
-  electric_labels_all: {{ labels_all | default('[]') | tojson | safe }},
-  electric_series_all: {{ electric_series_all | default('[]') | tojson | safe }},
-  
-  tenant_started_6: {{ tenant_started_6 | default('[]') | tojson | safe }},
-  tenant_ended_6: {{ tenant_ended_6 | default('[]') | tojson | safe }},
-  tenant_started_12: {{ tenant_started_12 | default('[]') | tojson | safe }},
-  tenant_ended_12: {{ tenant_ended_12 | default('[]') | tojson | safe }},
-  tenant_labels_30: {{ tenant_labels_30 | default('[]') | tojson | safe }},
-  tenant_started_30: {{ tenant_started_30 | default('[]') | tojson | safe }},
-  tenant_ended_30: {{ tenant_ended_30 | default('[]') | tojson | safe }},
-  tenant_started_all: {{ tenant_started_all | default('[]') | tojson | safe }},
-  tenant_ended_all: {{ tenant_ended_all | default('[]') | tojson | safe }},
-  
-  top_room_labels: {{ top_room_labels | default('[]') | tojson | safe }},
-  top_room_usage: {{ top_room_usage | default('[]') | tojson | safe }},
-  occupied: {{ occupied | default(0) }},
-  available: {{ available | default(0) }},
-  paid: {{ paid | default(0) }},
-  unpaid: {{ unpaid | default(0) }},
-  renting_tenants: {{ renting_tenants | default(0) }},
-  ended_tenants: {{ ended_tenants | default(0) }}
-};
-</script>
-<script src="/static/js/dashboard.js"></script>
+<script src="/static/js/dashboard.js?v=2"></script>
 {% endblock %}
