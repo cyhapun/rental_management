@@ -1,38 +1,160 @@
-// bills.js - behaviors for bills page
+// bills.js - behaviors for bills page (CSR Model)
 
-// 1. Xem Hóa Đơn
+// Hàm Format Tiền Tệ
+const formatMoney = (amount) => {
+    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+};
+
+// 1. Fetch dữ liệu & Build HTML bảng Hóa đơn
+async function loadBills() {
+    const tbody = document.getElementById('billsTableBody');
+    if (!tbody) return;
+
+    const currentStatus = tbody.dataset.status || 'all';
+
+    try {
+        const response = await fetch(`/bills/_data?status=${currentStatus}`);
+        if (!response.ok) throw new Error("Lỗi khi tải hóa đơn");
+        
+        const bills = await response.json();
+        
+        tbody.innerHTML = '';
+        if (bills.length === 0) {
+            tbody.innerHTML = `
+              <tr>
+                <td colspan="6">
+                  <div class="p-5 text-center">
+                    <i class="fa-solid fa-box-open text-muted mb-3" style="font-size: 3rem; opacity: 0.5;"></i>
+                    <p class="text-muted fw-semibold mb-0">Chưa có hóa đơn nào được tạo.</p>
+                  </div>
+                </td>
+              </tr>`;
+            return;
+        }
+
+        bills.forEach(b => {
+            const tr = document.createElement('tr');
+            tr.className = 'data-row';
+
+            const tenantName = (b.contract_display && b.contract_display.tenant_name) ? b.contract_display.tenant_name : '';
+            const roomNumber = (b.contract_display && b.contract_display.room_number) ? b.contract_display.room_number : '';
+            
+            tr.dataset.tenantName = tenantName;
+            tr.dataset.room = roomNumber;
+            tr.dataset.month = b.month || '';
+            tr.dataset.total = b.total || 0;
+
+            const firstChar = tenantName ? tenantName.charAt(0).toUpperCase() : '<i class="fa-solid fa-user"></i>';
+            const displayName = tenantName || 'Khách vãng lai';
+            const displayRoom = roomNumber || '--';
+
+            let statusHtml = '';
+            let btnPayHtml = '';
+            
+            if (b.status === 'paid') {
+                statusHtml = `<span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1 rounded-pill"><i class="fa-solid fa-circle-check me-1"></i> Đã đóng</span>`;
+            } else {
+                statusHtml = `<span class="badge bg-warning-subtle text-warning border border-warning-subtle px-3 py-1 rounded-pill"><i class="fa-solid fa-clock me-1"></i> Chưa đóng đủ</span>`;
+                btnPayHtml = `
+                  <button class="btn action-btn bg-warning-subtle text-warning" onclick="openPayModal('${b.id}', ${b.total || 0})" title="Ghi nhận thanh toán">
+                    <i class="fa-solid fa-money-bill-wave"></i>
+                  </button>`;
+            }
+
+            tr.innerHTML = `
+                <td class="ps-4">
+                  <div class="d-flex align-items-center">
+                    <div class="avatar-circle bg-primary-subtle text-primary me-3 shadow-sm d-none d-md-flex" style="width:36px; height:36px; border-radius:10px; align-items:center; justify-content:center; font-weight:bold; font-size:0.95rem;">
+                      ${firstChar}
+                    </div>
+                    <div>
+                      <div class="fw-bold text-dark">${displayName}</div>
+                      <div class="small text-muted mt-1">
+                        <span class="badge bg-light text-dark border px-2 py-1">Phòng ${displayRoom}</span>
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td class="text-center" data-label="Kỳ thu">
+                  <span class="text-primary fw-semibold"><i class="fa-regular fa-calendar-alt me-1"></i>${b.month}</span>
+                </td>
+                <td class="text-end" data-label="Đã thu">
+                  <span class="fw-semibold text-success fs-6">${formatMoney(b.paid_amount || 0)}</span>
+                </td>
+                <td class="text-end" data-label="Còn nợ">
+                  <span class="fw-bold text-danger fs-6">${formatMoney(b.total || 0)}</span>
+                </td>
+                <td class="text-center" data-label="Trạng thái">
+                  ${statusHtml}
+                </td>
+                <td class="text-center pe-4" data-label="Thao tác">
+                  <div class="d-flex justify-content-center gap-1">
+                    <button class="btn action-btn bg-primary-subtle text-primary" onclick="showBill('${b.id}')" title="Xem chi tiết Hóa đơn">
+                      <i class="fa-solid fa-eye"></i>
+                    </button>
+                    ${btnPayHtml}
+                    <button class="btn action-btn bg-success-subtle text-success" onclick="captureInvoiceImage('${b.id}', this)" title="Lưu/Tải ảnh Hóa đơn">
+                      <i class="fa-solid fa-download"></i>
+                    </button>
+                    <form action="/bills/${b.id}/delete" method="post" style="display:inline" onsubmit="return confirm('Bạn có chắc chắn muốn xóa hóa đơn này không? Hành động này không thể hoàn tác.');">
+                      <button class="btn action-btn bg-danger-subtle text-danger" type="submit" title="Xóa Hóa đơn">
+                        <i class="fa-solid fa-trash-can"></i>
+                      </button>
+                    </form>
+                  </div>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        // Khởi động lại tìm kiếm/sắp xếp
+        filterBills();
+        sortBills();
+
+    } catch (e) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger py-4"><i class="fa-solid fa-circle-exclamation me-2"></i>Lỗi tải dữ liệu hóa đơn</td></tr>';
+        console.error("Lỗi loadBills:", e);
+    }
+}
+
+// 2. Xem Hóa Đơn (Iframe Modal)
 window.showBill = async function(billId) {
   const frame = document.getElementById('billViewFrame');
-  (async ()=>{
-    try{
-      const resp = await fetch(`/invoice/print/${billId}`, { credentials: 'include' });
-      const finalUrl = resp.url || '';
-      const text = await resp.text();
-      if (finalUrl.includes('/login') || /Đăng nhập|Đăng nh?p/.test(text)){
-        try{ new Notyf().error('Bạn cần đăng nhập để xem hóa đơn'); }catch(e){}
-        window.location.href = '/login';
-        return;
-      }
-      frame.srcdoc = text;
-      const modal = new bootstrap.Modal(document.getElementById('billViewModal'));
-      modal.show();
-    }catch(e){ console.error(e); try{ new Notyf().error('Không thể tải hóa đơn'); }catch(err){} }
-  })();
+  try{
+    const resp = await fetch(`/invoice/print/${billId}`, { credentials: 'include' });
+    const finalUrl = resp.url || '';
+    const text = await resp.text();
+    if (finalUrl.includes('/login') || /Đăng nhập|Đăng nh?p/.test(text)){
+      try{ new Notyf().error('Bạn cần đăng nhập để xem hóa đơn'); }catch(e){}
+      window.location.href = '/login';
+      return;
+    }
+    frame.srcdoc = text;
+    const modal = new bootstrap.Modal(document.getElementById('billViewModal'));
+    modal.show();
+  }catch(e){ console.error(e); try{ new Notyf().error('Không thể tải hóa đơn'); }catch(err){} }
 };
 
-// 2. Mở Modal Nhập Thanh Toán
+// 3. Mở Modal Nhập Thanh Toán
 window.openPayModal = function(billId, totalDue) {
-  const form = document.getElementById('payBillForm');
-  // Gắn URL xử lý cho Form
-  form.action = `/bills/${billId}/pay`;
-  // Tự động điền số tiền còn nợ
-  document.getElementById('pay_amount').value = totalDue;
-  // Hiện Modal
-  const modal = new bootstrap.Modal(document.getElementById('payBillModal'));
-  modal.show();
+  try {
+    const form = document.getElementById('payBillForm');
+    if (form) form.action = `/bills/${billId}/pay`;
+    
+    const amountInput = document.getElementById('pay_amount');
+    if (amountInput) amountInput.value = totalDue || 0;
+    
+    const modalEl = document.getElementById('payBillModal');
+    if (modalEl) {
+      const modal = new bootstrap.Modal(modalEl);
+      modal.show();
+    }
+  } catch (e) {
+    console.error("Lỗi mở modal thanh toán:", e);
+  }
 };
 
-// 3. Tải/In Ảnh Hóa Đơn
+// 4. Tải/In Ảnh Hóa Đơn
 window.captureInvoiceImage = async function(billId, btn) {
   try{
     const origHtml = btn.innerHTML; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
@@ -64,7 +186,7 @@ window.captureInvoiceImage = async function(billId, btn) {
   }catch(e){ console.error(e); try{ new Notyf().error('Không thể tạo ảnh hóa đơn'); }catch(err){}; btn.innerHTML = origHtml; }
 };
 
-// 4. Lọc & Tìm Kiếm
+// 5. Bộ lọc & Tìm kiếm
 function filterBills(){
   const q = (document.getElementById('billSearch').value || '').toLowerCase();
   const rows = document.querySelectorAll('#billsTableBody tr.data-row');
@@ -96,7 +218,14 @@ function sortBills(){
   rows.forEach(r => tbody.appendChild(r));
 }
 
+// 6. Gắn Event Listeners
 document.addEventListener('DOMContentLoaded', function(){
   const input = document.getElementById('billSearch'); if (input) input.addEventListener('input', filterBills);
   const s = document.getElementById('billSort'); if (s) s.addEventListener('change', sortBills);
+
+  // Kích hoạt load dữ liệu
+  const tbody = document.getElementById('billsTableBody');
+  if (tbody && tbody.dataset.autoLoad === 'true') {
+      loadBills();
+  }
 });

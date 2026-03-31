@@ -66,12 +66,6 @@
 
 <div class="bg-panel p-0 overflow-hidden mb-4">
   <div class="table-responsive m-0">
-    {% if not bills %}
-      <div class="p-5 text-center">
-        <i class="fa-solid fa-box-open text-muted mb-3" style="font-size: 3rem; opacity: 0.5;"></i>
-        <p class="text-muted fw-semibold mb-0">Chưa có hóa đơn nào được tạo.</p>
-      </div>
-    {% else %}
     <table class="table table-hover mb-0" id="billsTable">
       <thead>
         <tr>
@@ -83,82 +77,14 @@
           <th class="text-center pe-4">Thao tác</th>
         </tr>
       </thead>
-      <tbody id="billsTableBody">
-      {% for b in bills %}
-      <tr class="data-row" data-tenant-name="{{ b.contract_display.tenant_name if b.contract_display else '' }}" data-room="{{ b.contract_display.room_number if b.contract_display else '' }}" data-month="{{ b.month }}" data-total="{{ b.total }}">
-        
-        <td class="ps-4">
-          <div class="d-flex align-items-center">
-            <div class="avatar-circle bg-primary-subtle text-primary me-3 shadow-sm d-none d-md-flex" style="width:36px; height:36px; border-radius:10px; align-items:center; justify-content:center; font-weight:bold; font-size:0.95rem;">
-              {% if b.contract_display and b.contract_display.tenant_name %}
-                {{ b.contract_display.tenant_name[0]|upper }}
-              {% else %}
-                <i class="fa-solid fa-user"></i>
-              {% endif %}
-            </div>
-            <div>
-              <div class="fw-bold text-dark">
-                {{ b.contract_display.tenant_name if b.contract_display else 'Khách vãng lai' }}
-              </div>
-              <div class="small text-muted mt-1">
-                <span class="badge bg-light text-dark border px-2 py-1">Phòng {{ b.contract_display.room_number if b.contract_display else '--' }}</span>
-              </div>
-            </div>
-          </div>
-        </td>
-        
-        <td class="text-center" data-label="Kỳ thu">
-          <span class="text-primary fw-semibold"><i class="fa-regular fa-calendar-alt me-1"></i>{{ b.month }}</span>
-        </td>
-        
-        <td class="text-end" data-label="Đã thu">
-          <span class="fw-semibold text-success fs-6">{{ b.paid_amount | money }}</span>
-        </td>
-
-        <td class="text-end" data-label="Còn nợ">
-          <span class="fw-bold text-danger fs-6">{{ b.total | money }}</span>
-        </td>
-        
-        <td class="text-center" data-label="Trạng thái">
-          {% if b.status == 'paid' %}
-            <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1 rounded-pill">
-              <i class="fa-solid fa-circle-check me-1"></i> Đã đóng
-            </span>
-          {% else %}
-            <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-3 py-1 rounded-pill">
-              <i class="fa-solid fa-clock me-1"></i> Chưa đóng đủ
-            </span>
-          {% endif %}
-        </td>
-        
-        <td class="text-center pe-4" data-label="Thao tác">
-          <div class="d-flex justify-content-center gap-1">
-            <button class="btn action-btn bg-primary-subtle text-primary" onclick="showBill('{{ b.id }}')" title="Xem chi tiết Hóa đơn">
-              <i class="fa-solid fa-eye"></i>
-            </button>
-            
-            {% if b.status != 'paid' %}
-            <button class="btn action-btn bg-warning-subtle text-warning" onclick="openPayModal('{{ b.id }}', {{ b.total | default(0) }})" title="Ghi nhận thanh toán">
-              <i class="fa-solid fa-money-bill-wave"></i>
-            </button>
-            {% endif %}
-
-            <button class="btn action-btn bg-success-subtle text-success" onclick="captureInvoiceImage('{{ b.id }}', this)" title="Lưu/Tải ảnh Hóa đơn">
-              <i class="fa-solid fa-download"></i>
-            </button>
-
-            <form action="/bills/{{ b.id }}/delete" method="post" style="display:inline" onsubmit="return confirm('Bạn có chắc chắn muốn xóa hóa đơn này không? Hành động này không thể hoàn tác.');">
-              <button class="btn action-btn bg-danger-subtle text-danger" type="submit" title="Xóa Hóa đơn">
-                <i class="fa-solid fa-trash-can"></i>
-              </button>
-            </form>
-          </div>
-        </td>
-      </tr>
-      {% endfor %}
+      <tbody id="billsTableBody" data-auto-load="true" data-status="{{ status }}">
+        <tr id="bills-loading">
+          <td colspan="6" class="text-center text-muted py-4">
+            <span class="spinner-border spinner-border-sm text-primary me-2"></span> Đang tải dữ liệu hóa đơn...
+          </td>
+        </tr>
       </tbody>
     </table>
-    {% endif %}
   </div>
 </div>
 
@@ -207,29 +133,6 @@
   </div>
 </div>
 
-<script src="/static/js/bills.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-
-<script>
-  function openPayModal(billId, totalDue) {
-    try {
-      // 1. Cập nhật action cho Form thanh toán
-      const form = document.getElementById('payBillForm');
-      if (form) form.action = `/bills/${billId}/pay`;
-      
-      // 2. Điền số tiền còn nợ vào ô input
-      const amountInput = document.getElementById('pay_amount');
-      if (amountInput) amountInput.value = totalDue || 0;
-      
-      // 3. Mở Modal
-      const modalEl = document.getElementById('payBillModal');
-      if (modalEl) {
-        const modal = new bootstrap.Modal(modalEl);
-        modal.show();
-      }
-    } catch (e) {
-      console.error("Lỗi mở modal thanh toán:", e);
-    }
-  }
-</script>
+<script src="/static/js/bills.js?v=2"></script>
 {% endblock %}

@@ -29,7 +29,6 @@ def _fix(doc):
 @router.get("/", response_class=HTMLResponse)
 async def list_accounts(request: Request):
     tpl = env.get_template("accounts.html")
-    # KHÔNG truy vấn database và truyền 'accounts' ở đây nữa
     html = tpl.render(request=request)
     return HTMLResponse(content=html)
 
@@ -38,9 +37,8 @@ async def list_accounts(request: Request):
 @router.get("/_data")
 async def get_accounts_data(request: Request):
     db = get_db()
-    # Nếu muốn bảo mật hơn, có thể check quyền admin tại đây:
-    # if getattr(request.state, 'user_role', None) != 'admin':
-    #     return {"accounts": [], "total": 0}
+    if getattr(request.state, 'user_role', None) != 'admin':
+        return {"accounts": [], "total": 0}
         
     cursor = db.accounts.find({})
     accts = []

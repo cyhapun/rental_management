@@ -16,8 +16,43 @@ TEMPLATES_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "t
 env = Environment(loader=FileSystemLoader(TEMPLATES_DIR))
 env.filters["money"] = money
 
+# 1. API Render khung HTML cực nhanh (chỉ lấy danh sách hợp đồng cho Dropdown)
 @router.get("/")
-async def list_bills(request: Request, status: str = "all"):
+async def list_bills_html(request: Request, status: str = "all"):
+    db = get_db()
+    default_month = datetime.date.today().strftime("%Y-%m")
+    contracts_list = []
+    try:
+        ccur = db.contracts.find({})
+        async for c in ccur:
+            cid = str(c.get("_id"))
+            tenant_name = None
+            room_number = None
+            try:
+                room = await db.rooms.find_one({"_id": ObjectId(c.get("room_id"))})
+            except Exception:
+                room = None
+            if room:
+                room_number = room.get("room_number")
+            try:
+                tenant = await db.tenants.find_one({"_id": ObjectId(c.get("tenant_id"))})
+            except Exception:
+                tenant = None
+            if tenant:
+                tenant_name = tenant.get("full_name")
+            contracts_list.append({"id": cid, "display": (f"{tenant_name or ''} - Phòng {room_number or ''}").strip()})
+    except Exception:
+        contracts_list = []
+
+    tpl = env.get_template("bills.html")
+    # Trả về HTML trống cho phần bảng
+    html = tpl.render(request=request, default_month=default_month, status=status, contracts=contracts_list)
+    return HTMLResponse(content=html)
+
+
+# 2. API Trả về Data JSON để JS tự vẽ bảng
+@router.get("/_data")
+async def list_bills_data(status: str = "all"):
     db = get_db()
     q = {}
     if status in ("paid", "unpaid"):
@@ -28,7 +63,6 @@ async def list_bills(request: Request, status: str = "all"):
         b["id"] = str(b.get("_id"))
         bills.append(b)
 
-    # Compute paid_amount from bill document if present; fallback to payments collection for legacy data
     try:
         ids_missing = [b.get("id") for b in bills if not b.get("paid_amount")]
         payments_map = {}
@@ -49,16 +83,15 @@ async def list_bills(request: Request, status: str = "all"):
                     b["paid_amount"] = 0
             else:
                 b["paid_amount"] = payments_map.get(b.get("id"), 0)
+            
+            # Xử lý ngày tháng thành string an toàn cho JSON
             try:
                 pa = b.get('paid_at')
                 if pa:
-                    try:
+                    if isinstance(pa, datetime.datetime) or isinstance(pa, datetime.date):
                         b['paid_at_fmt'] = pa.strftime('%d/%m/%Y %H:%M')
-                    except Exception:
-                        try:
-                            b['paid_at_fmt'] = datetime.datetime.fromisoformat(str(pa)).strftime('%d/%m/%Y %H:%M')
-                        except Exception:
-                            b['paid_at_fmt'] = str(pa)
+                    else:
+                        b['paid_at_fmt'] = datetime.datetime.fromisoformat(str(pa)).strftime('%d/%m/%Y %H:%M')
                 else:
                     b['paid_at_fmt'] = ''
             except Exception:
@@ -69,18 +102,13 @@ async def list_bills(request: Request, status: str = "all"):
             b['paid_at_fmt'] = ''
 
     async def _resolve_document(collection, doc_id):
-        if not doc_id:
-            return None
+        if not doc_id: return None
         try:
             d = await collection.find_one({"_id": doc_id})
             if d: return d
         except Exception: pass
         try:
             d = await collection.find_one({"_id": ObjectId(doc_id)})
-            if d: return d
-        except Exception: pass
-        try:
-            d = await collection.find_one({"_id": str(doc_id)})
             if d: return d
         except Exception: pass
         return None
@@ -113,33 +141,14 @@ async def list_bills(request: Request, status: str = "all"):
                 tenant_name = tenant.get("full_name")
         b["contract_display"] = {"tenant_name": tenant_name, "room_number": room_number}
         
-    default_month = datetime.date.today().strftime("%Y-%m")
-    contracts_list = []
-    try:
-        ccur = db.contracts.find({})
-        async for c in ccur:
-            cid = str(c.get("_id"))
-            tenant_name = None
-            room_number = None
-            try:
-                room = await db.rooms.find_one({"_id": ObjectId(c.get("room_id"))})
-            except Exception:
-                room = None
-            if room:
-                room_number = room.get("room_number")
-            try:
-                tenant = await db.tenants.find_one({"_id": ObjectId(c.get("tenant_id"))})
-            except Exception:
-                tenant = None
-            if tenant:
-                tenant_name = tenant.get("full_name")
-            contracts_list.append({"id": cid, "display": (f"{tenant_name or ''} - Phòng {room_number or ''}").strip()})
-    except Exception:
-        contracts_list = []
+        # Bỏ ObjectId và datetime để chuẩn hóa thành JSON
+        b.pop('_id', None)
+        if 'created_at' in b:
+            b['created_at'] = str(b['created_at'])
+        if 'paid_at' in b:
+            b.pop('paid_at', None)
 
-    tpl = env.get_template("bills.html")
-    html = tpl.render(request=request, bills=bills, default_month=default_month, status=status, contracts=contracts_list)
-    return HTMLResponse(content=html)
+    return bills
 
 
 @router.post("/generate")
@@ -164,7 +173,6 @@ async def generate_monthly(month: str = Form(...), contract_id: str = Form(None)
             except Exception:
                 pass
             
-            # SỬA LỖI: Tìm kiếm song song bằng cả 2 kiểu dữ liệu
             er = await db.electric_readings.find_one({
                 "$or": [{"room_id": room_id_val}, {"room_id": str(room_id_val)}],
                 "month": month
@@ -201,7 +209,6 @@ async def generate_monthly(month: str = Form(...), contract_id: str = Form(None)
                 except Exception:
                     room_price = 0
                 
-                # SỬA LỖI
                 er = await db.electric_readings.find_one({
                     "$or": [{"room_id": room_id_val}, {"room_id": str(room_id_val)}],
                     "month": month
