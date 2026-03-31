@@ -165,14 +165,14 @@
           }
           if (range === '12'){
             const year = String(label).match(/^(\d{4})/)?.[1] || new Date().getFullYear();
-            const res = await fetch(`/electric/dashboard/top-electric-year/${year}`);
+            const res = await fetch(`/dashboard/top-electric-year/${year}`);
             if (!res.ok) { container.innerHTML = 'Chưa có dữ liệu'; return; }
             const data = await res.json();
             const items = (data.top_months||[]).map(x=>({label:x.month, usage:x.usage}));
             renderTopPanelHtml(`Tháng dùng nhiều năm ${year}`, items); return;
           }
           const month = label;
-          const res = await fetch(`/electric/dashboard/top-electric/${month}`);
+          const res = await fetch(`/dashboard/top-electric/${month}`);
           if (!res.ok) { container.innerHTML = 'Chưa có dữ liệu'; return; }
           const data = await res.json();
           const items = (data.top_rooms||[]).map(x=>({label:`Phòng ${x.room_number}`, usage:x.usage}));
