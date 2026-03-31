@@ -47,10 +47,6 @@ def _is_active_contract(contract_doc: dict, today: datetime.date) -> bool:
 
 
 def _contract_order_key(contract_doc: dict):
-    """
-    Dùng để chọn hợp đồng mới nhất của 1 phòng.
-    Ưu tiên start_date, fallback theo _id.
-    """
     start = contract_doc.get("start_date")
     try:
         start_key = datetime.date.fromisoformat(str(start))
@@ -63,13 +59,10 @@ def _next_due_date(start_date: datetime.date, today: datetime.date) -> datetime.
     day = start_date.day
     year = today.year
     month = today.month
-    # Try current month due date first
     while True:
         try:
             candidate = datetime.date(year, month, day)
         except ValueError:
-            # Handle months without this day (e.g. 31)
-            # use last day of month
             if month == 12:
                 next_first = datetime.date(year + 1, 1, 1)
             else:
@@ -99,9 +92,6 @@ async def _normalize_room_id_to_oid_str(db, room_id_value):
 
 
 async def _refresh_room_statuses(db):
-    """
-    Đồng bộ trạng thái phòng theo hợp đồng còn hiệu lực.
-    """
     latest_by_room = {}
     cursor = db.contracts.find({})
     async for c in cursor:
@@ -113,7 +103,6 @@ async def _refresh_room_statuses(db):
             latest_by_room[rid_norm] = c
     occupied_room_ids = set(latest_by_room.keys())
 
-    # Cập nhật tất cả phòng theo trạng thái đã tính
     rooms_cursor = db.rooms.find({})
     async for r in rooms_cursor:
         rid = str(r.get("_id"))
@@ -123,16 +112,9 @@ async def _refresh_room_statuses(db):
 
 
 async def _normalize_contract_refs(db):
-    """
-    Chuẩn hóa dữ liệu legacy trong contracts:
-    - room_id: ObjectId -> str(ObjectId), room_number -> lookup rooms._id
-    - tenant_id: ObjectId -> str(ObjectId), CCCD -> lookup tenants by cccd_hash/plain cccd
-    """
     cursor = db.contracts.find({})
     async for c in cursor:
         updates = {}
-
-        # room_id normalization
         rid = c.get("room_id")
         if rid is not None:
             if isinstance(rid, ObjectId):
@@ -141,15 +123,12 @@ async def _normalize_contract_refs(db):
                 rid_str = str(rid)
                 try:
                     ObjectId(rid_str)
-                    # already looks like ObjectId string
                     updates["room_id"] = rid_str
                 except Exception:
-                    # treat as room_number
                     room_doc = await _find_room_by_number(db, rid_str)
                     if room_doc:
                         updates["room_id"] = str(room_doc.get("_id"))
 
-        # tenant_id normalization
         tid = c.get("tenant_id")
         if tid is not None:
             if isinstance(tid, ObjectId):
@@ -160,7 +139,6 @@ async def _normalize_contract_refs(db):
                     ObjectId(tid_str)
                     updates["tenant_id"] = tid_str
                 except Exception:
-                    # best effort: treat as CCCD
                     cccd_h = hash_value(tid_str)
                     tenant_doc = None
                     if cccd_h:
@@ -174,11 +152,55 @@ async def _normalize_contract_refs(db):
             await db.contracts.update_one({"_id": c.get("_id")}, {"$set": updates})
 
 
+# 1. API Trả về khung HTML (Load cực nhanh)
 @router.get("/")
 async def list_contracts(request: Request):
     db = get_db()
     await _normalize_contract_refs(db)
     await _refresh_room_statuses(db)
+    
+    # Chỉ load danh sách phòng và khách thuê cho Dropdown Modal (nhẹ nhàng, không xử lý logic)
+    tenants = []
+    async for t in db.tenants.find({}).sort("full_name", 1):
+        t["id"] = str(t.get("_id"))
+        tenants.append({
+            "id": t.get("id"),
+            "full_name": t.get("full_name"),
+            "phone": decrypt_value(t.get("phone")),
+            "cccd": mask_cccd(decrypt_value(t.get("cccd"))),
+        })
+    rooms = []
+    active_room_ids = []
+    
+    latest_by_room = {}
+    async for c in db.contracts.find({}):
+        rid_norm = await _normalize_room_id_to_oid_str(db, c.get("room_id"))
+        if rid_norm:
+            current = latest_by_room.get(rid_norm)
+            if (not current) or (_contract_order_key(c) > _contract_order_key(current)):
+                latest_by_room[rid_norm] = c
+    active_room_ids = list(latest_by_room.keys())
+
+    async for r in db.rooms.find({}).sort("room_number", 1):
+        r["id"] = str(r.get("_id"))
+        rooms.append({"id": r.get("id"), "room_number": r.get("room_number"), "price": r.get("price"), "status": r.get("status")})
+
+    today_str = datetime.date.today().isoformat()
+    tpl = env.get_template("contracts.html")
+    html = tpl.render(
+        request=request,
+        tenants=tenants,
+        rooms=rooms,
+        active_room_ids=active_room_ids,
+        today=today_str,
+    )
+    return HTMLResponse(content=html)
+
+
+# 2. API Trả về dữ liệu JSON (Gọi ngầm qua Javascript)
+@router.get("/_data")
+async def list_contracts_data(request: Request):
+    db = get_db()
     cursor = db.contracts.find({})
     contracts = []
     active_room_ids = set()
@@ -186,6 +208,7 @@ async def list_contracts(request: Request):
     today = datetime.date.today()
     latest_by_room = {}
     all_contracts = []
+    
     async for c in cursor:
         all_contracts.append(c)
         rid_norm = await _normalize_room_id_to_oid_str(db, c.get("room_id"))
@@ -197,56 +220,39 @@ async def list_contracts(request: Request):
     latest_contract_ids = {str(v.get("_id")) for v in latest_by_room.values()}
 
     def _to_iso_date(d):
-        if not d:
-            return None
-        try:
-            dt = datetime.date.fromisoformat(str(d))
-            return dt.isoformat()
+        if not d: return None
+        try: return datetime.date.fromisoformat(str(d)).isoformat()
         except Exception:
             try:
                 dt = datetime.datetime.fromisoformat(str(d))
-                if dt.tzinfo is None:
-                    dt = dt + datetime.timedelta(hours=7)
+                if dt.tzinfo is None: dt = dt + datetime.timedelta(hours=7)
                 return dt.date().isoformat()
-            except Exception:
-                return None
+            except Exception: return None
 
     def _fmt_date_iso(d):
-        if not d:
-            return None
-        try:
-            dt = datetime.date.fromisoformat(str(d))
-            return dt.strftime("%d/%m/%Y")
+        if not d: return None
+        try: return datetime.date.fromisoformat(str(d)).strftime("%d/%m/%Y")
         except Exception:
             try:
                 dt = datetime.datetime.fromisoformat(str(d))
-                if dt.tzinfo is None:
-                    dt = dt + datetime.timedelta(hours=7)
-                else:
-                    dt = dt.astimezone(datetime.timezone(datetime.timedelta(hours=7)))
+                if dt.tzinfo is None: dt = dt + datetime.timedelta(hours=7)
+                else: dt = dt.astimezone(datetime.timezone(datetime.timedelta(hours=7)))
                 return dt.strftime("%d/%m/%Y")
-            except Exception:
-                return str(d)
+            except Exception: return str(d)
 
     for c in all_contracts:
         c["id"] = str(c.get("_id"))
-        # "Hợp đồng hiện hành" theo nghiệp vụ thao tác: mới nhất theo phòng
         c["is_active"] = c["id"] in latest_contract_ids
         if c["is_active"]:
             rid_norm = await _normalize_room_id_to_oid_str(db, c.get("room_id"))
-            if rid_norm:
-                active_room_ids.add(rid_norm)
-
-            # tenant normalization (handle ObjectId vs other legacy formats)
+            if rid_norm: active_room_ids.add(rid_norm)
             if c.get("tenant_id"):
                 tid_str = str(c.get("tenant_id"))
                 try:
                     ObjectId(tid_str)
                     active_tenant_ids.add(tid_str)
-                except Exception:
-                    # legacy might store CCCD (encrypted/plain). Best effort: ignore.
-                    pass
-        # attach tenant and room info when available
+                except Exception: pass
+        
         try:
             tenant_id = c.get("tenant_id")
             if tenant_id:
@@ -259,91 +265,60 @@ async def list_contracts(request: Request):
                         "id": tenant_doc.get("id"),
                         "cccd": mask_cccd(decrypt_value(tenant_doc.get("cccd"))),
                     }
-        except Exception:
-            pass
+        except Exception: pass
+        
         room_doc = None
         try:
             room_id = c.get("room_id")
             if room_id:
-                try:
-                    room_doc = await db.rooms.find_one({"_id": ObjectId(room_id)})
-                except Exception:
-                    room_doc = await _find_room_by_number(db, room_id)
+                try: room_doc = await db.rooms.find_one({"_id": ObjectId(room_id)})
+                except Exception: room_doc = await _find_room_by_number(db, room_id)
                 if room_doc:
                     room_doc["id"] = str(room_doc.get("_id"))
                     c["room"] = {"room_number": room_doc.get("room_number"), "price": room_doc.get("price"), "status": room_doc.get("status"), "id": room_doc.get("id"), "current_electric_index": room_doc.get("current_electric_index")}
-        except Exception:
-            room_doc = None
-        # latest electric reading for this contract's room
+        except Exception: room_doc = None
+        
         try:
             current_kwh = 0
             used_kwh = 0
             month_val = None
-
-            # build candidate identifiers to search electric_readings by
             candidates = []
             try:
-                if room_doc and room_doc.get("id"):
-                    candidates.append(room_doc.get("id"))
-            except Exception:
-                pass
-            try:
-                if c.get("room_id"):
-                    candidates.append(c.get("room_id"))
-            except Exception:
-                pass
-            try:
+                if room_doc and room_doc.get("id"): candidates.append(room_doc.get("id"))
+                if c.get("room_id"): candidates.append(c.get("room_id"))
                 rn = c.get("room", {}).get("room_number")
-                if rn:
-                    candidates.append(rn)
-            except Exception:
-                rn = None
+                if rn: candidates.append(rn)
+            except Exception: pass
 
             latest_er = None
             try:
-                if candidates:
-                    latest_er = await db.electric_readings.find_one({"room_id": {"$in": candidates}}, sort=[("month", -1), ("_id", -1)])
-            except Exception:
-                latest_er = None
+                if candidates: latest_er = await db.electric_readings.find_one({"room_id": {"$in": candidates}}, sort=[("month", -1), ("_id", -1)])
+            except Exception: pass
 
             if latest_er:
-                try:
-                    new_idx = int(latest_er.get("new_index", 0))
-                except Exception:
-                    new_idx = 0
-                try:
-                    old_idx = int(latest_er.get("old_index", 0))
-                except Exception:
-                    old_idx = 0
+                try: new_idx = int(latest_er.get("new_index", 0))
+                except Exception: new_idx = 0
+                try: old_idx = int(latest_er.get("old_index", 0))
+                except Exception: old_idx = 0
                 current_kwh = new_idx
                 used_kwh = max(0, new_idx - old_idx)
                 month_val = latest_er.get("month")
-
-                # persist to rooms.current_electric_index if different
                 try:
                     if room_doc and int(room_doc.get("current_electric_index", 0)) != current_kwh:
                         await db.rooms.update_one({"_id": ObjectId(room_doc.get("id"))}, {"$set": {"current_electric_index": current_kwh}})
-                except Exception:
-                    pass
+                except Exception: pass
             else:
-                # fallback to room document's stored index
                 try:
-                    if room_doc:
-                        current_kwh = int(room_doc.get("current_electric_index", 0) or 0)
-                except Exception:
-                    current_kwh = 0
+                    if room_doc: current_kwh = int(room_doc.get("current_electric_index", 0) or 0)
+                except Exception: current_kwh = 0
                 used_kwh = 0
 
             c["electric"] = {"current_kwh": int(current_kwh or 0), "used_kwh": int(used_kwh or 0), "month": month_val}
         except Exception:
             c["electric"] = {"current_kwh": 0, "used_kwh": 0, "month": None}
 
-        # payment status of latest room bill for this contract
         try:
-            latest_bill = await db.bills.find_one(
-                {"contract_id": c.get("id")},
-                sort=[("month", -1), ("created_at", -1), ("_id", -1)],
-            )
+            latest_bill = await db.bills.find_one({"contract_id": c.get("id")}, sort=[("month", -1), ("created_at", -1), ("_id", -1)])
             if latest_bill:
                 c["rent_payment_status"] = latest_bill.get("status", "unpaid")
                 c["rent_payment_month"] = latest_bill.get("month")
@@ -353,61 +328,29 @@ async def list_contracts(request: Request):
         except Exception:
             c["rent_payment_status"] = "unknown"
             c["rent_payment_month"] = None
-        # preserve ISO dates for <input type="date" values, and format start/end for display
-        try:
-            c["start_date_iso"] = _to_iso_date(c.get("start_date"))
-        except Exception:
-            c["start_date_iso"] = None
-        try:
-            c["end_date_iso"] = _to_iso_date(c.get("end_date"))
-        except Exception:
-            c["end_date_iso"] = None
-        try:
-            c["start_date"] = _fmt_date_iso(c.get("start_date"))
-        except Exception:
-            pass
-        try:
-            c["end_date"] = _fmt_date_iso(c.get("end_date"))
-        except Exception:
-            pass
+
+        try: c["start_date_iso"] = _to_iso_date(c.get("start_date"))
+        except Exception: c["start_date_iso"] = None
+        try: c["end_date_iso"] = _to_iso_date(c.get("end_date"))
+        except Exception: c["end_date_iso"] = None
+        try: c["start_date"] = _fmt_date_iso(c.get("start_date"))
+        except Exception: pass
+        try: c["end_date"] = _fmt_date_iso(c.get("end_date"))
+        except Exception: pass
+        
+        # Bỏ đi phần _id thô của MongoDB để parse sang JSON được
+        c.pop('_id', None)
         contracts.append(c)
-    # data for create-contract dropdowns
-    tenants = []
-    async for t in db.tenants.find({}).sort("full_name", 1):
-        t["id"] = str(t.get("_id"))
-        tenants.append(
-            {
-                "id": t.get("id"),
-                "full_name": t.get("full_name"),
-                "phone": decrypt_value(t.get("phone")),
-                "cccd": mask_cccd(decrypt_value(t.get("cccd"))),
-            }
-        )
-    rooms = []
-    async for r in db.rooms.find({}).sort("room_number", 1):
-        r["id"] = str(r.get("_id"))
-        rooms.append({"id": r.get("id"), "room_number": r.get("room_number"), "price": r.get("price"), "status": r.get("status")})
         
     upcoming_dues = []
-    today_str = today.isoformat()
-    
     for c in contracts:
-        if not c.get("is_active"):
-            continue
-            
+        if not c.get("is_active"): continue
         start_iso = c.get("start_date_iso")
-        if not start_iso:
-            continue
-            
-        try:
-            start_date = datetime.date.fromisoformat(str(start_iso))
-        except Exception:
-            continue
-            
+        if not start_iso: continue
+        try: start_date = datetime.date.fromisoformat(str(start_iso))
+        except Exception: continue
         due = _next_due_date(start_date, today)
         days_left = (due - today).days
-        
-        # Lấy tất cả các phòng đến hạn từ hôm nay (0 ngày) đến 2 ngày nữa
         if 0 <= days_left <= 2:
             entry = {
                 "room_number": c.get("room", {}).get("room_number") if c.get("room") else c.get("room_id"),
@@ -416,22 +359,14 @@ async def list_contracts(request: Request):
                 "days_left": days_left
             }
             upcoming_dues.append(entry)
-            
-    # Sắp xếp danh sách theo số ngày còn lại tăng dần (0 ngày -> 1 ngày -> 2 ngày)
     upcoming_dues.sort(key=lambda x: x["days_left"])
 
-    tpl = env.get_template("contracts.html")
-    html = tpl.render(
-        request=request,
-        contracts=contracts,
-        upcoming_dues=upcoming_dues,  
-        tenants=tenants,
-        rooms=rooms,
-        active_room_ids=list(active_room_ids),
-        active_tenant_ids=list(active_tenant_ids),
-        today=today_str,
-    )
-    return HTMLResponse(content=html)
+    return {
+        "contracts": contracts,
+        "upcoming_dues": upcoming_dues,
+        "active_rooms_count": len(active_room_ids),
+        "active_tenants_count": len(active_tenant_ids)
+    }
 
 
 @router.post("/{contract_id}/create_bill")
@@ -444,17 +379,14 @@ async def create_bill_from_contract(request: Request, contract_id: str, month: s
     if not c:
         return redirect_with_flash('/contracts/', 'Không tìm thấy hợp đồng.', 'danger')
 
-    # default to current month YYYY-MM
     import datetime as _dt
     if not month:
         month = _dt.date.today().isoformat()[:7]
 
-    # prevent duplicate bill for same contract+month
     existing = await db.bills.find_one({"contract_id": contract_id, "month": month})
     if existing:
         return redirect_with_flash('/contracts/', f'Đã tồn tại hóa đơn cho hợp đồng này ({month}).', 'warning')
 
-    # compute basic costs
     room = None
     try:
         room = await db.rooms.find_one({"_id": ObjectId(c.get('room_id'))})
@@ -573,16 +505,13 @@ async def delete_contract(request: Request, contract_id: str):
 
 @router.post("/{contract_id}/end")
 async def end_contract(request: Request, contract_id: str):
-    """Mark a contract as ended by setting its end_date to today (ISO date)."""
     db = get_db()
     if getattr(request.state, "user_role", None) not in ("admin", "manager"):
         return redirect_with_flash("/dashboard", "Bạn không có quyền kết thúc hợp đồng", "danger")
     import datetime as _dt
     try:
         today_iso = _dt.date.today().isoformat()
-        # set explicit termination_date so dashboard treats this as an actual 'exit'
         await db.contracts.update_one({"_id": ObjectId(contract_id)}, {"$set": {"termination_date": today_iso, "end_date": today_iso}})
-        # refresh room statuses so dashboard/rooms reflect vacancy
         try:
             await _refresh_room_statuses(db)
         except Exception:

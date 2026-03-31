@@ -21,48 +21,15 @@
         <div class="me-3 fs-3"><i class="fa-solid fa-file-shield"></i></div>
         <div>
           <h6 class="mb-1 fw-bold">Tổng quan hiện tại</h6>
-          <div class="small">Đang có hợp đồng (còn hiệu lực): <strong>{{ active_room_ids|length }}</strong> phòng, <strong>{{ active_tenant_ids|length }}</strong> người thuê.</div>
+          <div class="small">Đang có hợp đồng: 
+            <strong id="val-active-rooms"><span class="spinner-border spinner-border-sm"></span></strong> phòng, 
+            <strong id="val-active-tenants"><span class="spinner-border spinner-border-sm"></span></strong> người thuê.
+          </div>
         </div>
       </div>
     </div>
 
-    {% if upcoming_dues and upcoming_dues|length > 0 %}
-    <div class="col-12 col-md-6">
-      <div class="bg-warning-subtle text-dark p-3 rounded-4 border border-warning-subtle d-flex shadow-sm h-100">
-        <div class="me-3 mt-1"><i class="fa-solid fa-bell fs-4 text-warning"></i></div>
-        <div>
-          <strong class="d-block mb-1">Chú ý: Có {{ upcoming_dues|length }} phòng sắp đến kì hạn thanh toán!</strong>
-          <ul class="mb-0 small ps-3">
-            {% for u in upcoming_dues %}
-              <li>
-                Phòng {{ u.room_number }} - {{ u.tenant_name }}
-                {% if u.days_left == 0 %}
-                  <strong class="text-danger">(Hôm nay đến kì hạn thanh toán)</strong>
-                {% else %}
-                  <strong class="text-secondary">(còn {{ u.days_left }} ngày)</strong>
-                {% endif %}
-              </li>
-            {% endfor %}
-          </ul>
-        </div>
-      </div>
-    </div>
-    {% endif %}
-  </div>
-
-    {% if warnings and warnings|length > 0 %}
-    <div class="col-12 col-md-6">
-      <div class="bg-warning-subtle text-dark p-3 rounded-4 border border-warning-subtle d-flex shadow-sm">
-        <div class="me-3 mt-1"><i class="fa-solid fa-bell fs-4 text-warning"></i></div>
-        <div>
-          <strong class="d-block mb-1">Sắp tới hạn (còn 1 ngày) - {{ warnings|length }} phòng:</strong>
-          <ul class="mb-0 small ps-3">
-            {% for w in warnings %}<li>Phòng {{ w.room_number }} - {{ w.tenant_name }}</li>{% endfor %}
-          </ul>
-        </div>
-      </div>
-    </div>
-    {% endif %}
+    <div id="upcomingDuesContainer" class="col-12 col-md-6" style="display: none;"></div>
   </div>
 
 <div class="card border-0 shadow-sm mb-4" style="border-radius: 15px; overflow: hidden;">
@@ -103,83 +70,13 @@
           <th class="text-center pe-3">Thao tác</th>
         </tr>
       </thead>
-      <tbody id="contractsTableBody">
-      {% for c in contracts %}
-      {% set status_text = 'Đã đóng' if c.rent_payment_status == 'paid' else ('Chưa đóng' if c.rent_payment_status == 'unpaid' else 'Chưa có HĐ') %}
-      
-      <tr class="{% if c.is_active %}row-active-contract{% endif %}"
-          data-contract-id="{{ c.id }}" 
-          data-tenant-id="{{ c.tenant_id }}"
-          data-tenant-name="{{ c.tenant.full_name if c.tenant else c.tenant_id }}" 
-          data-room-id="{{ c.room_id }}"
-          data-room="{{ c.room.room_number if c.room else c.room_id }}" 
-          data-start-date="{{ c.start_date }}" 
-          data-end-date="{{ c.end_date }}" 
-          data-start-date-iso="{{ c.start_date_iso }}" 
-          data-end-date-iso="{{ c.end_date_iso }}" 
-          data-contract-type="{{ c.contract_type }}" 
-          data-deposit="{{ c.deposit }}"
-          data-status="{{ status_text }}">
-        
-        <td class="ps-4">
-          <div class="d-flex align-items-center">
-            <div class="avatar-circle bg-primary-subtle text-primary me-3 shadow-sm d-none d-md-flex" style="width:36px; height:36px; border-radius:10px; align-items:center; justify-content:center; font-weight:bold; font-size:0.95rem;">
-              {{ (c.tenant.full_name[0]|upper) if c.tenant else '?' }}
-            </div>
-            <div>
-              <div class="fw-bold text-dark text-truncate" style="max-width: 180px;">
-                {{ c.tenant.full_name if c.tenant else c.tenant_id }}
-              </div>
-              {% if not c.is_active %}
-                <div class="small text-muted mt-1"><i class="fa-solid fa-lock me-1"></i>Đã kết thúc</div>
-              {% endif %}
-            </div>
-          </div>
-        </td>
-        
-        <td class="text-center">
-          <span class="badge bg-light text-dark border px-3 py-2 rounded-3 fs-6">{{ c.room.room_number if c.room else c.room_id }}</span>
-        </td>
-        <td class="text-center fw-semibold text-dark">{{ c.electric.current_kwh if c.electric else 0 }}</td>
-        <td class="text-center text-muted">{{ c.electric.used_kwh if c.electric else 0 }}</td>
-        <td class="text-center fw-bold text-dark">{{ c.deposit | default(0) | money }}</td>
-        
-        <td class="text-center">
-          {% if c.rent_payment_status == 'paid' %}
-            <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1 rounded-pill">Đã đóng</span>
-          {% elif c.rent_payment_status == 'unpaid' %}
-            <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-1 rounded-pill">Chưa đóng</span>
-          {% else %}
-            <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-3 py-1 rounded-pill">Chưa có HĐ</span>
-          {% endif %}
-        </td>
-        
-        <td class="text-center">
-          <div class="text-success fw-bold small"><i class="fa-solid fa-calendar-plus me-1"></i>{{ c.start_date }}</div>
-          {% if c.end_date %}
-          <div class="text-danger fw-bold small mt-1"><i class="fa-solid fa-calendar-xmark me-1"></i>{{ c.end_date }}</div>
-          {% endif %}
-        </td>
-        
-        <td class="text-center pe-3">
-          <div class="d-flex justify-content-center gap-1">
-            <button class="btn action-btn bg-primary-subtle text-primary" type="button" onclick="openEditContract(this)" title="Sửa"><i class="fa-solid fa-pen"></i></button>
-            <form action="/contracts/{{ c.id }}/create_bill" method="post" style="display:inline">
-              <input type="hidden" name="month" value="{{ today[:7] }}" />
-              <button class="btn action-btn bg-success-subtle text-success" type="submit" title="Tạo hóa đơn"><i class="fa-solid fa-file-invoice-dollar"></i></button>
-            </form>
-            {% if c.is_active %}
-            <form action="/contracts/{{ c.id }}/end" method="post" style="display:inline" onsubmit="return confirm('Bạn chắc chắn muốn KẾT THÚC hợp đồng này?');">
-              <button class="btn action-btn bg-warning-subtle text-warning" type="submit" title="Kết thúc"><i class="fa-solid fa-ban"></i></button>
-            </form>
-            {% endif %}
-            <form action="/contracts/{{ c.id }}/delete" method="post" style="display:inline" onsubmit="return confirm('Cảnh báo: Xóa hợp đồng này sẽ xóa cả dữ liệu liên quan. Vẫn tiếp tục?');">
-              <button class="btn action-btn bg-danger-subtle text-danger" type="submit" title="Xóa"><i class="fa-solid fa-trash-can"></i></button>
-            </form>
-          </div>
-        </td>
-      </tr>
-      {% endfor %}
+      <tbody id="contractsTableBody" data-auto-load="true" data-today="{{ today[:7] }}">
+        <tr id="contracts-loading">
+          <td colspan="8" class="text-center text-muted py-4">
+            <span class="spinner-border spinner-border-sm text-primary me-2" role="status" aria-hidden="true"></span>
+            Đang tải dữ liệu hợp đồng...
+          </td>
+        </tr>
       </tbody>
     </table>
   </div>
@@ -289,5 +186,5 @@
   </div>
 </div>
 
-<script src="/static/js/contracts.js"></script>
+<script src="/static/js/contracts.js?v=2"></script>
 {% endblock %}
