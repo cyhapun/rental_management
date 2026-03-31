@@ -16,7 +16,6 @@ TEMPLATES_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "t
 env = Environment(loader=FileSystemLoader(TEMPLATES_DIR))
 env.filters["money"] = money
 
-
 @router.get("/")
 async def list_bills(request: Request, status: str = "all"):
     db = get_db()
@@ -44,14 +43,12 @@ async def list_bills(request: Request, status: str = "all"):
                     pass
         for b in bills:
             if b.get("paid_amount") is not None:
-                # ensure numeric
                 try:
                     b["paid_amount"] = int(b.get("paid_amount") or 0)
                 except Exception:
                     b["paid_amount"] = 0
             else:
                 b["paid_amount"] = payments_map.get(b.get("id"), 0)
-            # format paid_at for display if present
             try:
                 pa = b.get('paid_at')
                 if pa:
@@ -59,7 +56,6 @@ async def list_bills(request: Request, status: str = "all"):
                         b['paid_at_fmt'] = pa.strftime('%d/%m/%Y %H:%M')
                     except Exception:
                         try:
-                            # use module datetime imported at top
                             b['paid_at_fmt'] = datetime.datetime.fromisoformat(str(pa)).strftime('%d/%m/%Y %H:%M')
                         except Exception:
                             b['paid_at_fmt'] = str(pa)
@@ -68,37 +64,28 @@ async def list_bills(request: Request, status: str = "all"):
             except Exception:
                 b['paid_at_fmt'] = ''
     except Exception:
-        # If payments lookup failed, ensure minimal safe defaults.
         for b in bills:
             b["paid_amount"] = int(b.get("paid_amount") or 0)
             b['paid_at_fmt'] = ''
 
-    # Normalize and attach contract display info for all bills (robust ID handling)
     async def _resolve_document(collection, doc_id):
         if not doc_id:
             return None
         try:
             d = await collection.find_one({"_id": doc_id})
-            if d:
-                return d
-        except Exception:
-            pass
+            if d: return d
+        except Exception: pass
         try:
             d = await collection.find_one({"_id": ObjectId(doc_id)})
-            if d:
-                return d
-        except Exception:
-            pass
+            if d: return d
+        except Exception: pass
         try:
             d = await collection.find_one({"_id": str(doc_id)})
-            if d:
-                return d
-        except Exception:
-            pass
+            if d: return d
+        except Exception: pass
         return None
 
     for b in bills:
-        # backfill water_cost for legacy bills if missing
         try:
             if b.get("water_cost") is None or int(b.get("water_cost") or 0) == 0:
                 room_price = int(b.get("room_price", 0) or 0)
@@ -125,15 +112,13 @@ async def list_bills(request: Request, status: str = "all"):
             if tenant:
                 tenant_name = tenant.get("full_name")
         b["contract_display"] = {"tenant_name": tenant_name, "room_number": room_number}
-    # default month = current month (YYYY-MM) for generate form
+        
     default_month = datetime.date.today().strftime("%Y-%m")
-    # also provide a list of active contracts so user can create bill for a contract
     contracts_list = []
     try:
         ccur = db.contracts.find({})
         async for c in ccur:
             cid = str(c.get("_id"))
-            # attach room/tenant for display
             tenant_name = None
             room_number = None
             try:
@@ -163,26 +148,41 @@ async def generate_monthly(month: str = Form(...), contract_id: str = Form(None)
     try:
         created = 0
         if contract_id:
-            # create for single contract
             try:
                 c = await db.contracts.find_one({"_id": ObjectId(contract_id)})
             except Exception:
                 c = None
             if not c:
                 return redirect_with_flash('/bills/?status=unpaid', 'Không tìm thấy hợp đồng để tạo hóa đơn.', 'danger')
+            
             room_price = 0
+            room_id_val = c.get('room_id')
+            room = None
             try:
-                room = await db.rooms.find_one({"_id": ObjectId(c.get('room_id'))})
+                room = await db.rooms.find_one({"_id": ObjectId(room_id_val)})
                 room_price = int(room.get('price', 0)) if room else 0
             except Exception:
-                room_price = 0
-            er = await db.electric_readings.find_one({"room_id": c.get('room_id'), "month": month})
+                pass
+            
+            # SỬA LỖI: Tìm kiếm song song bằng cả 2 kiểu dữ liệu
+            er = await db.electric_readings.find_one({
+                "$or": [{"room_id": room_id_val}, {"room_id": str(room_id_val)}],
+                "month": month
+            })
+            
             electric_cost = er.get('total', 0) if er else 0
-            # embed electric reading details so invoice can display indices and usage
-            prev_index = er.get('old_index') if er else None
-            curr_index = er.get('new_index') if er else None
-            usage = er.get('usage') if er else None
-            kwh_price = er.get('price_per_kwh') if er else None
+            
+            if er:
+                prev_index = er.get('old_index')
+                curr_index = er.get('new_index')
+                usage = er.get('usage')
+                kwh_price = er.get('price_per_kwh')
+            else:
+                prev_index = room.get('current_electric_index') if room else None
+                curr_index = None
+                usage = None
+                kwh_price = None
+                
             water_cost = WATER_FEE
             total = room_price + electric_cost + water_cost
             bill = {"contract_id": str(c.get("_id")), "month": month, "room_price": room_price, "electric_cost": electric_cost, "water_cost": water_cost, "other_cost": 0, "total": total, "status": "unpaid", "created_at": datetime.datetime.utcnow(),
@@ -193,14 +193,33 @@ async def generate_monthly(month: str = Form(...), contract_id: str = Form(None)
         else:
             cursor = db.contracts.find({})
             async for c in cursor:
-                room = await db.rooms.find_one({"_id": ObjectId(c.get("room_id"))})
-                room_price = int(room.get("price", 0)) if room else 0
-                er = await db.electric_readings.find_one({"room_id": c.get("room_id"), "month": month})
+                room_id_val = c.get("room_id")
+                room = None
+                try:
+                    room = await db.rooms.find_one({"_id": ObjectId(room_id_val)})
+                    room_price = int(room.get("price", 0)) if room else 0
+                except Exception:
+                    room_price = 0
+                
+                # SỬA LỖI
+                er = await db.electric_readings.find_one({
+                    "$or": [{"room_id": room_id_val}, {"room_id": str(room_id_val)}],
+                    "month": month
+                })
+                
                 electric_cost = er.get("total", 0) if er else 0
-                prev_index = er.get('old_index') if er else None
-                curr_index = er.get('new_index') if er else None
-                usage = er.get('usage') if er else None
-                kwh_price = er.get('price_per_kwh') if er else None
+                
+                if er:
+                    prev_index = er.get('old_index')
+                    curr_index = er.get('new_index')
+                    usage = er.get('usage')
+                    kwh_price = er.get('price_per_kwh')
+                else:
+                    prev_index = room.get('current_electric_index') if room else None
+                    curr_index = None
+                    usage = None
+                    kwh_price = None
+                    
                 water_cost = WATER_FEE
                 total = room_price + electric_cost + water_cost
                 bill = {"contract_id": str(c.get("_id")), "month": month, "room_price": room_price, "electric_cost": electric_cost, "water_cost": water_cost, "other_cost": 0, "total": total, "status": "unpaid", "created_at": datetime.datetime.utcnow(),
@@ -226,7 +245,6 @@ async def pay_bill(bill_id: str, amount: int = Form(...), method: str = Form("Ch
             return redirect_with_flash(f"/bills/?status={bill.get('status','unpaid')}", "Số tiền thanh toán không được lớn hơn tổng tiền.", "danger")
 
         remaining = total_due - amount
-        # record payment data on bill (store paid_amount, paid_at, paid_method)
         existing_paid = int(bill.get('paid_amount', 0) or 0)
         new_paid = existing_paid + amount
         update_fields = {
@@ -257,7 +275,6 @@ async def delete_bill(bill_id: str):
         bill_status = bill.get("status", "unpaid")
         redirect_status = bill_status if bill_status in ("paid", "unpaid") else "unpaid"
 
-        # delete the bill (payments collection not used for new records)
         await db.bills.delete_one({"_id": ObjectId(bill_id)})
         return redirect_with_flash(f"/bills/?status={redirect_status}", "Xóa hóa đơn thành công.")
     except Exception:

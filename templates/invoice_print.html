@@ -24,7 +24,6 @@
         margin: 0;
       }
       
-      /* Thẻ Hóa đơn chính */
       .invoice-wrapper { 
         max-width: 540px; 
         margin: 0 auto; 
@@ -34,7 +33,6 @@
         overflow: hidden; 
       }
       
-      /* Phần đầu (Header) */
       .invoice-header { 
         background: var(--primary); 
         color: #ffffff; 
@@ -55,12 +53,8 @@
         font-weight: 500;
       }
       
-      /* Phần nội dung */
-      .invoice-body { 
-        padding: 2rem; 
-      }
+      .invoice-body { padding: 2rem; }
 
-      /* Hộp Thông tin khách & phòng */
       .info-box { 
         background: #f8fafc; 
         border-radius: 12px; 
@@ -73,10 +67,7 @@
         grid-template-columns: 1fr 1fr; 
         gap: 1.2rem; 
       }
-      .info-item { 
-        display: flex; 
-        flex-direction: column; 
-      }
+      .info-item { display: flex; flex-direction: column; }
       .info-label { 
         font-size: 0.75rem; 
         color: var(--muted); 
@@ -85,12 +76,8 @@
         margin-bottom: 0.3rem; 
         letter-spacing: 0.5px;
       }
-      .info-value { 
-        font-weight: 700; 
-        font-size: 0.95rem; 
-      }
+      .info-value { font-weight: 700; font-size: 0.95rem; }
 
-      /* Bảng chi tiết */
       .section-title { 
         font-size: 1rem; 
         font-weight: 800; 
@@ -111,7 +98,6 @@
       .bill-row .desc { color: var(--muted); font-weight: 600; font-size: 0.95rem; }
       .bill-row .amount { font-weight: 700; font-size: 1rem; color: var(--dark); }
       
-      /* Chi tiết khối điện nước */
       .electric-details { 
         font-size: 0.8rem; 
         color: var(--muted); 
@@ -123,7 +109,6 @@
         display: inline-block;
       }
 
-      /* Khối Tổng Tiền */
       .total-box { 
         background: var(--primary-subtle); 
         border-radius: 16px; 
@@ -140,13 +125,8 @@
         letter-spacing: 1px; 
         margin-bottom: 0.5rem; 
       }
-      .total-amount { 
-        font-size: 2.2rem; 
-        font-weight: 800; 
-        color: var(--primary); 
-      }
+      .total-amount { font-size: 2.2rem; font-weight: 800; color: var(--primary); }
 
-      /* Trạng thái Thanh toán & Ngân hàng */
       .payment-status { 
         margin-top: 1.5rem; 
         padding: 1rem; 
@@ -171,7 +151,6 @@
       }
       .bank-info strong { color: var(--dark); }
 
-      /* Tối ưu hóa khi lưu ảnh hoặc in ra PDF (Ép trình duyệt giữ nguyên màu nền) */
       @media print {
         body { background: #ffffff; padding: 0; }
         .invoice-wrapper { box-shadow: none; border: none; border-radius: 0; max-width: 100%; margin: 0; }
@@ -184,27 +163,25 @@
   </head>
   <body>
     <div class="invoice-wrapper">
-      
       <div class="invoice-header">
         <h1>HÓA ĐƠN TIỀN TRỌ</h1>
         <p>Kỳ thu: Tháng {{ bill.month if bill and bill.month else '...' }}</p>
       </div>
 
       <div class="invoice-body">
-        
         <div class="info-box">
           <div class="info-grid">
             <div class="info-item">
               <span class="info-label">Người thuê</span>
-              <span class="info-value">{{ (tenant.full_name if tenant else (bill.contract_display.tenant_name if bill.contract_display and bill.contract_display.tenant_name else 'Rỗng')) }}</span>
+              <span class="info-value">{{ (tenant.full_name if tenant else (bill.contract_display.tenant_name if bill.contract_display and bill.contract_display.tenant_name else '---')) }}</span>
             </div>
             <div class="info-item">
               <span class="info-label">Số phòng</span>
-              <span class="info-value text-primary">Phòng {{ (room.room_number if room else (bill.contract_display.room_number if bill.contract_display and bill.contract_display.room_number else 'Rỗng')) }}</span>
+              <span class="info-value text-primary">Phòng {{ (room.room_number if room else (bill.contract_display.room_number if bill.contract_display and bill.contract_display.room_number else '---')) }}</span>
             </div>
             <div class="info-item">
               <span class="info-label">Ngày lập HĐ</span>
-              <span class="info-value">{{ (bill.created_at_fmt or '') or 'Rỗng' }}</span>
+              <span class="info-value">{{ (bill.created_at_fmt or '') or '---' }}</span>
             </div>
             <div class="info-item">
               <span class="info-label">Tình trạng</span>
@@ -228,9 +205,9 @@
           <div>
             <div class="desc">Tiền điện</div>
             <div class="electric-details">
-              <strong>CS cũ:</strong> {{ (bill.prev_index is defined and (bill.prev_index|string)) or (bill.room_current_electric_index is defined and (bill.room_current_electric_index|string)) or 'Rỗng' }} 
-              &nbsp;|&nbsp; <strong>CS mới:</strong> {{ (bill.curr_index is defined and (bill.curr_index|string)) or 'Rỗng' }}<br>
-              <strong>Tiêu thụ:</strong> {{ (bill.usage is defined and (bill.usage|string)) or 'Rỗng' }} kWh {% if bill.kwh_price is defined and bill.kwh_price %} <span style="color:#94a3b8">x {{ bill.kwh_price | money }}</span>{% endif %}
+              <strong>Chỉ số điện cũ:</strong> {{ bill.prev_index if bill.prev_index is not none else 'Chưa chốt' }} 
+              &nbsp;|&nbsp; <strong>Chỉ số điện mới:</strong> {{ bill.curr_index if bill.curr_index is not none else 'Chưa chốt' }}<br>
+              <strong>Mức tiêu thụ:</strong> {{ bill.usage if bill.usage is not none else '0' }} kWh {% if bill.kwh_price is defined and bill.kwh_price %} <span style="color:#94a3b8">x {{ bill.kwh_price | money }}</span>{% endif %}
             </div>
           </div>
           <div class="amount" style="display: flex; align-items: center;">{{ bill.electric_cost | money }}</div>
