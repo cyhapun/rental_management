@@ -3,11 +3,15 @@
 <link rel="stylesheet" href="/static/css/contracts.css">
 {% endblock %}
 {% block content %}
+
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
-  <h1 class="h4 fw-bold text-dark mb-0"><i class="fa-solid fa-file-signature text-primary me-2"></i>Quản lý hợp đồng</h1>
+  <div>
+    <h1 class="h4 fw-bold text-dark mb-1"><i class="fa-solid fa-file-signature text-primary me-2"></i>Quản lý hợp đồng</h1>
+    <p class="text-muted small mb-0">Theo dõi thời hạn và các thông tin thỏa thuận thuê phòng.</p>
+  </div>
   <div class="d-flex gap-2">
-    <button class="btn btn-primary rounded-pill px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#createContractModal"><i class="fa-solid fa-plus me-1"></i>Tạo hợp đồng</button>
-    <button class="btn btn-light border rounded-pill px-3" type="button" data-print-target=".table-responsive" data-print-title="Danh sách Hợp đồng"><i class="fa-solid fa-print text-muted me-1"></i>In ảnh</button>
+    <button class="btn btn-primary rounded-pill px-4 shadow-sm" data-bs-toggle="modal" data-bs-target="#createContractModal"><i class="fa-solid fa-plus me-2"></i>Tạo hợp đồng</button>
+    <button class="btn btn-light border rounded-pill px-3 shadow-sm" type="button" data-print-target=".table-responsive" data-print-title="Danh_sach_hop_dong"><i class="fa-solid fa-print text-primary me-1"></i>In ảnh</button>
   </div>
 </div>
 
@@ -29,9 +33,7 @@
       <div>
         <strong class="d-block mb-1">Hôm nay có {{ today_due|length }} phòng tới hạn!</strong>
         <ul class="mb-0 small ps-3">
-          {% for d in today_due %}
-            <li>Phòng {{ d.room_number }} - {{ d.tenant_name }}</li>
-          {% endfor %}
+          {% for d in today_due %}<li>Phòng {{ d.room_number }} - {{ d.tenant_name }}</li>{% endfor %}
         </ul>
       </div>
     </div>
@@ -45,9 +47,7 @@
       <div>
         <strong class="d-block mb-1">Sắp tới hạn (còn 1 ngày) - {{ warnings|length }} phòng:</strong>
         <ul class="mb-0 small ps-3">
-          {% for w in warnings %}
-            <li>Phòng {{ w.room_number }} - {{ w.tenant_name }}</li>
-          {% endfor %}
+          {% for w in warnings %}<li>Phòng {{ w.room_number }} - {{ w.tenant_name }}</li>{% endfor %}
         </ul>
       </div>
     </div>
@@ -55,99 +55,116 @@
   {% endif %}
 </div>
 
-<div class="bg-panel p-3 mb-4 d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
-  <div class="input-group" style="max-width: 400px;">
-    <span class="input-group-text bg-light border-end-0 text-muted"><i class="fa-solid fa-magnifying-glass"></i></span>
-    <input class="form-control border-start-0 bg-light" id="contractSearch" placeholder="Tìm theo người thuê / phòng..." />
+<div class="card border-0 shadow-sm mb-4" style="border-radius: 15px; overflow: hidden;">
+  <div class="p-3 bg-white border-bottom d-flex flex-wrap align-items-center justify-content-between gap-3">
+    
+    <div class="input-group shadow-sm" style="max-width: 300px;">
+      <span class="input-group-text bg-light border-end-0 text-muted"><i class="fa-solid fa-magnifying-glass"></i></span>
+      <input class="form-control border-start-0 bg-light" id="contractSearch" placeholder="Tìm người thuê, phòng..." />
+    </div>
+
+    <div class="d-flex flex-wrap gap-2">
+      <select class="form-select bg-light border-0 fw-semibold text-dark shadow-sm" id="contractPaymentFilter" style="width: auto; cursor: pointer; min-width: 160px;">
+        <option value="">Trạng thái đóng tiền</option>
+        <option value="Đã đóng">Đã đóng tiền</option>
+        <option value="Chưa đóng">Chưa đóng tiền</option>
+        <option value="Chưa có HĐ">Chưa có HĐ</option>
+      </select>
+      <select class="form-select bg-light border-0 fw-semibold text-dark shadow-sm" id="contractSort" style="width: auto; cursor: pointer; min-width: 170px;">
+        <option value="start_desc">Ngày tạo: Mới nhất</option>
+        <option value="start_asc">Ngày tạo: Cũ nhất</option>
+        <option value="room_asc" selected>Phòng: Tăng dần</option>
+        <option value="room_desc">Phòng: Giảm dần</option>
+      </select>
+    </div>
   </div>
 
-  <div class="d-flex flex-wrap gap-2">
-    <select class="form-select bg-light border-0 fw-semibold text-dark" id="contractPaymentFilter" style="width: auto; cursor: pointer; min-width: 160px;">
-      <option value="">Tất cả trạng thái</option>
-      <option value="Đã đóng">Đã đóng tiền</option>
-      <option value="Chưa đóng">Chưa đóng tiền</option>
-      <option value="Chưa có hóa đơn">Chưa có hóa đơn</option>
-    </select>
-    <select class="form-select bg-light border-0 fw-semibold text-dark" id="contractSort" style="width: auto; cursor: pointer; min-width: 180px;">
-      <option value="start_desc">Ngày tạo: Mới nhất</option>
-      <option value="start_asc">Ngày tạo: Cũ nhất</option>
-      <option value="room_asc" selected>Phòng: Tăng dần</option>
-      <option value="room_desc">Phòng: Giảm dần</option>
-    </select>
-  </div>
-</div>
-
-<div class="bg-panel p-0 overflow-hidden mb-4">
   <div class="table-responsive m-0">
     <table class="table table-hover mb-0" id="contractsTable">
       <thead>
         <tr>
-          <th>Người thuê</th>
-          <th>Phòng</th>
+          <th class="ps-4">Người thuê</th>
+          <th class="text-center">Phòng</th>
           <th class="text-center">Số điện (kWh)</th>
           <th class="text-center">Số tháng trước</th>
-          <th class="text-end">Tiền cọc</th>
+          <th class="text-center">Tiền cọc</th>
           <th class="text-center">Trạng thái</th>
-          <th>Thời hạn</th>
-          <th class="text-center">Thao tác</th>
+          <th class="text-center">Thời hạn</th>
+          <th class="text-center pe-3">Thao tác</th>
         </tr>
       </thead>
-      <tbody>
+      <tbody id="contractsTableBody">
       {% for c in contracts %}
-      <tr data-contract-id="{{ c.id }}" data-tenant-id="{{ c.tenant_id }}" data-room-id="{{ c.room_id }}" data-start-date="{{ c.start_date }}" data-end-date="{{ c.end_date }}" data-start-date-iso="{{ c.start_date_iso }}" data-end-date-iso="{{ c.end_date_iso }}" data-contract-type="{{ c.contract_type }}" data-deposit="{{ c.deposit }}" class="{% if c.is_active %}row-active-contract{% endif %}">
-        <td>
+      {% set status_text = 'Đã đóng' if c.rent_payment_status == 'paid' else ('Chưa đóng' if c.rent_payment_status == 'unpaid' else 'Chưa có HĐ') %}
+      
+      <tr class="{% if c.is_active %}row-active-contract{% endif %}"
+          data-contract-id="{{ c.id }}" 
+          data-tenant-id="{{ c.tenant_id }}"
+          data-tenant-name="{{ c.tenant.full_name if c.tenant else c.tenant_id }}" 
+          data-room-id="{{ c.room_id }}"
+          data-room="{{ c.room.room_number if c.room else c.room_id }}" 
+          data-start-date="{{ c.start_date }}" 
+          data-end-date="{{ c.end_date }}" 
+          data-start-date-iso="{{ c.start_date_iso }}" 
+          data-end-date-iso="{{ c.end_date_iso }}" 
+          data-contract-type="{{ c.contract_type }}" 
+          data-deposit="{{ c.deposit }}"
+          data-status="{{ status_text }}">
+        
+        <td class="ps-4">
           <div class="d-flex align-items-center">
-            <div class="avatar-circle bg-light text-primary me-2 shadow-sm border d-none d-md-flex" style="width:32px; height:32px; border-radius:50%; align-items:center; justify-content:center; font-weight:bold; font-size:0.85rem;">
+            <div class="avatar-circle bg-primary-subtle text-primary me-3 shadow-sm d-none d-md-flex" style="width:36px; height:36px; border-radius:10px; align-items:center; justify-content:center; font-weight:bold; font-size:0.95rem;">
               {{ (c.tenant.full_name[0]|upper) if c.tenant else '?' }}
             </div>
-            <span class="fw-semibold text-dark">{{ c.tenant.full_name if c.tenant else c.tenant_id }}</span>
+            <div>
+              <div class="fw-bold text-dark text-truncate" style="max-width: 180px;">
+                {{ c.tenant.full_name if c.tenant else c.tenant_id }}
+              </div>
+              {% if not c.is_active %}
+                <div class="small text-muted mt-1"><i class="fa-solid fa-lock me-1"></i>Đã kết thúc</div>
+              {% endif %}
+            </div>
           </div>
         </td>
-        <td>
-          <span class="badge bg-light text-dark border px-2 py-1"> {{ c.room.room_number if c.room else c.room_id }}</span>
+        
+        <td class="text-center">
+          <span class="badge bg-light text-dark border px-3 py-2 rounded-3 fs-6">{{ c.room.room_number if c.room else c.room_id }}</span>
         </td>
-        <td class="text-center">{{ c.electric.current_kwh if c.electric else 0 }}</td>
-        <td class="text-center">{{ c.electric.used_kwh if c.electric else 0 }}</td>
-        <td class="text-end fw-semibold text-dark">{{ c.deposit | default(0) | money }}</td>
+        <td class="text-center fw-semibold text-dark">{{ c.electric.current_kwh if c.electric else 0 }}</td>
+        <td class="text-center text-muted">{{ c.electric.used_kwh if c.electric else 0 }}</td>
+        <td class="text-center fw-bold text-dark">{{ c.deposit | default(0) | money }}</td>
+        
         <td class="text-center">
           {% if c.rent_payment_status == 'paid' %}
-            <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">Đã đóng</span>
+            <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1 rounded-pill">Đã đóng</span>
           {% elif c.rent_payment_status == 'unpaid' %}
-            <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1">Chưa đóng</span>
-          {% elif c.rent_payment_status == 'no_bill' %}
-            <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2 py-1">Chưa có HĐ</span>
+            <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-1 rounded-pill">Chưa đóng</span>
           {% else %}
-            <span class="badge bg-light text-muted border px-2 py-1">Không rõ</span>
+            <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-3 py-1 rounded-pill">Chưa có HĐ</span>
           {% endif %}
         </td>
-        <td class="small">
-          <div class="text-success"><i class="fa-solid fa-calendar-plus me-1"></i>{{ c.start_date }}</div>
+        
+        <td class="text-center">
+          <div class="text-success fw-bold small"><i class="fa-solid fa-calendar-plus me-1"></i>{{ c.start_date }}</div>
           {% if c.end_date %}
-          <div class="text-danger mt-1"><i class="fa-solid fa-calendar-xmark me-1"></i>{{ c.end_date }}</div>
+          <div class="text-danger fw-bold small mt-1"><i class="fa-solid fa-calendar-xmark me-1"></i>{{ c.end_date }}</div>
           {% endif %}
         </td>
-        <td>
+        
+        <td class="text-center pe-3">
           <div class="d-flex justify-content-center gap-1">
-            <button class="btn action-btn bg-primary-subtle text-primary" type="button" onclick="openEditContract(this)" title="Sửa">
-              <i class="fa-solid fa-pen"></i>
-            </button>
+            <button class="btn action-btn bg-primary-subtle text-primary" type="button" onclick="openEditContract(this)" title="Sửa"><i class="fa-solid fa-pen"></i></button>
             <form action="/contracts/{{ c.id }}/create_bill" method="post" style="display:inline">
               <input type="hidden" name="month" value="{{ today[:7] }}" />
-              <button class="btn action-btn bg-success-subtle text-success" type="submit" title="Tạo hóa đơn">
-                <i class="fa-solid fa-file-invoice-dollar"></i>
-              </button>
+              <button class="btn action-btn bg-success-subtle text-success" type="submit" title="Tạo hóa đơn"><i class="fa-solid fa-file-invoice-dollar"></i></button>
             </form>
             {% if c.is_active %}
             <form action="/contracts/{{ c.id }}/end" method="post" style="display:inline" onsubmit="return confirm('Bạn chắc chắn muốn KẾT THÚC hợp đồng này?');">
-              <button class="btn action-btn bg-warning-subtle text-warning" type="submit" title="Kết thúc">
-                <i class="fa-solid fa-ban"></i>
-              </button>
+              <button class="btn action-btn bg-warning-subtle text-warning" type="submit" title="Kết thúc"><i class="fa-solid fa-ban"></i></button>
             </form>
             {% endif %}
             <form action="/contracts/{{ c.id }}/delete" method="post" style="display:inline" onsubmit="return confirm('Cảnh báo: Xóa hợp đồng này sẽ xóa cả dữ liệu liên quan. Vẫn tiếp tục?');">
-              <button class="btn action-btn bg-danger-subtle text-danger" type="submit" title="Xóa">
-                <i class="fa-solid fa-trash-can"></i>
-              </button>
+              <button class="btn action-btn bg-danger-subtle text-danger" type="submit" title="Xóa"><i class="fa-solid fa-trash-can"></i></button>
             </form>
           </div>
         </td>
@@ -171,18 +188,14 @@
             <label class="form-label small fw-semibold text-muted">Phòng thuê</label>
             <select class="form-select bg-light" name="room_id" required>
               <option value="" selected disabled>-- Chọn phòng --</option>
-              {% for r in rooms %}
-                <option value="{{ r.id }}" {% if r.id in active_room_ids %}disabled{% endif %}>Phòng {{ r.room_number }}{% if r.id in active_room_ids %} (Đang có người){% endif %}</option>
-              {% endfor %}
+              {% for r in rooms %}<option value="{{ r.id }}" {% if r.id in active_room_ids %}disabled{% endif %}>Phòng {{ r.room_number }}{% if r.id in active_room_ids %} (Đang có người){% endif %}</option>{% endfor %}
             </select>
           </div>
           <div class="mb-3">
             <label class="form-label small fw-semibold text-muted">Người thuê đại diện</label>
             <select class="form-select bg-light" name="tenant_id" required>
               <option value="" selected disabled>-- Chọn khách thuê --</option>
-              {% for t in tenants %}
-                <option value="{{ t.id }}">{{ t.full_name }}{% if t.phone %} - {{ t.phone }}{% endif %}</option>
-              {% endfor %}
+              {% for t in tenants %}<option value="{{ t.id }}">{{ t.full_name }}{% if t.phone %} - {{ t.phone }}{% endif %}</option>{% endfor %}
             </select>
           </div>
           <div class="row g-2 mb-3">
@@ -227,17 +240,13 @@
           <div class="mb-3">
             <label class="form-label small fw-semibold text-muted">Phòng thuê</label>
             <select class="form-select bg-light" id="edit_contract_room" name="room_id" required>
-              {% for r in rooms %}
-                <option value="{{ r.id }}" {% if r.id in active_room_ids %}data-busy="1"{% endif %}>Phòng {{ r.room_number }}{% if r.id in active_room_ids %} (Đang có người){% endif %}</option>
-              {% endfor %}
+              {% for r in rooms %}<option value="{{ r.id }}" {% if r.id in active_room_ids %}data-busy="1"{% endif %}>Phòng {{ r.room_number }}{% if r.id in active_room_ids %} (Đang có người){% endif %}</option>{% endfor %}
             </select>
           </div>
           <div class="mb-3">
             <label class="form-label small fw-semibold text-muted">Người thuê đại diện</label>
             <select class="form-select bg-light" id="edit_contract_tenant" name="tenant_id" required>
-              {% for t in tenants %}
-                <option value="{{ t.id }}">{{ t.full_name }}</option>
-              {% endfor %}
+              {% for t in tenants %}<option value="{{ t.id }}">{{ t.full_name }}</option>{% endfor %}
             </select>
           </div>
           <div class="row g-2 mb-3">

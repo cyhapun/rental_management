@@ -22,7 +22,6 @@ function filterContracts(){
   const rows = document.querySelectorAll('#contractsTableBody tr');
   
   rows.forEach(r => {
-    // Lấy nội dung mộc từ dataset, thay vì innerText để không dính icon HTML
     const tenant = (r.dataset.tenantName || '').toLowerCase();
     const room = (r.dataset.room || '').toLowerCase();
     const status = (r.dataset.status || '').toLowerCase();
@@ -34,6 +33,19 @@ function filterContracts(){
   });
 }
 
+// Thuật toán parse chuỗi Ngày Tháng ở VN sang Timestamp
+function parseVnDate(dateStr) {
+  if (!dateStr) return 0;
+  // Nếu đã là ISO (YYYY-MM-DD)
+  if (dateStr.includes('-') && dateStr.length === 10) return new Date(dateStr).getTime() || 0;
+  // Nếu là định dạng DD/MM/YYYY
+  const parts = dateStr.split('/');
+  if (parts.length === 3) {
+    return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`).getTime() || 0;
+  }
+  return 0;
+}
+
 function sortContracts(){
   const sortVal = document.getElementById('contractSort').value;
   const tbody = document.getElementById('contractsTableBody');
@@ -41,15 +53,20 @@ function sortContracts(){
   const rows = Array.from(tbody.querySelectorAll('tr'));
   
   rows.sort((a,b) => {
-    const startA = a.dataset.startDateIso || a.dataset.startDate || '1900-01-01';
-    const startB = b.dataset.startDateIso || b.dataset.startDate || '1900-01-01';
-    const roomA = parseInt(a.dataset.room || '0', 10);
-    const roomB = parseInt(b.dataset.room || '0', 10);
+    // So sánh thời gian sử dụng Timestamp để chính xác tuyệt đối
+    const startA = parseVnDate(a.dataset.startDateIso || a.dataset.startDate);
+    const startB = parseVnDate(b.dataset.startDateIso || b.dataset.startDate);
     
-    if (sortVal === 'start_desc') return startB.localeCompare(startA);
-    if (sortVal === 'start_asc') return startA.localeCompare(startB);
-    if (sortVal === 'room_asc') return roomA - roomB;
-    if (sortVal === 'room_desc') return roomB - roomA;
+    const roomA = a.dataset.room || '';
+    const roomB = b.dataset.room || '';
+    
+    if (sortVal === 'start_desc') return startB - startA;
+    if (sortVal === 'start_asc') return startA - startB;
+    
+    // Tùy chọn numeric: true giúp máy tính hiểu số 10 lớn hơn số 2
+    if (sortVal === 'room_asc') return roomA.localeCompare(roomB, undefined, { numeric: true, sensitivity: 'base' });
+    if (sortVal === 'room_desc') return roomB.localeCompare(roomA, undefined, { numeric: true, sensitivity: 'base' });
+    
     return 0;
   });
   
@@ -61,6 +78,5 @@ document.addEventListener('DOMContentLoaded', function(){
   const p = document.getElementById('contractPaymentFilter'); if (p) p.addEventListener('change', filterContracts);
   const s = document.getElementById('contractSort'); if (s) s.addEventListener('change', sortContracts);
   
-  // Áp dụng Sort mặc định khi vừa tải trang
   try { sortContracts(); } catch(e) {}
 });

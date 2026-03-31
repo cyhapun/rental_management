@@ -32,42 +32,10 @@
     background: #fff;
 }
 
-/* Thiết kế CỘT XANH cho Người Thuê (Giống hệt Mockup ảnh) */
-#contractsTable tbody td.tenant-col {
-    background-color: var(--primary-500) !important;
-    color: #ffffff !important;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.15) !important;
-    width: 260px;
+/* Đánh dấu hợp đồng đang hiệu lực bằng nền siêu nhạt (Đã bỏ viền xanh) */
+.row-active-contract td {
+    background-color: rgba(59, 130, 246, 0.015) !important;
 }
-/* Cột Xám cho Hợp đồng đã kết thúc */
-#contractsTable tbody td.tenant-col-inactive {
-    background-color: #94a3b8 !important;
-    color: #ffffff !important;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.15) !important;
-    width: 260px;
-}
-
-#contractsTable tbody tr:last-child td.tenant-col,
-#contractsTable tbody tr:last-child td.tenant-col-inactive {
-    border-bottom: none !important;
-}
-
-/* Avatar trong cột màu */
-.tenant-col .avatar-circle,
-.tenant-col-inactive .avatar-circle {
-    background-color: #ffffff !important;
-    color: var(--primary-600) !important;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 800;
-    font-size: 1rem;
-}
-.tenant-col-inactive .avatar-circle { color: #64748b !important; }
 
 /* Tùy chỉnh Modal */
 .modal-content {
@@ -91,14 +59,3 @@
     border: none;
 }
 .action-btn:hover { transform: translateY(-2px); }
-
-/* Ép in màu nền để ảnh xuất ra giữ được cột Xanh */
-@media print {
-    #contractsTable tbody td.tenant-col, #contractsTable tbody td.tenant-col-inactive, .avatar-circle {
-        -webkit-print-color-adjust: exact !important; 
-        print-color-adjust: exact !important; 
-    }
-}
-@media (max-width: 768px) {
-    #contractsTable tbody td.tenant-col, #contractsTable tbody td.tenant-col-inactive { width: auto; }
-}
