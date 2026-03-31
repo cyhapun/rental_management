@@ -23,9 +23,11 @@
 
     <nav class="navbar navbar-expand-lg app-header sticky-top">
       <div class="container-fluid px-3">
+        {% if not is_login_page %}
         <button class="btn-icon-mobile d-md-none me-2 shadow-sm" data-bs-toggle="offcanvas" data-bs-target="#offcanvasNav" aria-controls="offcanvasNav">
           <i class="fa-solid fa-bars-staggered"></i>
         </button>
+        {% endif %}
         
         <a class="app-brand" href="/dashboard">
           <img src="/static/images/logo.svg" alt="Logo" class="mobile-logo-size">
