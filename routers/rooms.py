@@ -1,13 +1,13 @@
 from fastapi import APIRouter, Request, HTTPException, Form
 from fastapi.responses import HTMLResponse
-from deps import get_db
+from core.deps import get_db
 from bson import ObjectId
 import os
 from jinja2 import Environment, FileSystemLoader
 
-from security import decrypt_value
-from template_filters import money
-from flash import redirect_with_flash
+from core.security import decrypt_value
+from core.template_filters import money
+from core.flash import redirect_with_flash
 
 router = APIRouter(prefix="/rooms", tags=["rooms"])
 

@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Request, Form
 from fastapi.responses import HTMLResponse
-from deps import get_db
+from core.deps import get_db
 from bson import ObjectId
 from jinja2 import Environment, FileSystemLoader
 from datetime import datetime
 
-from security import hash_password
-from flash import redirect_with_flash
+from core.security import hash_password
+from core.flash import redirect_with_flash
 
 router = APIRouter(prefix="/accounts", tags=["accounts"])
 

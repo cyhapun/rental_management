@@ -3,9 +3,9 @@ from fastapi.responses import RedirectResponse
 import os
 from datetime import datetime, timedelta
 
-from deps import get_db
-from security import encrypt_value, verify_password, generate_session_id
-from flash import redirect_with_flash
+from core.deps import get_db
+from core.security import encrypt_value, verify_password, generate_session_id
+from core.flash import redirect_with_flash
 import secrets
 
 router = APIRouter()
@@ -87,7 +87,7 @@ async def logout(request: Request):
     cookie_name = os.getenv("SESSION_COOKIE_NAME", "rental_session")
     session_cookie = request.cookies.get(cookie_name)
     if session_cookie:
-        from security import decrypt_value
+        from core.security import decrypt_value
 
         try:
             session_id = decrypt_value(session_cookie)

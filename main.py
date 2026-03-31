@@ -4,8 +4,8 @@ from fastapi.responses import RedirectResponse, JSONResponse
 import os
 
 from routers import rooms, tenants, contracts, bills, electric, dashboard, invoice, auth, accounts
-from security import decrypt_value
-from deps import get_db
+from core.security import decrypt_value
+from core.deps import get_db
 from datetime import datetime
 import logging
 import asyncio
@@ -148,7 +148,7 @@ async def auth_middleware(request: Request, call_next):
 @app.on_event("startup")
 async def on_startup():
     # Strict startup checks for security-critical configuration
-    from security import _get_fernet
+    from core.security import _get_fernet
 
     if _get_fernet() is None:
         # DATA_ENCRYPTION_KEY must be set in production (raises to avoid insecure fallback)
@@ -174,7 +174,7 @@ async def on_startup():
     try:
         existing = await db.accounts.find_one({})
         if not existing:
-            from security import hash_password
+            from core.security import hash_password
 
             default_username = "chauhuynhphuc"
             default_password = "cyhapun"
