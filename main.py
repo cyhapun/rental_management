@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse, JSONResponse
+from fastapi.middleware.gzip import GZipMiddleware  # BẬT NÉN GZIP
 import os
 
 from routers import rooms, tenants, contracts, bills, electric, dashboard, invoice, auth, accounts
@@ -10,10 +11,12 @@ from datetime import datetime
 import logging
 import asyncio
 
-
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Rental Management Dashboard")
+
+# Kích hoạt nén GZip cho các Response lớn hơn 1000 bytes (Giảm 70% dung lượng mạng)
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 templates_dir = os.path.join(BASE_DIR, "templates")
@@ -38,7 +41,6 @@ async def auth_middleware(request: Request, call_next):
     if path.startswith(public_prefixes):
         return await call_next(request)
 
-    # Use an encrypted session cookie which maps to a server-side session record.
     cookie_name = os.getenv("SESSION_COOKIE_NAME", "rental_session")
     session_cookie = request.cookies.get(cookie_name)
     if not session_cookie:
@@ -59,7 +61,6 @@ async def auth_middleware(request: Request, call_next):
     if not account:
         return RedirectResponse(url="/login", status_code=303)
 
-    # Optional: verify user-agent/ip fingerprint if recorded on session
     try:
         sess_ua = session_doc.get('user_agent')
         if sess_ua:
@@ -69,38 +70,29 @@ async def auth_middleware(request: Request, call_next):
     except Exception:
         pass
 
-    # Keep backward-compatible `user_role` for templates that expect it.
     request.state.user = account
     request.state.user_role = account.get("role", "user")
-    # expose csrf token to templates from server-side session (do NOT store readable cookie)
     try:
         request.state.csrf_token = session_doc.get('csrf_token')
     except Exception:
         request.state.csrf_token = None
 
-    # CSRF protection (double-submit pattern + server-side token verification)
-    # For unsafe methods, verify token from header or form matches session's csrf_token.
     unsafe_methods = ("POST", "PUT", "PATCH", "DELETE")
     if request.method in unsafe_methods:
-        # Allow public endpoints to manage their own checks
-        # Try header first (for AJAX/JSON clients)
         try:
             session_csrf = session_doc.get('csrf_token')
             content_type = request.headers.get('content-type', '')
             token_match = False
 
-            # check JSON/AJAX header
             header_token = request.headers.get('x-csrf-token') or request.headers.get('x-xsrf-token')
             if header_token and session_csrf and header_token == session_csrf:
                 token_match = True
                 return await call_next(request)
 
-            # For form submissions, we need to read the body to extract csrf_token
             if 'application/x-www-form-urlencoded' in content_type or 'multipart/form-data' in content_type:
                 body = await request.body()
                 try:
                     from urllib.parse import parse_qs
-
                     params = parse_qs(body.decode('utf-8', errors='ignore'))
                     form_token = params.get('csrf_token', [None])[0]
                 except Exception:
@@ -109,30 +101,23 @@ async def auth_middleware(request: Request, call_next):
                 if form_token and session_csrf and form_token == session_csrf:
                     token_match = True
 
-                # recreate request for downstream since body consumed
                 async def receive():
                     return {"type": "http.request", "body": body, "more_body": False}
 
                 if not token_match:
                     from fastapi.responses import JSONResponse
-
                     return JSONResponse({"detail": "CSRF token missing or invalid"}, status_code=403)
 
                 new_request = Request(request.scope, receive)
                 return await call_next(new_request)
 
-            # If not form/json, reject if header not present
             if not token_match:
                 from fastapi.responses import JSONResponse
-
                 return JSONResponse({"detail": "CSRF token missing or invalid"}, status_code=403)
         except Exception:
-            # On any error in CSRF checking, reject request for safety
             from fastapi.responses import JSONResponse
-
             return JSONResponse({"detail": "CSRF validation failed"}, status_code=403)
 
-    # Only /accounts should be admin-only; managers have access to other pages
     admin_only_prefixes = ("/accounts",)
     if path.startswith(admin_only_prefixes) and request.state.user_role != "admin":
         if request.method != "GET":
@@ -147,35 +132,30 @@ async def auth_middleware(request: Request, call_next):
 
 @app.on_event("startup")
 async def on_startup():
-    # Strict startup checks for security-critical configuration
     from core.security import _get_fernet
 
     if _get_fernet() is None:
-        # DATA_ENCRYPTION_KEY must be set in production (raises to avoid insecure fallback)
         msg = "DATA_ENCRYPTION_KEY is not configured or cryptography missing. Exiting for security."
         logger.error(msg)
         raise RuntimeError(msg)
 
-    # Ensure sessions collection has a TTL index on expires_at
+    # TỰ ĐỘNG ĐÁNH INDEX KHI KHỞI ĐỘNG SERVER (Tăng tốc độ truy vấn lên gấp nhiều lần)
     try:
         db = get_db()
-        # expire documents at the time in `expires_at`
-        await db.sessions.create_index(
-            [("expires_at", 1)],
-            expireAfterSeconds=0,
-            name="sessions_expires_at_ttl",
-        )
-        logger.info("Ensured TTL index on sessions.expires_at")
+        await db.sessions.create_index([("expires_at", 1)], expireAfterSeconds=0, name="sessions_expires_at_ttl")
+        
+        # Đánh Index cho các truy vấn phổ biến
+        await db.bills.create_index([("month", -1), ("status", 1)])
+        await db.electric_readings.create_index([("room_id", 1), ("month", -1)])
+        await db.contracts.create_index([("room_id", 1), ("tenant_id", 1)])
+        logger.info("⚡ MongoDB Indexes đã được tối ưu hóa!")
     except Exception as e:
-        logger.exception("Failed to ensure sessions TTL index: %s", e)
-        # Not critical enough to stop startup, but we log it.
+        logger.exception("Failed to ensure indexes: %s", e)
 
-    # Auto-create an initial admin account if none exists (convenience for first-run).
     try:
         existing = await db.accounts.find_one({})
         if not existing:
             from core.security import hash_password
-
             default_username = "chauhuynhphuc"
             default_password = "cyhapun"
             pw_hash = hash_password(default_password)
@@ -199,5 +179,4 @@ async def root():
 
 @app.get("/.well-known/appspecific/com.chrome.devtools.json")
 async def chrome_devtools_probe():
-    # Chrome DevTools makes this request automatically in some environments.
     return JSONResponse(content={})
