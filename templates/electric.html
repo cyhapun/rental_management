@@ -24,7 +24,7 @@
   <div class="d-flex flex-wrap gap-2">
     <select class="form-select bg-light border-0 fw-semibold text-dark" id="electricSort" style="width: auto; cursor: pointer; min-width: 200px;">
       <option value="default">Sắp xếp mặc định</option>
-      <option value="month_desc">Tháng: Mới nhất</option>
+      <option value="month_desc" selected>Tháng: Mới nhất</option>
       <option value="month_asc">Tháng: Cũ nhất</option>
       <option value="usage_desc">Đã dùng: Cao -> Thấp</option>
       <option value="usage_asc">Đã dùng: Thấp -> Cao</option>
@@ -45,46 +45,12 @@
           <th class="text-center">Thao tác</th>
         </tr>
       </thead>
-      <tbody id="electricTableBody">
-        {% for r in readings %}
-        <tr class="data-row" data-reading-id="{{ r.id }}" data-month="{{ r.month }}" data-old-index="{{ r.old_index }}" data-new-index="{{ r.new_index }}" data-price="{{ r.price_per_kwh }}" data-usage="{{ r.usage }}">
-          <td>
-            <span class="badge bg-light text-dark border px-2 py-1 fs-6">
-              <i class="fa-solid fa-door-closed text-muted me-1"></i> 
-              {{ r.room.room_number if r.room else r.room_id }}
-            </span>
+      <tbody id="electricTableBody" data-auto-load="true">
+        <tr id="electric-loading">
+          <td colspan="6" class="text-center text-muted py-4">
+            <span class="spinner-border spinner-border-sm text-primary me-2" role="status" aria-hidden="true"></span>
+            Đang tải dữ liệu điện năng...
           </td>
-          <td class="text-center">
-            <span class="text-primary fw-semibold"><i class="fa-regular fa-calendar-alt me-1"></i>{{ r.month }}</span>
-          </td>
-          <td class="text-center text-muted">{{ r.old_index }}</td>
-          <td class="text-center fw-semibold">{{ r.new_index }}</td>
-          <td class="text-center">
-            <span class="badge bg-warning-subtle text-dark border border-warning-subtle px-2 py-1 fs-6">
-              {{ r.usage }} <small class="text-muted fw-normal ms-1">kWh</small>
-            </span>
-          </td>
-          <td>
-            <div class="d-flex justify-content-center gap-1">
-              <button class="btn action-btn bg-primary-subtle text-primary" type="button" onclick="openEditReading(this)" title="Sửa">
-                <i class="fa-solid fa-pen"></i>
-              </button>
-              <form action="/electric/{{ r.id }}/delete" method="post" style="display:inline" onsubmit="return confirm('Cảnh báo: Bạn có chắc chắn muốn xóa bản ghi chỉ số điện này không?');">
-                <button class="btn action-btn bg-danger-subtle text-danger" type="submit" title="Xóa">
-                  <i class="fa-solid fa-trash-can"></i>
-                </button>
-              </form>
-            </div>
-          </td>
-        </tr>
-        {% else %}
-        <tr id="emptyDbRow">
-          <td colspan="6" class="text-center text-muted py-4">Hiện tại chưa có dữ liệu điện năng.</td>
-        </tr>
-        {% endfor %}
-        
-        <tr id="noSearchResultRow" style="display: none;">
-          <td colspan="6" class="text-center text-muted py-4">Không tìm thấy dữ liệu phù hợp với từ khóa.</td>
         </tr>
       </tbody>
     </table>
@@ -176,9 +142,5 @@
   </div>
 </div>
 
-<script>
-window.electricData = { last_indices: {{ last_indices|tojson | safe }} };
-</script>
-<script src="/static/js/electric.js"></script>
-
+<script src="/static/js/electric.js?v=2"></script>
 {% endblock %}
