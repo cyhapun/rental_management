@@ -23,21 +23,63 @@ async def list_bills_html(request: Request, status: str = "all"):
     default_month = datetime.date.today().strftime("%Y-%m")
     contracts_list = []
     try:
+        # Bulk fetch contracts, then fetch related rooms and tenants in batches (avoid N+1)
+        contracts = []
         ccur = db.contracts.find({})
         async for c in ccur:
+            contracts.append(c)
+
+        # collect room and tenant ids
+        room_oids = set()
+        tenant_oids = set()
+        for c in contracts:
+            try:
+                rid = c.get("room_id")
+                if rid:
+                    room_oids.add(str(rid))
+            except Exception:
+                pass
+            try:
+                tid = c.get("tenant_id")
+                if tid:
+                    tenant_oids.add(str(tid))
+            except Exception:
+                pass
+
+        rooms_map = {}
+        if room_oids:
+            room_obj_ids = []
+            for r in room_oids:
+                try:
+                    room_obj_ids.append(ObjectId(r))
+                except Exception:
+                    pass
+            if room_obj_ids:
+                rc = db.rooms.find({"_id": {"$in": room_obj_ids}}, {"room_number": 1})
+                async for room in rc:
+                    rooms_map[str(room.get("_id"))] = room
+
+        tenants_map = {}
+        if tenant_oids:
+            tenant_obj_ids = []
+            for t in tenant_oids:
+                try:
+                    tenant_obj_ids.append(ObjectId(t))
+                except Exception:
+                    pass
+            if tenant_obj_ids:
+                tc = db.tenants.find({"_id": {"$in": tenant_obj_ids}}, {"full_name": 1})
+                async for tenant in tc:
+                    tenants_map[str(tenant.get("_id"))] = tenant
+
+        for c in contracts:
             cid = str(c.get("_id"))
             tenant_name = None
             room_number = None
-            try:
-                room = await db.rooms.find_one({"_id": ObjectId(c.get("room_id"))})
-            except Exception:
-                room = None
+            room = rooms_map.get(str(c.get("room_id")))
             if room:
                 room_number = room.get("room_number")
-            try:
-                tenant = await db.tenants.find_one({"_id": ObjectId(c.get("tenant_id"))})
-            except Exception:
-                tenant = None
+            tenant = tenants_map.get(str(c.get("tenant_id")))
             if tenant:
                 tenant_name = tenant.get("full_name")
             contracts_list.append({"id": cid, "display": (f"{tenant_name or ''} - Phòng {room_number or ''}").strip()})
@@ -57,7 +99,9 @@ async def list_bills_data(status: str = "all"):
     q = {}
     if status in ("paid", "unpaid"):
         q["status"] = status
-    cursor = db.bills.find(q).sort("created_at", -1)
+    # Projection: only fetch fields we need to render the table
+    projection = {"contract_id": 1, "paid_amount": 1, "paid_at": 1, "water_cost": 1, "room_price": 1, "electric_cost": 1, "other_cost": 1, "total": 1, "created_at": 1, "status": 1, "prev_index": 1, "curr_index": 1, "usage": 1, "kwh_price": 1}
+    cursor = db.bills.find(q, projection).sort("created_at", -1)
     bills = []
     async for b in cursor:
         b["id"] = str(b.get("_id"))
@@ -101,17 +145,69 @@ async def list_bills_data(status: str = "all"):
             b["paid_amount"] = int(b.get("paid_amount") or 0)
             b['paid_at_fmt'] = ''
 
-    async def _resolve_document(collection, doc_id):
-        if not doc_id: return None
-        try:
-            d = await collection.find_one({"_id": doc_id})
-            if d: return d
-        except Exception: pass
-        try:
-            d = await collection.find_one({"_id": ObjectId(doc_id)})
-            if d: return d
-        except Exception: pass
-        return None
+    # Bulk-fetch related contracts -> rooms -> tenants to avoid N+1 queries
+    contract_ids = [b.get("contract_id") for b in bills if b.get("contract_id")]
+    contracts_map = {}
+    if contract_ids:
+        contract_obj_ids = []
+        for cid in contract_ids:
+            try:
+                contract_obj_ids.append(ObjectId(cid))
+            except Exception:
+                pass
+        if contract_obj_ids:
+            cc = db.contracts.find({"_id": {"$in": contract_obj_ids}}, {"room_id": 1, "tenant_id": 1})
+            async for c in cc:
+                contracts_map[str(c.get("_id"))] = c
+
+    # collect room and tenant object ids from contracts
+    room_oids = set()
+    tenant_oids = set()
+    for c in contracts_map.values():
+        rid = c.get("room_id")
+        tid = c.get("tenant_id")
+        if rid:
+            try:
+                room_oids.add(str(ObjectId(rid)))
+            except Exception:
+                try:
+                    room_oids.add(str(rid))
+                except Exception:
+                    pass
+        if tid:
+            try:
+                tenant_oids.add(str(ObjectId(tid)))
+            except Exception:
+                try:
+                    tenant_oids.add(str(tid))
+                except Exception:
+                    pass
+
+    rooms_map = {}
+    if room_oids:
+        room_obj_ids = []
+        for r in room_oids:
+            try:
+                room_obj_ids.append(ObjectId(r))
+            except Exception:
+                pass
+        if room_obj_ids:
+            rc = db.rooms.find({"_id": {"$in": room_obj_ids}}, {"room_number": 1})
+            async for room in rc:
+                rooms_map[str(room.get("_id"))] = room
+
+    tenants_map = {}
+    if tenant_oids:
+        tenant_obj_ids = []
+        for t in tenant_oids:
+            try:
+                tenant_obj_ids.append(ObjectId(t))
+            except Exception:
+                pass
+        if tenant_obj_ids:
+            tc = db.tenants.find({"_id": {"$in": tenant_obj_ids}}, {"full_name": 1})
+            async for tenant in tc:
+                tenants_map[str(tenant.get("_id"))] = tenant
 
     for b in bills:
         try:
@@ -131,16 +227,16 @@ async def list_bills_data(status: str = "all"):
 
         tenant_name = None
         room_number = None
-        contract = await _resolve_document(db.contracts, b.get("contract_id"))
+        contract = contracts_map.get(b.get("contract_id"))
         if contract:
-            room = await _resolve_document(db.rooms, contract.get("room_id"))
+            room = rooms_map.get(str(contract.get("room_id")))
             if room:
                 room_number = room.get("room_number")
-            tenant = await _resolve_document(db.tenants, contract.get("tenant_id"))
+            tenant = tenants_map.get(str(contract.get("tenant_id")))
             if tenant:
                 tenant_name = tenant.get("full_name")
         b["contract_display"] = {"tenant_name": tenant_name, "room_number": room_number}
-        
+
         # Bỏ ObjectId và datetime để chuẩn hóa thành JSON
         b.pop('_id', None)
         if 'created_at' in b:
