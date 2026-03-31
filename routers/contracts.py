@@ -184,7 +184,8 @@ async def list_contracts(request: Request):
         r["id"] = str(r.get("_id"))
         rooms.append({"id": r.get("id"), "room_number": r.get("room_number"), "price": r.get("price"), "status": r.get("status")})
 
-    today_str = datetime.date.today().isoformat()
+    today_vn = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=7)))
+    today_str = today_vn.date().isoformat()
     tpl = env.get_template("contracts.html")
     html = tpl.render(
         request=request,
@@ -204,7 +205,7 @@ async def list_contracts_data(request: Request):
     contracts = []
     active_room_ids = set()
     active_tenant_ids = set()
-    today = datetime.date.today()
+    today = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=7))).date()
     latest_by_room = {}
     all_contracts = []
     
