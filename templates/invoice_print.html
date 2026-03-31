@@ -126,35 +126,47 @@
         margin-bottom: 0.5rem; 
       }
       .total-amount { font-size: 2.2rem; font-weight: 800; color: var(--primary); }
-
-      .payment-status { 
-        margin-top: 1.5rem; 
-        padding: 1rem; 
-        border-radius: 12px; 
-        background: #ecfdf5; 
-        color: var(--success); 
-        display: flex; 
-        align-items: center; 
-        justify-content: space-between; 
-        font-weight: 600; 
-        border: 1px solid #bbf7d0; 
-        font-size: 0.9rem;
+      
+      .qr-section {
+        margin-top: 1.5rem;
+        padding-top: 1.5rem;
+        border-top: 1px dashed var(--border);
+        text-align: center;
       }
+      .qr-title {
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: var(--dark);
+        margin-bottom: 0.5rem;
+      }
+      .qr-desc {
+        font-size: 0.8rem;
+        color: var(--muted);
+        margin-bottom: 1rem;
+      }
+      .qr-image {
+        width: 180px;
+        height: 180px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        padding: 5px;
+        background: #fff;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      }
+      
       .bank-info { 
-        margin-top: 1.5rem; 
+        margin-top: 1rem; 
         text-align: center; 
         font-size: 0.9rem; 
         color: var(--muted); 
         line-height: 1.6; 
-        padding-top: 1.5rem;
-        border-top: 1px dashed var(--border);
       }
       .bank-info strong { color: var(--dark); }
 
       @media print {
         body { background: #ffffff; padding: 0; }
         .invoice-wrapper { box-shadow: none; border: none; border-radius: 0; max-width: 100%; margin: 0; }
-        .invoice-header, .total-box, .payment-status, .info-box, .electric-details {
+        .invoice-header, .total-box, .info-box, .electric-details {
           -webkit-print-color-adjust: exact !important; 
           print-color-adjust: exact !important; 
         }
@@ -162,6 +174,8 @@
     </style>
   </head>
   <body>
+    {% set current_room_number = (room.room_number if room else (bill.contract_display.room_number if bill.contract_display and bill.contract_display.room_number else '')) %}
+    
     <div class="invoice-wrapper">
       <div class="invoice-header">
         <h1>HÓA ĐƠN TIỀN TRỌ</h1>
@@ -177,7 +191,7 @@
             </div>
             <div class="info-item">
               <span class="info-label">Số phòng</span>
-              <span class="info-value text-primary">Phòng {{ (room.room_number if room else (bill.contract_display.room_number if bill.contract_display and bill.contract_display.room_number else '---')) }}</span>
+              <span class="info-value text-primary">Phòng {{ current_room_number if current_room_number else '---' }}</span>
             </div>
             <div class="info-item">
               <span class="info-label">Ngày lập HĐ</span>
@@ -205,9 +219,9 @@
           <div>
             <div class="desc">Tiền điện</div>
             <div class="electric-details">
-              <strong>Chỉ số điện cũ:</strong> {{ bill.prev_index if bill.prev_index is not none else 'Chưa chốt' }} 
-              &nbsp;|&nbsp; <strong>Chỉ số điện mới:</strong> {{ bill.curr_index if bill.curr_index is not none else 'Chưa chốt' }}<br>
-              <strong>Mức tiêu thụ:</strong> {{ bill.usage if bill.usage is not none else '0' }} kWh {% if bill.kwh_price is defined and bill.kwh_price %} <span style="color:#94a3b8">x {{ bill.kwh_price | money }}</span>{% endif %}
+              <strong>Chỉ số cũ:</strong> {{ bill.prev_index if bill.prev_index is not none else 'Chưa chốt' }} 
+              &nbsp;|&nbsp; <strong>Chỉ số mới:</strong> {{ bill.curr_index if bill.curr_index is not none else 'Chưa chốt' }}<br>
+              <strong>Tiêu thụ:</strong> {{ bill.usage if bill.usage is not none else '0' }} kWh {% if bill.kwh_price is defined and bill.kwh_price %} <span style="color:#94a3b8">x {{ bill.kwh_price | money }}</span>{% endif %}
             </div>
           </div>
           <div class="amount" style="display: flex; align-items: center;">{{ bill.electric_cost | money }}</div>
@@ -223,19 +237,19 @@
           <div class="total-amount">{{ bill.total | money }}</div>
         </div>
 
-        {% if bill.paid_at_fmt %}
-        <div class="payment-status">
-          <div><i class="fa-solid fa-circle-check fs-5 me-2" style="vertical-align: text-bottom;"></i> Đã thanh toán ({{ bill.paid_method or 'Chuyển khoản' }})</div>
-          <div style="font-size: 0.8rem; text-align:right;">{{ bill.paid_at_fmt }}</div>
+        {% if bill.status != 'paid' %}
+        <div class="qr-section">
+          <div class="qr-title"><i class="fa-solid fa-qrcode text-primary me-2"></i>Quét mã để thanh toán nhanh</div>
+          <div class="qr-desc">Mở App Ngân hàng quét mã - Tự động nhập số tiền và nội dung</div>
+          <img class="qr-image" crossorigin="anonymous" src="https://img.vietqr.io/image/vcb-9778847258-compact2.png?amount={{ bill.total | default(0) }}&addInfo=Tien%20phong%20{{ current_room_number }}%20thang%20{{ bill.month }}&accountName=CHAU%20DANG%20VINH" alt="QR Code Thanh Toán">
         </div>
-        {% endif %}
 
         <div class="bank-info">
-          <strong>CHUYỂN KHOẢN NGÂN HÀNG</strong><br>
           Ngân hàng Vietcombank<br>
-          STK: <strong style="font-size: 1.1rem;">9778847258</strong><br>
-          Chủ TK: Châu Đăng Vinh
+          STK: <strong style="font-size: 1.1rem; color: var(--primary);">9778847258</strong><br>
+          Chủ TK: <strong>CHÂU ĐĂNG VINH</strong>
         </div>
+        {% endif %}
 
       </div>
     </div>

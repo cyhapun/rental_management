@@ -118,21 +118,48 @@ async function loadBills() {
 }
 
 // 2. Xem Hóa Đơn (Iframe Modal)
+// 1. Xem Hóa Đơn (Đã tối ưu tốc độ hiển thị)
 window.showBill = async function(billId) {
   const frame = document.getElementById('billViewFrame');
-  try{
+  const modalEl = document.getElementById('billViewModal');
+  
+  // 1. MỞ MODAL NGAY LẬP TỨC ĐỂ TẠO CẢM GIÁC MƯỢT MÀ
+  const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+  modal.show();
+  
+  // 2. HIỂN THỊ ANIMATION LOADING BÊN TRONG IFRAME TRONG LÚC CHỜ SERVER
+  frame.srcdoc = `
+    <div style="display:flex; flex-direction:column; justify-content:center; align-items:center; height:90vh; font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color:#64748b;">
+      <div style="width: 40px; height: 40px; border: 4px solid #e2e8f0; border-top: 4px solid #2563eb; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+      <div style="margin-top: 16px; font-weight: 500; font-size: 0.95rem;">Đang tải dữ liệu hóa đơn...</div>
+      <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
+    </div>
+  `;
+
+  // 3. TIẾN HÀNH GỌI SERVER
+  try {
     const resp = await fetch(`/invoice/print/${billId}`, { credentials: 'include' });
     const finalUrl = resp.url || '';
     const text = await resp.text();
-    if (finalUrl.includes('/login') || /Đăng nhập|Đăng nh?p/.test(text)){
-      try{ new Notyf().error('Bạn cần đăng nhập để xem hóa đơn'); }catch(e){}
+    
+    // Kiểm tra mất phiên đăng nhập
+    if (finalUrl.includes('/login') || /Đăng nhập|Đăng nh\?p/.test(text)){
+      try { new Notyf().error('Bạn cần đăng nhập để xem hóa đơn'); } catch(e){}
       window.location.href = '/login';
       return;
     }
+    
+    // 4. ĐỔ DỮ LIỆU THẬT VÀO SAU KHI TẢI XONG
     frame.srcdoc = text;
-    const modal = new bootstrap.Modal(document.getElementById('billViewModal'));
-    modal.show();
-  }catch(e){ console.error(e); try{ new Notyf().error('Không thể tải hóa đơn'); }catch(err){} }
+    
+  } catch(e) { 
+    console.error(e); 
+    frame.srcdoc = `
+      <div style="display:flex; justify-content:center; align-items:center; height:90vh; font-family:sans-serif; color:#ef4444; font-weight:bold;">
+        <svg style="width:24px; height:24px; margin-right:8px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        Không thể tải hóa đơn. Vui lòng thử lại!
+      </div>`;
+  }
 };
 
 // 3. Mở Modal Nhập Thanh Toán
