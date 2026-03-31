@@ -14,7 +14,8 @@ except Exception:  # pragma: no cover
 
 # Load .env next to this module so encryption can work in dev.
 _HERE = os.path.dirname(os.path.abspath(__file__))
-load_dotenv(os.path.join(_HERE, ".env"))
+# Load .env from project root (one level above core/)
+load_dotenv(os.path.join(_HERE, "..", ".env"))
 
 
 def _get_fernet() -> Optional[Any]:

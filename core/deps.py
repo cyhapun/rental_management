@@ -5,7 +5,8 @@ from dotenv import load_dotenv
 
 # Load .env located in the same directory as this file
 HERE = os.path.dirname(os.path.abspath(__file__))
-load_dotenv(os.path.join(HERE, ".env"))
+# Load .env from project root (one level above core/)
+load_dotenv(os.path.join(HERE, "..", ".env"))
 
 class Settings:
     MONGO_URI: str
