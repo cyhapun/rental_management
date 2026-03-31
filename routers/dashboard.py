@@ -616,3 +616,14 @@ async def top_electric_by_year(year: str):
     for m, usage in items:
         out.append({"month": m, "usage": usage})
     return {"year": year, "top_months": out}
+
+
+# Backwards-compatible legacy routes (some clients may still call /electric/dashboard/...)
+@router.get('/electric/dashboard/top-electric/{month}')
+async def legacy_top_electric_by_month(month: str):
+    return await top_electric_by_month(month)
+
+
+@router.get('/electric/dashboard/top-electric-year/{year}')
+async def legacy_top_electric_by_year(year: str):
+    return await top_electric_by_year(year)
