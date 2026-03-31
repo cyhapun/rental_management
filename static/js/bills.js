@@ -1,6 +1,6 @@
 // bills.js - behaviors for bills page
 
-// 1. GẮN HÀM VÀO WINDOW ĐỂ HTML CÓ THỂ GỌI ĐƯỢC
+// 1. Xem Hóa Đơn
 window.showBill = async function(billId) {
   const frame = document.getElementById('billViewFrame');
   (async ()=>{
@@ -20,53 +20,19 @@ window.showBill = async function(billId) {
   })();
 };
 
-// Cập nhật: Sử dụng Dataset để tìm kiếm an toàn, không vướng Icon
-function filterBills(){
-  const q = (document.getElementById('billSearch').value || '').toLowerCase();
-  const rows = document.querySelectorAll('#billsTableBody tr.data-row');
-  
-  rows.forEach(r => { 
-      const tName = (r.dataset.tenantName || '').toLowerCase();
-      const room = (r.dataset.room || '').toLowerCase();
-      const month = (r.dataset.month || '').toLowerCase();
-      
-      if (tName.includes(q) || room.includes(q) || month.includes(q)) {
-          r.style.display = '';
-      } else {
-          r.style.display = 'none';
-      }
-  });
-}
+// 2. Mở Modal Nhập Thanh Toán
+window.openPayModal = function(billId, totalDue) {
+  const form = document.getElementById('payBillForm');
+  // Gắn URL xử lý cho Form
+  form.action = `/bills/${billId}/pay`;
+  // Tự động điền số tiền còn nợ
+  document.getElementById('pay_amount').value = totalDue;
+  // Hiện Modal
+  const modal = new bootstrap.Modal(document.getElementById('payBillModal'));
+  modal.show();
+};
 
-// Cập nhật: Sử dụng Dataset để sắp xếp chính xác giá trị
-function sortBills(){
-  const sortVal = document.getElementById('billSort').value;
-  const tbody = document.getElementById('billsTableBody');
-  if(!tbody) return;
-  const rows = Array.from(tbody.querySelectorAll('tr.data-row'));
-  
-  rows.sort((a,b) => {
-    const monthA = a.dataset.month || '';
-    const monthB = b.dataset.month || '';
-    const totalA = parseInt(a.dataset.total || '0', 10);
-    const totalB = parseInt(b.dataset.total || '0', 10);
-
-    if (sortVal === 'month_desc') return monthB.localeCompare(monthA);
-    if (sortVal === 'month_asc') return monthA.localeCompare(monthB);
-    if (sortVal === 'total_desc') return totalB - totalA;
-    if (sortVal === 'total_asc') return totalA - totalB;
-    return 0;
-  });
-  
-  rows.forEach(r => tbody.appendChild(r));
-}
-
-document.addEventListener('DOMContentLoaded', function(){
-  const input = document.getElementById('billSearch'); if (input) input.addEventListener('input', filterBills);
-  const s = document.getElementById('billSort'); if (s) s.addEventListener('change', sortBills);
-});
-
-// 2. GẮN HÀM VÀO WINDOW ĐỂ HTML CÓ THỂ GỌI ĐƯỢC
+// 3. Tải/In Ảnh Hóa Đơn
 window.captureInvoiceImage = async function(billId, btn) {
   try{
     const origHtml = btn.innerHTML; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
@@ -89,11 +55,48 @@ window.captureInvoiceImage = async function(billId, btn) {
     if (!canvas) throw new Error('Không thể tạo ảnh');
     canvas.toBlob(function(blob){
       const ts = new Date(); const pad = (n)=>String(n).padStart(2,'0');
-      const fname = 'danh_sach_hoa_don-' + ts.getFullYear() + pad(ts.getMonth()+1) + pad(ts.getDate()) + '-' + pad(ts.getHours()) + pad(ts.getMinutes()) + '.png';
+      const fname = 'Hoa_don_tien_tro_' + ts.getFullYear() + pad(ts.getMonth()+1) + pad(ts.getDate()) + '_' + pad(ts.getHours()) + pad(ts.getMinutes()) + '.png';
       const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = fname; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url), 1500);
-      try{ new Notyf({position: (window.innerWidth<=576?{x:'center',y:'top'}:{x:'right',y:'top'})}).success('Đã lưu ảnh: ' + fname); }catch(e){}
+      try{ new Notyf({position: (window.innerWidth<=576?{x:'center',y:'top'}:{x:'right',y:'top'})}).success('Đã lưu ảnh Hóa đơn!'); }catch(e){}
     }, 'image/png');
     setTimeout(()=>{ const f = document.getElementById('invoice-capture-iframe'); if (f) f.remove(); }, 800);
     btn.innerHTML = origHtml;
   }catch(e){ console.error(e); try{ new Notyf().error('Không thể tạo ảnh hóa đơn'); }catch(err){}; btn.innerHTML = origHtml; }
 };
+
+// 4. Lọc & Tìm Kiếm
+function filterBills(){
+  const q = (document.getElementById('billSearch').value || '').toLowerCase();
+  const rows = document.querySelectorAll('#billsTableBody tr.data-row');
+  rows.forEach(r => { 
+      const tName = (r.dataset.tenantName || '').toLowerCase();
+      const room = (r.dataset.room || '').toLowerCase();
+      const month = (r.dataset.month || '').toLowerCase();
+      if (tName.includes(q) || room.includes(q) || month.includes(q)) r.style.display = '';
+      else r.style.display = 'none';
+  });
+}
+
+function sortBills(){
+  const sortVal = document.getElementById('billSort').value;
+  const tbody = document.getElementById('billsTableBody');
+  if(!tbody) return;
+  const rows = Array.from(tbody.querySelectorAll('tr.data-row'));
+  rows.sort((a,b) => {
+    const monthA = a.dataset.month || '';
+    const monthB = b.dataset.month || '';
+    const totalA = parseInt(a.dataset.total || '0', 10);
+    const totalB = parseInt(b.dataset.total || '0', 10);
+    if (sortVal === 'month_desc') return monthB.localeCompare(monthA);
+    if (sortVal === 'month_asc') return monthA.localeCompare(monthB);
+    if (sortVal === 'total_desc') return totalB - totalA;
+    if (sortVal === 'total_asc') return totalA - totalB;
+    return 0;
+  });
+  rows.forEach(r => tbody.appendChild(r));
+}
+
+document.addEventListener('DOMContentLoaded', function(){
+  const input = document.getElementById('billSearch'); if (input) input.addEventListener('input', filterBills);
+  const s = document.getElementById('billSort'); if (s) s.addEventListener('change', sortBills);
+});

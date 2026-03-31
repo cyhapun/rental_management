@@ -19,7 +19,6 @@
 <div class="collapse mb-4" id="collapseGenerate">
   <div class="bg-panel p-4 position-relative overflow-hidden">
     <i class="fa-solid fa-receipt position-absolute text-primary" style="font-size: 150px; opacity: 0.03; right: -20px; top: -20px; z-index: 0;"></i>
-    
     <div class="position-relative" style="z-index: 1;">
       <h6 class="fw-bold text-dark mb-3">Thông tin khởi tạo</h6>
       <form class="row g-3" action="/bills/generate" method="post">
@@ -45,19 +44,10 @@
 </div>
 
 <div class="bg-panel p-3 mb-4 d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
-  
   <div class="d-flex bg-light rounded-pill p-1 border shadow-sm" style="width: fit-content;">
-    <a class="btn btn-sm rounded-pill px-3 fw-semibold {% if status == 'all' or status not in ['paid', 'unpaid'] %}bg-white text-primary shadow-sm{% else %}text-muted border-0{% endif %}" href="/bills/?status=all">
-      Tất cả
-    </a>
-    
-    <a class="btn btn-sm rounded-pill px-3 fw-semibold {% if status == 'unpaid' %}bg-white text-danger shadow-sm{% else %}text-muted border-0{% endif %}" href="/bills/?status=unpaid">
-      Chưa đóng
-    </a>
-    
-    <a class="btn btn-sm rounded-pill px-3 fw-semibold {% if status == 'paid' %}bg-white text-success shadow-sm{% else %}text-muted border-0{% endif %}" href="/bills/?status=paid">
-      Đã đóng
-    </a>
+    <a class="btn btn-sm rounded-pill px-3 fw-semibold {% if status == 'all' or status not in ['paid', 'unpaid'] %}bg-white text-primary shadow-sm{% else %}text-muted border-0{% endif %}" href="/bills/?status=all">Tất cả</a>
+    <a class="btn btn-sm rounded-pill px-3 fw-semibold {% if status == 'unpaid' %}bg-white text-danger shadow-sm{% else %}text-muted border-0{% endif %}" href="/bills/?status=unpaid">Chưa đóng</a>
+    <a class="btn btn-sm rounded-pill px-3 fw-semibold {% if status == 'paid' %}bg-white text-success shadow-sm{% else %}text-muted border-0{% endif %}" href="/bills/?status=paid">Đã đóng</a>
   </div>
 
   <div class="d-flex flex-wrap gap-2">
@@ -65,12 +55,11 @@
       <span class="input-group-text bg-light border-end-0 text-muted"><i class="fa-solid fa-magnifying-glass"></i></span>
       <input class="form-control border-start-0 bg-light" id="billSearch" placeholder="Tìm tên, phòng..." />
     </div>
-
     <select class="form-select bg-light border-0 fw-semibold text-dark" id="billSort" style="width: auto; cursor: pointer; min-width: 150px;">
       <option value="month_desc">Mới nhất</option>
       <option value="month_asc">Cũ nhất</option>
-      <option value="total_desc">Giá cao nhất</option>
-      <option value="total_asc">Giá thấp nhất</option>
+      <option value="total_desc">Nợ cao nhất</option>
+      <option value="total_asc">Nợ thấp nhất</option>
     </select>
   </div>
 </div>
@@ -88,7 +77,8 @@
         <tr>
           <th class="ps-4">Khách thuê & Phòng</th>
           <th class="text-center">Kỳ thu</th>
-          <th class="text-end">Tổng tiền (VNĐ)</th>
+          <th class="text-end">Đã thu</th>
+          <th class="text-end">Còn nợ (VNĐ)</th>
           <th class="text-center">Trạng thái</th>
           <th class="text-center pe-4">Thao tác</th>
         </tr>
@@ -121,8 +111,12 @@
           <span class="text-primary fw-semibold"><i class="fa-regular fa-calendar-alt me-1"></i>{{ b.month }}</span>
         </td>
         
-        <td class="text-end" data-label="Tổng tiền">
-          <span class="fw-bold text-dark fs-6">{{ b.total | money }}</span>
+        <td class="text-end" data-label="Đã thu">
+          <span class="fw-semibold text-success fs-6">{{ b.paid_amount | money }}</span>
+        </td>
+
+        <td class="text-end" data-label="Còn nợ">
+          <span class="fw-bold text-danger fs-6">{{ b.total | money }}</span>
         </td>
         
         <td class="text-center" data-label="Trạng thái">
@@ -131,20 +125,33 @@
               <i class="fa-solid fa-circle-check me-1"></i> Đã đóng
             </span>
           {% else %}
-            <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-1 rounded-pill">
-              <i class="fa-solid fa-clock me-1"></i> Chưa đóng
+            <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-3 py-1 rounded-pill">
+              <i class="fa-solid fa-clock me-1"></i> Chưa đóng đủ
             </span>
           {% endif %}
         </td>
         
-        <td class="text-center pe-4">
+        <td class="text-center pe-4" data-label="Thao tác">
           <div class="d-flex justify-content-center gap-1">
             <button class="btn action-btn bg-primary-subtle text-primary" onclick="showBill('{{ b.id }}')" title="Xem chi tiết Hóa đơn">
               <i class="fa-solid fa-eye"></i>
             </button>
+            
+            {% if b.status != 'paid' %}
+            <button class="btn action-btn bg-warning-subtle text-warning" onclick="openPayModal('{{ b.id }}', {{ b.total | default(0) }})" title="Ghi nhận thanh toán">
+              <i class="fa-solid fa-money-bill-wave"></i>
+            </button>
+            {% endif %}
+
             <button class="btn action-btn bg-success-subtle text-success" onclick="captureInvoiceImage('{{ b.id }}', this)" title="Lưu/Tải ảnh Hóa đơn">
               <i class="fa-solid fa-download"></i>
             </button>
+
+            <form action="/bills/{{ b.id }}/delete" method="post" style="display:inline" onsubmit="return confirm('Bạn có chắc chắn muốn xóa hóa đơn này không? Hành động này không thể hoàn tác.');">
+              <button class="btn action-btn bg-danger-subtle text-danger" type="submit" title="Xóa Hóa đơn">
+                <i class="fa-solid fa-trash-can"></i>
+              </button>
+            </form>
           </div>
         </td>
       </tr>
@@ -159,8 +166,8 @@
   <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title fw-bold" id="billViewModalLabel">Chi tiết Hóa đơn</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+        <h5 class="modal-title fw-bold"><i class="fa-solid fa-file-invoice text-primary me-2"></i>Chi tiết Hóa đơn</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body p-0">
         <iframe id="billViewFrame" style="width: 100%; height: 75vh; border: none;"></iframe>
@@ -169,6 +176,60 @@
   </div>
 </div>
 
+<div class="modal fade" id="payBillModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold"><i class="fa-solid fa-hand-holding-dollar text-warning me-2"></i>Thanh toán hóa đơn</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="payBillForm" method="post">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-muted">Số tiền khách đóng (VNĐ)</label>
+            <input class="form-control bg-light fw-bold text-primary" id="pay_amount" name="amount" type="number" required />
+            <div class="form-text small">Mặc định điền toàn bộ số tiền còn nợ.</div>
+          </div>
+          <div class="mb-2">
+            <label class="form-label small fw-semibold text-muted">Hình thức thanh toán</label>
+            <select class="form-select bg-light" name="method">
+              <option value="Chuyển khoản">Chuyển khoản</option>
+              <option value="Tiền mặt">Tiền mặt</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer bg-light rounded-bottom-4">
+          <button class="btn btn-light border rounded-pill px-3" data-bs-dismiss="modal" type="button">Hủy</button>
+          <button class="btn btn-primary rounded-pill px-4" type="submit">Xác nhận thu</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 <script src="/static/js/bills.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<script>
+  function openPayModal(billId, totalDue) {
+    try {
+      // 1. Cập nhật action cho Form thanh toán
+      const form = document.getElementById('payBillForm');
+      if (form) form.action = `/bills/${billId}/pay`;
+      
+      // 2. Điền số tiền còn nợ vào ô input
+      const amountInput = document.getElementById('pay_amount');
+      if (amountInput) amountInput.value = totalDue || 0;
+      
+      // 3. Mở Modal
+      const modalEl = document.getElementById('payBillModal');
+      if (modalEl) {
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+      }
+    } catch (e) {
+      console.error("Lỗi mở modal thanh toán:", e);
+    }
+  }
+</script>
 {% endblock %}
