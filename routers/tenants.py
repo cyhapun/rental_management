@@ -91,21 +91,29 @@ def _fix_id(doc):
     return doc
 
 
+# 1. API Trả về khung HTML trống (Cập nhật cho CSR)
 @router.get("/")
 async def list_tenants(request: Request, q: str = ""):
     db = get_db()
     await _refresh_tenant_statuses(db)
+    tpl = env.get_template("tenants.html")
+    html = tpl.render(request=request, q=q or "")
+    return HTMLResponse(content=html)
+
+
+# 2. API Trả về dữ liệu JSON (MỚI THÊM)
+@router.get("/_list")
+async def list_tenants_json(q: str = ""):
+    db = get_db()
+    await _refresh_tenant_statuses(db)
     query = {}
     if q:
-        # Server-side filter by name (encrypted fields cannot be regex searched)
         query = {"full_name": {"$regex": q, "$options": "i"}}
     cursor = db.tenants.find(query)
     tenants = []
     async for t in cursor:
         tenants.append(tenant_doc_to_ui(t))
-    tpl = env.get_template("tenants.html")
-    html = tpl.render(request=request, tenants=tenants, q=q or "")
-    return HTMLResponse(content=html)
+    return tenants
 
 
 @router.post("/create")

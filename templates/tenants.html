@@ -56,60 +56,13 @@
           <th class="text-center">Thao tác</th>
         </tr>
       </thead>
-      <tbody>
-        {% for t in tenants %}
-        <tr data-tenant-id="{{ t.id|e }}" data-full-name="{{ t.full_name|e }}" data-phone="{{ t.phone|e }}" data-gender="{{ t.gender|e }}" data-birth-year="{{ t.birth_year|e }}" data-rental-status="{{ t.rental_status|e }}" data-cccd-full="{{ t.cccd_full|e }}" data-cccd-masked="{{ t.cccd|e }}">
-          <td>
-            <div class="d-flex align-items-center">
-              <div class="avatar-circle bg-primary-subtle text-primary me-3 shadow-sm d-none d-md-flex" style="width:36px; height:36px; border-radius:10px; align-items:center; justify-content:center; font-weight:bold; font-size:0.95rem;">
-                {{ t.full_name[0]|upper }}
-              </div>
-              <span class="fw-semibold text-dark">{{ t.full_name }}</span>
-            </div>
-          </td>
-          <td>
-            {% if t.phone %}
-              <div class="text-muted"><i class="fa-solid fa-phone me-2" style="font-size: 0.8rem;"></i>{{ t.phone }}</div>
-            {% else %}
-              <span class="text-muted fst-italic">Chưa có</span>
-            {% endif %}
-          </td>
-          <td class="text-center">{{ t.gender }}</td>
-          <td class="text-center">{{ t.birth_year }}</td>
-          <td>
-            <div class="d-flex align-items-center">
-              <span class="cccd-masked me-2 text-dark">{{ t.cccd }}</span>
-              <span class="cccd-full me-2 text-dark" style="display:none;">{{ t.cccd_full }}</span>
-              <button type="button" class="btn-toggle-cccd" onclick="toggleCccd(this)" title="Hiện/Ẩn">
-                <i class="fa-regular fa-eye"></i>
-              </button>
-            </div>
-          </td>
-          <td class="text-center">
-            {% if t.rental_status == "Đang thuê" %}
-              <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1"><i class="fa-solid fa-house-user me-1"></i>Đang thuê</span>
-            {% else %}
-              <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2 py-1">Đã kết thúc</span>
-            {% endif %}
-          </td>
-          <td>
-            <div class="d-flex justify-content-center gap-1">
-              <button type="button" class="btn action-btn bg-primary-subtle text-primary" onclick="openEditTenant(this)" title="Sửa thông tin">
-                <i class="fa-solid fa-pen"></i>
-              </button>
-              <form action="/tenants/{{ t.id }}/delete" method="post" style="display:inline" onsubmit="return confirm('Cảnh báo: Xóa khách thuê này? Bạn nên đảm bảo họ đã thanh toán đủ tiền trước khi xóa.');">
-                <button type="submit" class="btn action-btn bg-danger-subtle text-danger" title="Xóa">
-                  <i class="fa-solid fa-trash-can"></i>
-                </button>
-              </form>
-            </div>
+      <tbody id="tenantsBody" data-auto-load="true" data-initial-q="{{ q }}">
+        <tr id="tenants-loading">
+          <td colspan="7" class="text-center text-muted py-4">
+            <span class="spinner-border spinner-border-sm text-primary me-2" role="status" aria-hidden="true"></span>
+            Đang tải dữ liệu khách thuê...
           </td>
         </tr>
-        {% else %}
-        <tr>
-          <td colspan="7" class="text-center text-muted py-4">Chưa có dữ liệu khách thuê.</td>
-        </tr>
-        {% endfor %}
       </tbody>
     </table>
   </div>
