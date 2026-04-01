@@ -353,7 +353,7 @@ body {
         border-right: 1px solid rgba(0,0,0,0.05) !important;
         z-index: 1030 !important;
         overflow-x: hidden !important; /* Giấu mọi thứ tràn ra ngoài */
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1) !important;
     }
 
     /* --- 2. Sidebar Mở Rộng Khi Rê Chuột --- */
@@ -372,7 +372,7 @@ body {
         border-radius: 12px !important;
         white-space: nowrap !important; /* Ép chữ nằm trên 1 dòng */
         overflow: hidden !important; /* Cắt phần chữ thừa khi bị thu hẹp */
-        transition: background 0.2s, color 0.2s !important;
+        transition: background 0.1s, color 0.2s !important;
     }
 
     /* --- 4. Icon Chuẩn Kích Thước Tránh Lệch --- */
@@ -399,7 +399,7 @@ body {
         height: 0 !important; /* Thu nhỏ hoàn toàn khi chưa hover */
         margin: 0 !important;
         padding: 0 !important;
-        transition: opacity 0.2s ease !important;
+        transition: opacity 0.1s ease !important;
     }
 
     /* Hiện tiêu đề lên thật đẹp khi mở rộng */
@@ -417,6 +417,6 @@ body {
         flex: 0 0 calc(100% - 80px) !important;
         max-width: calc(100% - 80px) !important;
         margin-left: 80px !important;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1) !important;
     }
 }

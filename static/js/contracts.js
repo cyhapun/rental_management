@@ -125,8 +125,8 @@ async function loadContracts() {
             const roomName = (c.room && c.room.room_number) ? c.room.room_number : (c.room_id || '?');
             const firstChar = tenantName.charAt(0).toUpperCase();
             
-            let statusText = 'Chưa có HĐ';
-            let badgeHtml = `<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-3 py-1 rounded-pill">Chưa có HĐ</span>`;
+            let statusText = 'Chưa tới kì hạn';
+            let badgeHtml = `<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-3 py-1 rounded-pill">Chưa tới kì hạn</span>`;
             
             if (c.rent_payment_status === 'paid') {
                 statusText = 'Đã đóng';

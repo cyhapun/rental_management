@@ -194,16 +194,8 @@
               <span class="info-value text-primary">Phòng {{ current_room_number if current_room_number else '---' }}</span>
             </div>
             <div class="info-item">
-              <span class="info-label">Ngày lập HĐ</span>
+              <span class="info-label">Ngày lập hóa đơn</span>
               <span class="info-value">{{ (bill.created_at_fmt or '') or '---' }}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Tình trạng</span>
-              {% if bill.status == 'paid' %}
-                <span class="info-value" style="color: var(--success);"><i class="fa-solid fa-circle-check me-1"></i> Đã đóng</span>
-              {% else %}
-                <span class="info-value" style="color: var(--warning-text);"><i class="fa-solid fa-clock me-1"></i> Chưa đóng</span>
-              {% endif %}
             </div>
           </div>
         </div>
