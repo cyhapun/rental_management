@@ -188,5 +188,40 @@
   </div>
 </div>
 
+<div class="modal fade" id="inputElectricModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold"><i class="fa-solid fa-bolt text-warning me-2"></i>Nhập chỉ số điện tháng <span id="display_month"></span></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form action="/bills/generate" method="post">
+        <input type="hidden" name="csrf_token" id="modal_csrf_token" value="{{ request.state.csrf_token if request and request.state and request.state.csrf_token else '' }}">
+        <input type="hidden" name="contract_id" id="modal_contract_id" value="">
+        <input type="hidden" name="month" id="modal_month" value="">
+        <div class="modal-body">
+          <div class="alert alert-warning small mb-3">
+            <i class="fa-solid fa-triangle-exclamation me-1"></i> Phòng này chưa chốt số điện tháng này. Vui lòng nhập chỉ số mới để tạo hóa đơn.
+          </div>
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label small fw-semibold text-muted">Chỉ số cũ</label>
+              <input class="form-control bg-light fw-bold text-secondary" id="modal_old_index" type="number" readonly />
+            </div>
+            <div class="col-6">
+              <label class="form-label small fw-semibold text-primary">Chỉ số mới</label>
+              <input class="form-control border-primary" id="modal_new_index" name="new_electric_index" type="number" required />
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer bg-light rounded-bottom-4">
+          <button class="btn btn-light border rounded-pill px-4" data-bs-dismiss="modal" type="button">Hủy</button>
+          <button class="btn btn-primary rounded-pill px-4" type="submit">Xác nhận tạo</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 <script src="/static/js/contracts.js?v=2"></script>
 {% endblock %}

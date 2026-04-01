@@ -1,4 +1,16 @@
 // contracts.js - behaviors for contracts page (CSR Model)
+function escapeHTML(str) {
+    if (str === null || str === undefined) return '';
+    return str.toString().replace(/[&<>'"]/g, 
+        tag => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            "'": '&#39;',
+            '"': '&quot;'
+        }[tag] || tag)
+    );
+}
 
 function openEditContract(btn){
   const row = btn.closest('tr');
@@ -135,8 +147,13 @@ async function loadContracts() {
             const tr = document.createElement('tr');
             if (c.is_active) tr.classList.add('row-active-contract');
             
-            const tenantName = (c.tenant && c.tenant.full_name) ? c.tenant.full_name : (c.tenant_id || '?');
-            const roomName = (c.room && c.room.room_number) ? c.room.room_number : (c.room_id || '?');
+            // Lấy dữ liệu thô
+            const rawTenantName = (c.tenant && c.tenant.full_name) ? c.tenant.full_name : (c.tenant_id || '?');
+            const rawRoomName = (c.room && c.room.room_number) ? c.room.room_number : (c.room_id || '?');
+
+            // Mã hóa dữ liệu để chống XSS
+            const tenantName = escapeHTML(rawTenantName);
+            const roomName = escapeHTML(rawRoomName);
             const firstChar = tenantName.charAt(0).toUpperCase();
             
             let statusText = 'Chưa tới kì hạn';
@@ -167,7 +184,8 @@ async function loadContracts() {
             if (c.is_active) {
                 endBtnHtml = `
                 <form action="/contracts/${c.id}/end" method="post" style="display:inline" onsubmit="return confirm('Bạn chắc chắn muốn KẾT THÚC hợp đồng này?');">
-                    <button class="btn action-btn bg-warning-subtle text-warning" type="submit" title="Kết thúc"><i class="fa-solid fa-ban"></i></button>
+                  <input type="hidden" name="csrf_token" value="${csrfToken}" />  
+                  <button class="btn action-btn bg-warning-subtle text-warning" type="submit" title="Kết thúc"><i class="fa-solid fa-ban"></i></button>
                 </form>`;
             }
 
@@ -188,7 +206,7 @@ async function loadContracts() {
                 </td>
                 <td class="text-center fw-semibold text-dark">${(c.electric && c.electric.current_kwh) ? c.electric.current_kwh : 0}</td>
                 <td class="text-center text-muted">${(c.electric && c.electric.used_kwh) ? c.electric.used_kwh : 0}</td>
-                <td class="text-center fw-bold text-dark">${formatMoney(c.deposit || 0)}</td>
+                <td class="text-center fw-bold text-dark">${formatMoney(Number(c.deposit) || 0)}</td>
                 <td class="text-center">${badgeHtml}</td>
                 <td class="text-center">
                   <div class="text-success fw-bold small"><i class="fa-solid fa-calendar-plus me-1"></i>${c.start_date || ''}</div>
@@ -197,10 +215,9 @@ async function loadContracts() {
                 <td class="text-center pe-3">
                   <div class="d-flex justify-content-center gap-1">
                     <button class="btn action-btn bg-primary-subtle text-primary" type="button" onclick="openEditContract(this)" title="Sửa"><i class="fa-solid fa-pen"></i></button>
-                    <form action="/contracts/${c.id}/create_bill" method="post" style="display:inline">
-                      <input type="hidden" name="month" value="${todayMonth}" />
-                      <button class="btn action-btn bg-success-subtle text-success" type="submit" title="Tạo hóa đơn"><i class="fa-solid fa-file-invoice-dollar"></i></button>
-                    </form>
+                    <button class="btn action-btn bg-success-subtle text-success" type="button" onclick="triggerBillGeneration('${c.id}', '${todayMonth}', '${csrfToken}', this)" title="Tạo hóa đơn">
+                      <i class="fa-solid fa-file-invoice-dollar"></i>
+                    </button>
                     ${endBtnHtml}
                     <form action="/contracts/${c.id}/delete" method="post" style="display:inline" onsubmit="return confirm('Cảnh báo: Xóa hợp đồng này sẽ xóa cả dữ liệu liên quan. Vẫn tiếp tục?');">
                       <input type="hidden" name="csrf_token" value="${csrfToken}">  
@@ -232,3 +249,59 @@ document.addEventListener('DOMContentLoaded', function(){
       loadContracts();
   }
 });
+
+// Hàm bắt sự kiện nhấn nút "Tạo hóa đơn" trên giao diện Hợp đồng
+window.triggerBillGeneration = async function(contractId, month, csrfToken, btnElement) {
+    const origHtml = btnElement.innerHTML;
+    btnElement.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+    btnElement.disabled = true;
+
+    try {
+        // Tận dụng lại API check-electric bên bills
+        const res = await fetch(`/bills/check-electric?contract_id=${contractId}&month=${month}`);
+        if (!res.ok) throw new Error('Lỗi khi kiểm tra chỉ số điện');
+        
+        const data = await res.json();
+        
+        if (data.has_data) {
+            // Đã có số điện => Bắn form POST thẳng sang /bills/generate
+            submitToBillsGenerate(contractId, month, csrfToken);
+        } else {
+            // Chưa có số điện => Mở Modal yêu cầu nhập số
+            document.getElementById('modal_contract_id').value = contractId;
+            document.getElementById('modal_month').value = month;
+            document.getElementById('display_month').innerText = month;
+            document.getElementById('modal_old_index').value = data.old_index;
+            document.getElementById('modal_new_index').min = data.old_index; // Ràng buộc số mới >= cũ
+            
+            const modal = new bootstrap.Modal(document.getElementById('inputElectricModal'));
+            modal.show();
+        }
+    } catch (error) {
+        console.error(error);
+        alert('Không thể kiểm tra dữ liệu điện. Vui lòng thử lại!');
+    } finally {
+        btnElement.innerHTML = origHtml;
+        btnElement.disabled = false;
+    }
+};
+
+// Hàm tạo form ẩn để submit POST sang Router của Bills
+function submitToBillsGenerate(contractId, month, csrfToken) {
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/bills/generate';
+
+    const inputs = { contract_id: contractId, month: month, csrf_token: csrfToken };
+
+    for (const key in inputs) {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = key;
+        input.value = inputs[key];
+        form.appendChild(input);
+    }
+    
+    document.body.appendChild(form);
+    form.submit();
+}
