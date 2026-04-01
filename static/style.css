@@ -46,7 +46,10 @@ body {
     text-decoration: none;
 }
 
-.app-brand img { height: 38px; width: auto; }
+.app-brand img { 
+    height: 66px;
+    width: auto; 
+    transition: all 0.3s ease;}
 .brand-title {
     color: var(--text-dark);
     font-weight: 800;
@@ -333,10 +336,6 @@ body {
     }
 }
 
-.app-brand img { 
-    height: 63px !important; 
-    transition: all 0.3s ease;
-}
 .brand-title { 
     font-size: 1.25rem !important; 
 }
