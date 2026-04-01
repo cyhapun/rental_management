@@ -7,7 +7,7 @@ import os
 from jinja2 import Environment, FileSystemLoader
 
 from core.template_filters import money
-from core import constants
+from core.constants import WATER_FEE
 from core.flash import redirect_with_flash
 
 router = APIRouter(prefix="/bills", tags=["bills"])
@@ -100,7 +100,7 @@ async def list_bills_data(status: str = "all"):
     if status in ("paid", "unpaid"):
         q["status"] = status
     # Projection: only fetch fields we need to render the table
-    projection = {"contract_id": 1, "paid_amount": 1, "paid_at": 1, "water_cost": 1, "room_price": 1, "electric_cost": 1, "other_cost": 1, "total": 1, "created_at": 1, "status": 1, "prev_index": 1, "curr_index": 1, "usage": 1, "kwh_price": 1}
+    projection = {"month": 1, "contract_id": 1, "paid_amount": 1, "paid_at": 1, "water_cost": 1, "room_price": 1, "electric_cost": 1, "other_cost": 1, "total": 1, "created_at": 1, "status": 1, "prev_index": 1, "curr_index": 1, "usage": 1, "kwh_price": 1}
     cursor = db.bills.find(q, projection).sort("created_at", -1)
     bills = []
     async for b in cursor:
