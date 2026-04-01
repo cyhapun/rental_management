@@ -60,6 +60,8 @@ async function loadElectric() {
     const tbody = document.getElementById('electricTableBody');
     if (!tbody) return;
     
+    const csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '';
+
     try {
         const response = await fetch('/electric/_data');
         if (!response.ok) throw new Error("Fetch failed");
@@ -109,6 +111,7 @@ async function loadElectric() {
                     <i class="fa-solid fa-pen"></i>
                   </button>
                   <form action="/electric/${r.id}/delete" method="post" style="display:inline" onsubmit="return confirm('Cảnh báo: Bạn có chắc chắn muốn xóa bản ghi chỉ số điện này không?');">
+                    <input type="hidden" name="csrf_token" value="${csrfToken}">  
                     <button class="btn action-btn bg-danger-subtle text-danger" type="submit" title="Xóa">
                       <i class="fa-solid fa-trash-can"></i>
                     </button>

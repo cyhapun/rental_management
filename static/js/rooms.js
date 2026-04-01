@@ -50,6 +50,9 @@ document.addEventListener('DOMContentLoaded', function(){
 async function loadRooms(q){
   const tbody = document.getElementById('roomsBody');
   if (!tbody) return;
+  
+  const csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '';
+  
   // show loading
   tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4"><span class="spinner-border spinner-border-sm text-primary me-2"></span>Đang tải dữ liệu...</td></tr>';
   try{
@@ -86,6 +89,7 @@ async function loadRooms(q){
             <i class="fa-solid fa-pen"></i>
           </button>
           <form action="/rooms/${r.id}/delete" method="post" style="display:inline" onsubmit="return confirm('Cảnh báo: Xóa phòng này sẽ mất các dữ liệu liên quan. Bạn có chắc chắn?');">
+            <input type="hidden" name="csrf_token" value="${csrfToken}">  
             <button type="submit" class="btn action-btn bg-danger-subtle text-danger" title="Xóa phòng">
               <i class="fa-solid fa-trash-can"></i>
             </button>

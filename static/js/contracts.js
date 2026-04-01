@@ -71,6 +71,8 @@ async function loadContracts() {
     const tbody = document.getElementById('contractsTableBody');
     if (!tbody) return;
     
+    const csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '';
+    
     try {
         const response = await fetch('/contracts/_data');
         if (!response.ok) throw new Error("Fetch failed");
@@ -187,6 +189,7 @@ async function loadContracts() {
                     </form>
                     ${endBtnHtml}
                     <form action="/contracts/${c.id}/delete" method="post" style="display:inline" onsubmit="return confirm('Cảnh báo: Xóa hợp đồng này sẽ xóa cả dữ liệu liên quan. Vẫn tiếp tục?');">
+                      <input type="hidden" name="csrf_token" value="${csrfToken}">  
                       <button class="btn action-btn bg-danger-subtle text-danger" type="submit" title="Xóa"><i class="fa-solid fa-trash-can"></i></button>
                     </form>
                   </div>

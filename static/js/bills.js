@@ -11,6 +11,7 @@ async function loadBills() {
     if (!tbody) return;
 
     const currentStatus = tbody.dataset.status || 'all';
+    const csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '';
 
     try {
         const response = await fetch(`/bills/_data?status=${currentStatus}`);
@@ -97,6 +98,7 @@ async function loadBills() {
                       <i class="fa-solid fa-download"></i>
                     </button>
                     <form action="/bills/${b.id}/delete" method="post" style="display:inline" onsubmit="return confirm('Bạn có chắc chắn muốn xóa hóa đơn này không? Hành động này không thể hoàn tác.');">
+                      <input type="hidden" name="csrf_token" value="${csrfToken}">  
                       <button class="btn action-btn bg-danger-subtle text-danger" type="submit" title="Xóa Hóa đơn">
                         <i class="fa-solid fa-trash-can"></i>
                       </button>

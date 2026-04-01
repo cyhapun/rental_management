@@ -69,6 +69,7 @@ async function loadTenants(q){
     const tbody = document.getElementById('tenantsBody');
     if (!tbody) return;
     
+    const csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '';
     tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4"><span class="spinner-border spinner-border-sm text-primary me-2"></span>Đang tải dữ liệu...</td></tr>';
     
     try {
@@ -132,6 +133,7 @@ async function loadTenants(q){
                             <i class="fa-solid fa-pen"></i>
                         </button>
                         <form action="/tenants/${t.id}/delete" method="post" style="display:inline" onsubmit="return confirm('Cảnh báo: Xóa khách thuê này? Bạn nên đảm bảo họ đã thanh toán đủ tiền trước khi xóa.');">
+                            <input type="hidden" name="csrf_token" value="${csrfToken}">  
                             <button type="submit" class="btn action-btn bg-danger-subtle text-danger" title="Xóa">
                                 <i class="fa-solid fa-trash-can"></i>
                             </button>
