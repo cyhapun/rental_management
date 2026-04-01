@@ -19,7 +19,6 @@ async function loadBills() {
         
         const bills = await response.json();
         
-        tbody.innerHTML = '';
         if (bills.length === 0) {
             tbody.innerHTML = `
               <tr>
@@ -33,18 +32,11 @@ async function loadBills() {
             return;
         }
 
-        bills.forEach(b => {
-            const tr = document.createElement('tr');
-            tr.className = 'data-row';
-
+        // Tạo một mảng để chứa các thẻ HTML (nhanh hơn appendChild)
+        const htmlRows = bills.map(b => {
             const tenantName = (b.contract_display && b.contract_display.tenant_name) ? b.contract_display.tenant_name : '';
             const roomNumber = (b.contract_display && b.contract_display.room_number) ? b.contract_display.room_number : '';
             
-            tr.dataset.tenantName = tenantName;
-            tr.dataset.room = roomNumber;
-            tr.dataset.month = b.month || '';
-            tr.dataset.total = b.total || 0;
-
             const firstChar = tenantName ? tenantName.charAt(0).toUpperCase() : '<i class="fa-solid fa-user"></i>';
             const displayName = tenantName || 'Khách vãng lai';
             const displayRoom = roomNumber || '--';
@@ -62,52 +54,57 @@ async function loadBills() {
                   </button>`;
             }
 
-            tr.innerHTML = `
-                <td class="ps-4">
-                  <div class="d-flex align-items-center">
-                    <div class="avatar-circle bg-primary-subtle text-primary me-3 shadow-sm d-none d-md-flex" style="width:36px; height:36px; border-radius:10px; align-items:center; justify-content:center; font-weight:bold; font-size:0.95rem;">
-                      ${firstChar}
-                    </div>
-                    <div>
-                      <div class="fw-bold text-dark">${displayName}</div>
-                      <div class="small text-muted mt-1">
-                        <span class="badge bg-light text-dark border px-2 py-1">Phòng ${displayRoom}</span>
+            // Gắn data-attributes trực tiếp vào chuỗi tr
+            return `
+                <tr class="data-row" data-tenant-name="${tenantName}" data-room="${roomNumber}" data-month="${b.month || ''}" data-total="${b.total || 0}">
+                    <td class="ps-4">
+                      <div class="d-flex align-items-center">
+                        <div class="avatar-circle bg-primary-subtle text-primary me-3 shadow-sm d-none d-md-flex" style="width:36px; height:36px; border-radius:10px; align-items:center; justify-content:center; font-weight:bold; font-size:0.95rem;">
+                          ${firstChar}
+                        </div>
+                        <div>
+                          <div class="fw-bold text-dark">${displayName}</div>
+                          <div class="small text-muted mt-1">
+                            <span class="badge bg-light text-dark border px-2 py-1">Phòng ${displayRoom}</span>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                </td>
-                <td class="text-center" data-label="Kỳ thu">
-                  <span class="text-primary fw-semibold"><i class="fa-regular fa-calendar-alt me-1"></i>${b.month}</span>
-                </td>
-                <td class="text-end" data-label="Đã thu">
-                  <span class="fw-semibold text-success fs-6">${formatMoney(b.paid_amount || 0)}</span>
-                </td>
-                <td class="text-end" data-label="Còn nợ">
-                  <span class="fw-bold text-danger fs-6">${formatMoney(b.total || 0)}</span>
-                </td>
-                <td class="text-center" data-label="Trạng thái">
-                  ${statusHtml}
-                </td>
-                <td class="text-center pe-4" data-label="Thao tác">
-                  <div class="d-flex justify-content-center gap-1">
-                    <button class="btn action-btn bg-primary-subtle text-primary" onclick="showBill('${b.id}')" title="Xem chi tiết Hóa đơn">
-                      <i class="fa-solid fa-eye"></i>
-                    </button>
-                    ${btnPayHtml}
-                    <button class="btn action-btn bg-success-subtle text-success" onclick="captureInvoiceImage('${b.id}', this)" title="Lưu/Tải ảnh Hóa đơn">
-                      <i class="fa-solid fa-download"></i>
-                    </button>
-                    <form action="/bills/${b.id}/delete" method="post" style="display:inline" onsubmit="return confirm('Bạn có chắc chắn muốn xóa hóa đơn này không? Hành động này không thể hoàn tác.');">
-                      <input type="hidden" name="csrf_token" value="${csrfToken}">  
-                      <button class="btn action-btn bg-danger-subtle text-danger" type="submit" title="Xóa Hóa đơn">
-                        <i class="fa-solid fa-trash-can"></i>
-                      </button>
-                    </form>
-                  </div>
-                </td>
+                    </td>
+                    <td class="text-center" data-label="Kỳ thu">
+                      <span class="text-primary fw-semibold"><i class="fa-regular fa-calendar-alt me-1"></i>${b.month}</span>
+                    </td>
+                    <td class="text-end" data-label="Đã thu">
+                      <span class="fw-semibold text-success fs-6">${formatMoney(b.paid_amount || 0)}</span>
+                    </td>
+                    <td class="text-end" data-label="Còn nợ">
+                      <span class="fw-bold text-danger fs-6">${formatMoney(b.total || 0)}</span>
+                    </td>
+                    <td class="text-center" data-label="Trạng thái">
+                      ${statusHtml}
+                    </td>
+                    <td class="text-center pe-4" data-label="Thao tác">
+                      <div class="d-flex justify-content-center gap-1">
+                        <button class="btn action-btn bg-primary-subtle text-primary" onclick="showBill('${b.id}')" title="Xem chi tiết Hóa đơn">
+                          <i class="fa-solid fa-eye"></i>
+                        </button>
+                        ${btnPayHtml}
+                        <button class="btn action-btn bg-success-subtle text-success" onclick="captureInvoiceImage('${b.id}', this)" title="Lưu/Tải ảnh Hóa đơn">
+                          <i class="fa-solid fa-download"></i>
+                        </button>
+                        <form action="/bills/${b.id}/delete" method="post" style="display:inline" onsubmit="return confirm('Bạn có chắc chắn muốn xóa hóa đơn này không? Hành động này không thể hoàn tác.');">
+                          <input type="hidden" name="csrf_token" value="${csrfToken}">  
+                          <button class="btn action-btn bg-danger-subtle text-danger" type="submit" title="Xóa Hóa đơn">
+                            <i class="fa-solid fa-trash-can"></i>
+                          </button>
+                        </form>
+                      </div>
+                    </td>
+                </tr>
             `;
-            tbody.appendChild(tr);
         });
+
+        // Gán 1 lần duy nhất để tối ưu reflow của trình duyệt
+        tbody.innerHTML = htmlRows.join('');
 
         // Khởi động lại tìm kiếm/sắp xếp
         filterBills();
@@ -257,7 +254,7 @@ document.addEventListener('DOMContentLoaded', function(){
   if (tbody && tbody.dataset.autoLoad === 'true') {
       loadBills();
   }
-  
+
   const generateForm = document.getElementById('generateBillForm');
   if (generateForm) {
       generateForm.addEventListener('submit', async function(e) {

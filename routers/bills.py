@@ -6,6 +6,11 @@ import datetime
 import os
 from jinja2 import Environment, FileSystemLoader
 
+# Thêm thư viện timezone để xử lý giờ Việt Nam
+from datetime import timezone, timedelta
+# Khởi tạo múi giờ Việt Nam (UTC+7)
+VN_TZ = timezone(timedelta(hours=7))
+
 from core.template_filters import money
 from core.constants import WATER_FEE
 from core.flash import redirect_with_flash
@@ -20,232 +25,138 @@ env.filters["money"] = money
 @router.get("/")
 async def list_bills_html(request: Request, status: str = "all"):
     db = get_db()
-    default_month = datetime.date.today().strftime("%Y-%m")
+    # Lấy tháng hiện tại theo giờ Việt Nam
+    default_month = datetime.datetime.now(VN_TZ).strftime("%Y-%m")
     contracts_list = []
+    
     try:
-        # Bulk fetch contracts, then fetch related rooms and tenants in batches (avoid N+1)
-        contracts = []
-        ccur = db.contracts.find({})
-        async for c in ccur:
-            contracts.append(c)
-
-        # collect room and tenant ids
-        room_oids = set()
-        tenant_oids = set()
-        for c in contracts:
-            try:
-                rid = c.get("room_id")
-                if rid:
-                    room_oids.add(str(rid))
-            except Exception:
-                pass
-            try:
-                tid = c.get("tenant_id")
-                if tid:
-                    tenant_oids.add(str(tid))
-            except Exception:
-                pass
-
-        rooms_map = {}
-        if room_oids:
-            room_obj_ids = []
-            for r in room_oids:
-                try:
-                    room_obj_ids.append(ObjectId(r))
-                except Exception:
-                    pass
-            if room_obj_ids:
-                rc = db.rooms.find({"_id": {"$in": room_obj_ids}}, {"room_number": 1})
-                async for room in rc:
-                    rooms_map[str(room.get("_id"))] = room
-
-        tenants_map = {}
-        if tenant_oids:
-            tenant_obj_ids = []
-            for t in tenant_oids:
-                try:
-                    tenant_obj_ids.append(ObjectId(t))
-                except Exception:
-                    pass
-            if tenant_obj_ids:
-                tc = db.tenants.find({"_id": {"$in": tenant_obj_ids}}, {"full_name": 1})
-                async for tenant in tc:
-                    tenants_map[str(tenant.get("_id"))] = tenant
-
-        for c in contracts:
+        # Dùng Aggregation thay cho N+1 queries
+        pipeline = [
+            # Biến đổi string room_id và tenant_id thành ObjectId để join
+            {"$addFields": {
+                "room_obj_id": {"$convert": {"input": "$room_id", "to": "objectId", "onError": None, "onNull": None}},
+                "tenant_obj_id": {"$convert": {"input": "$tenant_id", "to": "objectId", "onError": None, "onNull": None}}
+            }},
+            {"$lookup": {"from": "rooms", "localField": "room_obj_id", "foreignField": "_id", "as": "room_info"}},
+            {"$lookup": {"from": "tenants", "localField": "tenant_obj_id", "foreignField": "_id", "as": "tenant_info"}},
+            {"$unwind": {"path": "$room_info", "preserveNullAndEmptyArrays": True}},
+            {"$unwind": {"path": "$tenant_info", "preserveNullAndEmptyArrays": True}}
+        ]
+        
+        async for c in db.contracts.aggregate(pipeline):
             cid = str(c.get("_id"))
-            tenant_name = None
-            room_number = None
-            room = rooms_map.get(str(c.get("room_id")))
-            if room:
-                room_number = room.get("room_number")
-            tenant = tenants_map.get(str(c.get("tenant_id")))
-            if tenant:
-                tenant_name = tenant.get("full_name")
-            contracts_list.append({"id": cid, "display": (f"{tenant_name or ''} - Phòng {room_number or ''}").strip()})
-    except Exception:
-        contracts_list = []
+            room_number = c.get("room_info", {}).get("room_number", "")
+            tenant_name = c.get("tenant_info", {}).get("full_name", "")
+            
+            display_text = f"{tenant_name} - Phòng {room_number}".strip(" - ")
+            if display_text:
+                contracts_list.append({"id": cid, "display": display_text})
+                
+    except Exception as e:
+        # In lỗi rõ ràng ra console thay vì dùng "pass" mù quáng
+        print(f"[API_ERROR] list_bills_html: {str(e)}")
 
     tpl = env.get_template("bills.html")
-    # Trả về HTML trống cho phần bảng
     html = tpl.render(request=request, default_month=default_month, status=status, contracts=contracts_list)
     return HTMLResponse(content=html)
 
 
-# 2. API Trả về Data JSON để JS tự vẽ bảng
 @router.get("/_data")
 async def list_bills_data(status: str = "all"):
     db = get_db()
-    q = {}
+    match_stage = {}
     if status in ("paid", "unpaid"):
-        q["status"] = status
-    # Projection: only fetch fields we need to render the table
-    projection = {"month": 1, "contract_id": 1, "paid_amount": 1, "paid_at": 1, "water_cost": 1, "room_price": 1, "electric_cost": 1, "other_cost": 1, "total": 1, "created_at": 1, "status": 1, "prev_index": 1, "curr_index": 1, "usage": 1, "kwh_price": 1}
-    cursor = db.bills.find(q, projection).sort("created_at", -1)
+        match_stage["status"] = status
+
+    pipeline = [
+        {"$match": match_stage},
+        {"$sort": {"created_at": -1}},
+        
+        # 1. Ép kiểu an toàn contract_id (từ String sang ObjectId)
+        {"$addFields": {
+            "contract_obj_id": {"$convert": {"input": "$contract_id", "to": "objectId", "onError": None, "onNull": None}},
+            "bill_str_id": {"$toString": "$_id"} # Chuẩn bị để lookup payments
+        }},
+        
+        # 2. Lookup Contract
+        {"$lookup": {"from": "contracts", "localField": "contract_obj_id", "foreignField": "_id", "as": "contract_info"}},
+        {"$unwind": {"path": "$contract_info", "preserveNullAndEmptyArrays": True}},
+        
+        # 3. Ép kiểu room/tenant ID từ contract
+        {"$addFields": {
+            "room_obj_id": {"$convert": {"input": "$contract_info.room_id", "to": "objectId", "onError": None, "onNull": None}},
+            "tenant_obj_id": {"$convert": {"input": "$contract_info.tenant_id", "to": "objectId", "onError": None, "onNull": None}}
+        }},
+        
+        # 4. Lookup Room & Tenant
+        {"$lookup": {"from": "rooms", "localField": "room_obj_id", "foreignField": "_id", "as": "room_info"}},
+        {"$unwind": {"path": "$room_info", "preserveNullAndEmptyArrays": True}},
+        {"$lookup": {"from": "tenants", "localField": "tenant_obj_id", "foreignField": "_id", "as": "tenant_info"}},
+        {"$unwind": {"path": "$tenant_info", "preserveNullAndEmptyArrays": True}},
+        
+        # 5. Lookup Payments (Lấy các khoản đã đóng lẻ tẻ)
+        {"$lookup": {"from": "payments", "localField": "bill_str_id", "foreignField": "bill_id", "as": "payments_list"}}
+    ]
+
     bills = []
-    async for b in cursor:
-        b["id"] = str(b.get("_id"))
-        bills.append(b)
-
     try:
-        ids_missing = [b.get("id") for b in bills if not b.get("paid_amount")]
-        payments_map = {}
-        if ids_missing:
-            pc = db.payments.find({"bill_id": {"$in": ids_missing}})
-            async for p in pc:
-                try:
-                    bid = p.get("bill_id")
-                    amt = int(p.get("amount", 0) or 0)
-                    payments_map[bid] = payments_map.get(bid, 0) + amt
-                except Exception:
-                    pass
-        for b in bills:
-            if b.get("paid_amount") is not None:
-                try:
-                    b["paid_amount"] = int(b.get("paid_amount") or 0)
-                except Exception:
-                    b["paid_amount"] = 0
-            else:
-                b["paid_amount"] = payments_map.get(b.get("id"), 0)
+        async for b in db.bills.aggregate(pipeline):
+            # Lấy thông tin cơ bản an toàn bằng get() với giá trị mặc định, KHÔNG try/except pass
+            room_price = b.get("room_price", 0) or 0
+            electric_cost = b.get("electric_cost", 0) or 0
+            other_cost = b.get("other_cost", 0) or 0
+            water_cost = b.get("water_cost", 0) or 0
+            total = b.get("total", 0) or 0
             
-            # Xử lý ngày tháng thành string an toàn cho JSON
-            try:
-                pa = b.get('paid_at')
-                if pa:
-                    if isinstance(pa, datetime.datetime) or isinstance(pa, datetime.date):
-                        b['paid_at_fmt'] = pa.strftime('%d/%m/%Y %H:%M')
-                    else:
-                        b['paid_at_fmt'] = datetime.datetime.fromisoformat(str(pa)).strftime('%d/%m/%Y %H:%M')
-                else:
-                    b['paid_at_fmt'] = ''
-            except Exception:
-                b['paid_at_fmt'] = ''
-    except Exception:
-        for b in bills:
-            b["paid_amount"] = int(b.get("paid_amount") or 0)
-            b['paid_at_fmt'] = ''
+            if not water_cost:
+                water_cost = WATER_FEE
+                total = room_price + electric_cost + other_cost + water_cost
+                # Cập nhật background nếu thiếu
+                await db.bills.update_one({"_id": b["_id"]}, {"$set": {"water_cost": water_cost, "total": total}})
 
-    # Bulk-fetch related contracts -> rooms -> tenants to avoid N+1 queries
-    contract_ids = [b.get("contract_id") for b in bills if b.get("contract_id")]
-    contracts_map = {}
-    if contract_ids:
-        contract_obj_ids = []
-        for cid in contract_ids:
-            try:
-                contract_obj_ids.append(ObjectId(cid))
-            except Exception:
-                pass
-        if contract_obj_ids:
-            cc = db.contracts.find({"_id": {"$in": contract_obj_ids}}, {"room_id": 1, "tenant_id": 1})
-            async for c in cc:
-                contracts_map[str(c.get("_id"))] = c
+            # Tính toán số tiền đã trả
+            paid_amount = b.get("paid_amount")
+            if paid_amount is None:
+                payments_list = b.get("payments_list", [])
+                paid_amount = sum(int(p.get("amount", 0) or 0) for p in payments_list)
+            else:
+                paid_amount = int(paid_amount)
 
-    # collect room and tenant object ids from contracts
-    room_oids = set()
-    tenant_oids = set()
-    for c in contracts_map.values():
-        rid = c.get("room_id")
-        tid = c.get("tenant_id")
-        if rid:
-            try:
-                room_oids.add(str(ObjectId(rid)))
-            except Exception:
-                try:
-                    room_oids.add(str(rid))
-                except Exception:
-                    pass
-        if tid:
-            try:
-                tenant_oids.add(str(ObjectId(tid)))
-            except Exception:
-                try:
-                    tenant_oids.add(str(tid))
-                except Exception:
-                    pass
+            # Xử lý thời gian hiển thị (UTC -> VN_TZ)
+            paid_at_fmt = ""
+            pa = b.get("paid_at")
+            if pa:
+                if isinstance(pa, str):
+                    try:
+                        pa = datetime.datetime.fromisoformat(pa.replace('Z', '+00:00'))
+                    except ValueError:
+                        pa = None
+                if isinstance(pa, datetime.datetime):
+                    # Nếu đang ở dạng Naive (không có timezone), gán cho nó là UTC
+                    if pa.tzinfo is None:
+                        pa = pa.replace(tzinfo=timezone.utc)
+                    # Chuyển sang giờ Việt Nam
+                    pa_vn = pa.astimezone(VN_TZ)
+                    paid_at_fmt = pa_vn.strftime('%d/%m/%Y %H:%M')
 
-    rooms_map = {}
-    if room_oids:
-        room_obj_ids = []
-        for r in room_oids:
-            try:
-                room_obj_ids.append(ObjectId(r))
-            except Exception:
-                pass
-        if room_obj_ids:
-            rc = db.rooms.find({"_id": {"$in": room_obj_ids}}, {"room_number": 1})
-            async for room in rc:
-                rooms_map[str(room.get("_id"))] = room
-
-    tenants_map = {}
-    if tenant_oids:
-        tenant_obj_ids = []
-        for t in tenant_oids:
-            try:
-                tenant_obj_ids.append(ObjectId(t))
-            except Exception:
-                pass
-        if tenant_obj_ids:
-            tc = db.tenants.find({"_id": {"$in": tenant_obj_ids}}, {"full_name": 1})
-            async for tenant in tc:
-                tenants_map[str(tenant.get("_id"))] = tenant
-
-    for b in bills:
-        try:
-            if b.get("water_cost") is None or int(b.get("water_cost") or 0) == 0:
-                room_price = int(b.get("room_price", 0) or 0)
-                electric_cost = int(b.get("electric_cost", 0) or 0)
-                other_cost = int(b.get("other_cost", 0) or 0)
-                new_total = int(b.get("total", room_price + electric_cost + other_cost) or 0) + WATER_FEE
-                try:
-                    await db.bills.update_one({"_id": ObjectId(b["id"])}, {"$set": {"water_cost": WATER_FEE, "total": new_total}})
-                except Exception:
-                    pass
-                b["water_cost"] = WATER_FEE
-                b["total"] = new_total
-        except Exception:
-            pass
-
-        tenant_name = None
-        room_number = None
-        contract = contracts_map.get(b.get("contract_id"))
-        if contract:
-            room = rooms_map.get(str(contract.get("room_id")))
-            if room:
-                room_number = room.get("room_number")
-            tenant = tenants_map.get(str(contract.get("tenant_id")))
-            if tenant:
-                tenant_name = tenant.get("full_name")
-        b["contract_display"] = {"tenant_name": tenant_name, "room_number": room_number}
-
-        # Bỏ ObjectId và datetime để chuẩn hóa thành JSON
-        b.pop('_id', None)
-        if 'created_at' in b:
-            b['created_at'] = str(b['created_at'])
-        if 'paid_at' in b:
-            b.pop('paid_at', None)
+            # Build dict trả về cho JSON Front-end
+            bills.append({
+                "id": str(b["_id"]),
+                "month": b.get("month", ""),
+                "total": total,
+                "paid_amount": paid_amount,
+                "paid_at_fmt": paid_at_fmt,
+                "status": b.get("status", "unpaid"),
+                "contract_display": {
+                    "tenant_name": b.get("tenant_info", {}).get("full_name", ""),
+                    "room_number": b.get("room_info", {}).get("room_number", "")
+                }
+            })
+    except Exception as e:
+        print(f"[API_ERROR] list_bills_data: {str(e)}")
+        # Có thể raise HTTPException nếu muốn hiển thị lỗi ra FE
 
     return bills
-
 
 @router.post("/generate")
 async def generate_monthly(
