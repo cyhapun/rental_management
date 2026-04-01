@@ -229,6 +229,137 @@
         churnChart.update();
       }
       
+      const ptCtx = document.getElementById('paymentTimelineChart')?.getContext('2d');
+      if (ptCtx && D.timeline_labels) {
+        // 1. TẠO PLUGIN VẼ KÝ HIỆU "HÔM NAY"
+        const todayIndicatorPlugin = {
+          id: 'todayIndicator',
+          afterDraw: (chart) => {
+            const ctx = chart.ctx;
+            const xAxis = chart.scales.x;
+            const yAxis = chart.scales.y;
+            const todayStr = new Date().getDate().toString(); // Lấy ngày hiện tại
+            
+            // Tìm vị trí cột của ngày hôm nay
+            const todayIndex = chart.data.labels.indexOf(todayStr);
+            if (todayIndex === -1) return;
+            
+            // Tính tọa độ X và Y để vẽ
+            const x = xAxis.getPixelForTick(todayIndex);
+            const yTop = yAxis.top;
+            const yBottom = yAxis.bottom;
+            
+            ctx.save();
+            // Vẽ đường thẳng đứt nét chạy dọc
+            ctx.beginPath();
+            ctx.moveTo(x, yTop - 10); 
+            ctx.lineTo(x, yBottom);
+            ctx.lineWidth = 1.5;
+            ctx.strokeStyle = '#ef4444'; // Màu đỏ nổi bật
+            ctx.setLineDash([5, 5]); // Nét đứt
+            ctx.stroke();
+            
+            // Vẽ chữ "▼ HÔM NAY" trên cùng
+            ctx.fillStyle = '#ef4444';
+            ctx.font = 'bold 10px "Inter", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('▼ HÔM NAY', x, yTop - 16);
+            ctx.restore();
+          }
+        };
+
+        const ptChart = new Chart(ptCtx, {
+          type: 'bar',
+          data: {
+              labels: D.timeline_labels,
+              datasets: [{
+                  label: 'Số phòng đến hạn',
+                  data: D.timeline_counts,
+                  backgroundColor: D.timeline_colors,
+                  borderRadius: 4,
+                  borderSkipped: false,
+                  barPercentage: 0.65 // Bóp cho cột gọn lại một chút nhìn sẽ thanh thoát hơn
+              }]
+          },
+          plugins: [todayIndicatorPlugin], // <--- Gọi Plugin vẽ vạch hôm nay
+          options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              layout: {
+                  padding: { top: 25 } // Chừa khoảng trống phía trên để chữ "Hôm nay" không bị lẹm
+              },
+              plugins: { 
+                  legend: { display: false },
+                  tooltip: {
+                      callbacks: {
+                          // 2. THÊM CHỮ "NGÀY" KHI RÊ CHUỘT
+                          title: function(tooltipItems) {
+                              return 'Ngày ' + tooltipItems[0].label;
+                          }
+                      }
+                  }
+              },
+              scales: {
+                  x: { grid: { display: false }, title: { display: true, text: 'Ngày trong tháng' } },
+                  y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: '#f1f5f9' }, title: { display: true, text: 'Số phòng' } }
+              },
+              onClick: (evt, elements) => {
+                  if (elements && elements.length > 0) {
+                      const index = elements[0].index;
+                      const dayLabel = D.timeline_labels[index];
+                      renderTimelineDetails(dayLabel, D.timeline_details[dayLabel]);
+                  }
+              }
+          }
+        });
+        
+        // Mặc định hiển thị danh sách chi tiết của ngày hôm nay
+        const todayStr = new Date().getDate().toString();
+        if(D.timeline_details[todayStr]){
+            renderTimelineDetails(todayStr, D.timeline_details[todayStr]);
+        }
+      }
+
+      // Hàm render chi tiết các phòng ở cột bên phải
+      function renderTimelineDetails(day, items) {
+        document.getElementById('detailDayTitle').innerText = `CHI TIẾT NGÀY ${day}`;
+        const container = document.getElementById('paymentTimelineDetails');
+        
+        if (!items || items.length === 0) {
+            container.innerHTML = '<div class="text-muted fst-italic py-4 text-center">Không có phòng nào đến hạn vào ngày này.</div>';
+            return;
+        }
+
+        let html = '';
+        items.forEach(item => {
+            let badgeClass, statusText;
+            
+            if (item.status === 'invoiced') {
+                badgeClass = 'bg-primary-subtle text-primary border border-primary-subtle';
+                statusText = '<i class="fa-solid fa-check"></i> Đã xuất HĐ';
+            } else if (item.status === 'overdue') {
+                badgeClass = 'bg-danger text-white';
+                statusText = 'Chưa xuất HĐ';
+            } else if (item.status === 'today') {
+                badgeClass = 'bg-warning text-dark';
+                statusText = 'Hôm nay';
+            } else {
+                badgeClass = 'bg-success-subtle text-success';
+                statusText = 'Chờ thu';
+            }
+
+            html += `
+            <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+                <div class="d-flex align-items-center">
+                    <span class="badge bg-secondary-subtle text-secondary me-2 rounded-2"><i class="fa-solid fa-door-open"></i> P.${item.room_number}</span>
+                </div>
+                <span class="badge ${badgeClass} px-2 py-1 shadow-sm" style="font-size: 0.75rem;">${statusText}</span>
+            </div>
+            `;
+        });
+        container.innerHTML = html;
+      }
+
       // Events
       const mainRange = document.getElementById('rangeSelect');
       const churnRange = document.getElementById('churnRangeSelect');

@@ -5,6 +5,9 @@ from jinja2 import Environment, FileSystemLoader
 from core.deps import get_db
 from core.template_filters import money
 from core import constants
+import calendar
+import datetime as dt_lib
+from datetime import timezone, timedelta
 
 router = APIRouter(tags=["dashboard"]) 
 
@@ -65,6 +68,159 @@ async def dashboard_data_api():
         electric_labels_30.append(day_str)
         tenant_labels_30.append(day_str)
         labels_30.append(day_str)
+    
+    # TÍNH TOÁN TIMELINE KỲ HẠN (UTC +7)
+    payment_timeline = []
+    try:
+        tz_vn = timezone(timedelta(hours=7))
+        today_vn = dt_lib.datetime.now(tz_vn).date()
+        current_month_str = today_vn.strftime('%Y-%m') 
+        
+        def safe_parse_dt(val):
+            if not val: return None
+            if isinstance(val, dt_lib.datetime): return val.date()
+            if isinstance(val, dt_lib.date): return val
+            if isinstance(val, str):
+                try: return dt_lib.date.fromisoformat(val[:10])
+                except: pass
+            return None
+        
+        # --- 1. LẤY DANH SÁCH CONTRACT_ID ĐÃ TẠO HÓA ĐƠN TRONG THÁNG NÀY ---
+        billed_contract_ids = set()
+        async for b in db.bills.find({"month": current_month_str}):
+            cid = b.get("contract_id")
+            if cid: 
+                billed_contract_ids.add(str(cid))
+
+        # --- 2. TÌM ROOM_ID TỪ CÁC CONTRACT ĐÃ CÓ HÓA ĐƠN ---
+        billed_room_ids = set()
+        if billed_contract_ids:
+            async for c in db.contracts.find({}):
+                # Quét toàn bộ hợp đồng để mapping giữa contract_id -> room_id
+                c_id = str(c.get("_id", ""))
+                if c_id in billed_contract_ids or str(c.get("id", "")) in billed_contract_ids:
+                    r_id = c.get("room_id")
+                    if r_id:
+                        billed_room_ids.add(str(r_id))
+
+        # --- 3. VÉT DỮ LIỆU PHÒNG & TÌM NGÀY BẮT ĐẦU ---
+        all_rooms = {}
+        active_room_ids = set()
+        room_due_dates = {}
+        
+        async for r in db.rooms.find({}):
+            rid = str(r.get("_id"))
+            st = str(r.get("status", "")).lower().strip()
+            cc = r.get("current_contract")
+            all_rooms[rid] = { "number": r.get("room_number", rid), "status": st, "current_contract": cc }
+            
+            # Nếu phòng đang thuê
+            if "occupied" in st or "thuê" in st or cc:
+                active_room_ids.add(rid)
+                
+                # Bổ sung: Nếu ID của current_contract nằm trong danh sách đã tạo hóa đơn
+                if cc and isinstance(cc, dict):
+                    cc_id = str(cc.get("_id", cc.get("id", "")))
+                    if cc_id in billed_contract_ids:
+                        billed_room_ids.add(rid)
+        
+        for rid in active_room_ids:
+            cc = all_rooms[rid].get("current_contract")
+            if cc and isinstance(cc, dict) and "start_date" in cc:
+                sd = safe_parse_dt(cc.get("start_date"))
+                if sd: room_due_dates[rid] = sd
+                    
+        missing_rids = active_room_ids - set(room_due_dates.keys())
+        if missing_rids:
+            async for c in db.contracts.find({"room_id": {"$in": list(missing_rids)}}):
+                rid = str(c.get("room_id"))
+                sd = safe_parse_dt(c.get("start_date"))
+                if sd and (rid not in room_due_dates or sd > room_due_dates[rid]):
+                    room_due_dates[rid] = sd
+                        
+        if len(room_due_dates) == 0:
+            async for c in db.contracts.find({}):
+                rid = str(c.get("room_id"))
+                sd = safe_parse_dt(c.get("start_date"))
+                if sd and rid not in room_due_dates:
+                    room_due_dates[rid] = sd
+
+        # --- 4. TÍNH TOÁN VÀ PHÂN LOẠI TRẠNG THÁI ---
+        for rid, sd in room_due_dates.items():
+            r_num = all_rooms.get(rid, {}).get("number", rid)
+            due_day = sd.day
+            
+            _, last_day = calendar.monthrange(today_vn.year, today_vn.month)
+            actual_due_day = min(due_day, last_day)
+            
+            due_date_this_month = today_vn.replace(day=actual_due_day)
+            days_diff = (due_date_this_month - today_vn).days
+            
+            # --- LOGIC ĐỐI CHIẾU HÓA ĐƠN MỚI ---
+            if rid in billed_room_ids:
+                status = "invoiced"
+                sort_weight = 9999 # Nhóm "Đã xuất HĐ" bị đẩy xuống cuối
+            elif days_diff < 0:
+                status = "overdue"
+                sort_weight = days_diff # Quá hạn xếp ưu tiên đầu
+            elif days_diff == 0:
+                status = "today"
+                sort_weight = 0
+            else:
+                status = "upcoming"
+                sort_weight = days_diff
+            
+            payment_timeline.append({
+                "room_number": r_num,
+                "due_date": due_date_this_month.strftime("%d/%m/%Y"),
+                "days_diff": days_diff,
+                "status": status,
+                "sort_weight": sort_weight
+            })
+            
+        # --- 5. SẮP XẾP CUỐI CÙNG ---
+        payment_timeline.sort(key=lambda x: x["sort_weight"])
+
+        # 6. TẠO DỮ LIỆU CHO BIỂU ĐỒ TIMELINE 
+        days_in_month = calendar.monthrange(today_vn.year, today_vn.month)[1]
+        
+        # Khởi tạo mảng cho 31 ngày
+        timeline_labels = [str(d) for d in range(1, days_in_month + 1)]
+        timeline_counts = [0] * days_in_month
+        timeline_colors = ['#f1f5f9'] * days_in_month # Mặc định xám nhạt cho ngày không có gì
+        
+        # Gom nhóm chi tiết theo từng ngày (để hiển thị bảng bên phải)
+        details_by_day = {str(d): [] for d in range(1, days_in_month + 1)}
+        
+        for item in payment_timeline:
+            # Lấy số ngày từ chuỗi "dd/mm/yyyy" (VD: "05/11/2024" -> "5")
+            d_str = str(int(item["due_date"].split('/')[0]))
+            details_by_day[d_str].append(item)
+            timeline_counts[int(d_str) - 1] += 1
+
+        # Xét màu cho từng cột
+        for d in range(1, days_in_month + 1):
+            if timeline_counts[d-1] == 0:
+                continue # Không có hợp đồng nào thì bỏ qua, giữ màu xám nhạt
+            
+            d_str = str(d)
+            rooms_in_day = details_by_day[d_str]
+            days_diff = d - today_vn.day
+            
+            # Kiểm tra xem có phòng nào CHƯA có hóa đơn không (trạng thái khác 'invoiced')
+            has_unpaid = any(r['status'] != 'invoiced' for r in rooms_in_day)
+            
+            if days_diff < 0: # Quá khứ
+                timeline_colors[d-1] = '#ef4444' if has_unpaid else '#cbd5e1' # Đỏ nếu nợ, Xám nếu đã xong
+            elif days_diff == 0: # Hôm nay
+                timeline_colors[d-1] = '#f59e0b' # Cam đậm nổi bật
+            elif days_diff <= 3: # Sắp tới (1-3 ngày)
+                timeline_colors[d-1] = '#fdba74' # Cam nhạt
+            else: # Còn xa
+                timeline_colors[d-1] = '#10b981' # Xanh lá
+
+    except Exception as e:
+        print(f"LỖI TẠO TIMELINE KÌ HẠN: {e}")
 
     # ---------------------------------------------------------
     # BƯỚC 1: LOAD DỮ LIỆU TỪ DB (Chỉ lấy field cần thiết - PROJECTION)
@@ -282,7 +438,13 @@ async def dashboard_data_api():
         "top_room_labels": top_room_labels,
         "top_room_usage": top_room_usage,
         "renting_tenants": renting_tenants,
-        "ended_tenants": ended_tenants
+        "ended_tenants": ended_tenants,
+        
+        "payment_timeline": payment_timeline,
+        "timeline_labels": timeline_labels,
+        "timeline_counts": timeline_counts,
+        "timeline_colors": timeline_colors,
+        "timeline_details": details_by_day
     }
 
 @router.get('/dashboard/top-electric/{month}')

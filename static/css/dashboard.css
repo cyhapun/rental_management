@@ -39,3 +39,19 @@
     height: 180px;
     margin: 0 auto;
 }
+
+/* Custom scrollbar cho chiều ngang (Timeline) */
+.custom-scrollbar-x::-webkit-scrollbar { 
+    height: 6px; 
+}
+.custom-scrollbar-x::-webkit-scrollbar-track { 
+    background: #f8fafc; 
+    border-radius: 10px; 
+}
+.custom-scrollbar-x::-webkit-scrollbar-thumb { 
+    background: #cbd5e1; 
+    border-radius: 10px; 
+}
+.custom-scrollbar-x::-webkit-scrollbar-thumb:hover { 
+    background: #94a3b8; 
+}
