@@ -3,7 +3,21 @@
 function openEditContract(btn){
   const row = btn.closest('tr');
   const id = row.dataset.contractId;
-  document.getElementById('edit_contract_room').value = row.dataset.roomId || '';
+  const currentRoomId = row.dataset.roomId || '';
+  
+  // Lấy thẻ select phòng
+  const roomSelect = document.getElementById('edit_contract_room');
+  
+  // Lặp qua các option: Khóa option nếu phòng đã có người VÀ không phải là phòng hiện tại của hợp đồng
+  Array.from(roomSelect.options).forEach(opt => {
+      if (opt.dataset.busy === "1" && opt.value !== currentRoomId) {
+          opt.disabled = true;
+      } else {
+          opt.disabled = false;
+      }
+  });
+
+  document.getElementById('edit_contract_room').value = currentRoomId;
   document.getElementById('edit_contract_tenant').value = row.dataset.tenantId || '';
   document.getElementById('edit_contract_start').value = row.dataset.startDateIso || row.dataset.startDate || '';
   document.getElementById('edit_contract_end').value = row.dataset.endDateIso || row.dataset.endDate || '';
