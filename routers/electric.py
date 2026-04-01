@@ -70,7 +70,7 @@ async def list_electric(request: Request):
     default_month = datetime.date.today().strftime("%Y-%m")
     
     tpl = env.get_template("electric.html")
-    # KHÔNG TRUYỀN readings VÀO NỮA
+    
     html = tpl.render(request=request, rooms=rooms, default_month=default_month)
     return HTMLResponse(content=html)
 
@@ -131,7 +131,7 @@ async def add_electric(
     usage = new_index - old_index
     if usage < 0:
         # Bạn có thể dùng flash message để báo lỗi nếu số mới thấp hơn số cũ
-        return redirect_with_flash(request, "/electric", "Số mới không được nhỏ hơn số cũ!", "danger")
+        return redirect_with_flash("/electric", "Số mới không được nhỏ hơn số cũ!", "danger")
 
     # 2. Tạo bản ghi mới
     new_reading = {
@@ -165,7 +165,7 @@ async def update_electric(
     usage = new_index - old_index
     
     if usage < 0:
-        return redirect_with_flash(request, "/electric", "Lỗi: Số mới không được nhỏ hơn số cũ!", "danger")
+        return redirect_with_flash("/electric", "Lỗi: Số mới không được nhỏ hơn số cũ!", "danger")
 
     # Tìm bản ghi cũ để biết room_id (phục vụ việc sync sau khi update)
     old_doc = await db.electric_readings.find_one({"_id": ObjectId(reading_id)})
@@ -186,7 +186,7 @@ async def update_electric(
     # Đồng bộ lại chỉ số phòng
     await _sync_room_current_index(db, old_doc.get("room_id"))
     
-    return redirect_with_flash(request, "/electric", "Đã cập nhật chỉ số thành công.", "success")
+    return redirect_with_flash("/electric", "Đã cập nhật chỉ số thành công.", "success")
 
 
 @router.post("/{reading_id}/delete")
@@ -201,7 +201,7 @@ async def delete_electric(request: Request, reading_id: str):
         # Sau khi xóa, số hiện tại của phòng phải lùi về bản ghi trước đó
         await _sync_room_current_index(db, room_id)
         
-    return redirect_with_flash(request, "/electric", "Đã xóa bản ghi thành công.", "success")
+    return redirect_with_flash("/electric", "Đã xóa bản ghi thành công.", "success")
 
 
 @router.get("/last/{room_id}")

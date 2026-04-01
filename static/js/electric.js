@@ -60,7 +60,7 @@ async function loadElectric() {
     const tbody = document.getElementById('electricTableBody');
     if (!tbody) return;
     
-    const csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '';
+    const csrfToken = document.getElementById('global_csrf_token')?.value || '';
 
     try {
         const response = await fetch('/electric/_data');
@@ -92,7 +92,7 @@ async function loadElectric() {
             tr.innerHTML = `
               <td>
                 <span class="badge bg-light text-dark border px-2 py-1 fs-6">
-                  <i class="fa-solid fa-door-closed text-muted me-1"></i> ${roomName}
+                  ${roomName}
                 </span>
               </td>
               <td class="text-center">
