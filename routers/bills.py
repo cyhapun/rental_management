@@ -274,18 +274,24 @@ async def generate_monthly(month: str = Form(...), contract_id: str = Form(None)
                 "month": month
             })
             
-            electric_cost = er.get('total', 0) if er else 0
-            
             if er:
                 prev_index = er.get('old_index')
                 curr_index = er.get('new_index')
                 usage = er.get('usage')
                 kwh_price = er.get('price_per_kwh')
+                
+                # Tính tiền điện: Ưu tiên lấy trường 'total', nếu không có thì lấy số kW x Đơn giá
+                electric_cost = er.get('total')
+                if not electric_cost:
+                    safe_usage = int(usage) if usage else 0
+                    safe_price = int(kwh_price) if kwh_price else 0
+                    electric_cost = safe_usage * safe_price
             else:
                 prev_index = room.get('current_electric_index') if room else None
                 curr_index = None
                 usage = None
                 kwh_price = None
+                electric_cost = 0
                 
             water_cost = WATER_FEE
             total = room_price + electric_cost + water_cost
