@@ -3,7 +3,7 @@
 <link rel="stylesheet" href="/static/css/bills.css">
 {% endblock %}
 {% block content %}
-
+<input type="hidden" id="global_csrf_token"  name="csrf_token" value="{{ request.state.csrf_token if request and request.state and request.state.csrf_token else '' }}">
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
   <div>
     <h1 class="h4 fw-bold text-dark mb-1"><i class="fa-solid fa-file-invoice-dollar text-primary me-2"></i>Quản lý Hóa đơn</h1>

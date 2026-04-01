@@ -115,3 +115,108 @@ async def get_electric_data():
         })
         
     return {"readings": readings, "last_indices": last_indices}
+
+@router.post("/add")
+async def add_electric(
+    request: Request,
+    room_id: str = Form(...),
+    month: str = Form(...),
+    old_index: int = Form(0),
+    new_index: int = Form(0),
+    price_per_kwh: int = Form(3000)
+):
+    db = get_db()
+    
+    # 1. Tính toán lượng tiêu thụ
+    usage = new_index - old_index
+    if usage < 0:
+        # Bạn có thể dùng flash message để báo lỗi nếu số mới thấp hơn số cũ
+        return redirect_with_flash(request, "/electric", "Số mới không được nhỏ hơn số cũ!", "danger")
+
+    # 2. Tạo bản ghi mới
+    new_reading = {
+        "room_id": room_id,
+        "month": month,
+        "old_index": old_index,
+        "new_index": new_index,
+        "usage": usage,
+        "price_per_kwh": price_per_kwh,
+        "created_at": datetime.datetime.now()
+    }
+    
+    await db.electric_readings.insert_one(new_reading)
+    
+    # 3. Cập nhật lại chỉ số hiện tại của phòng (Sử dụng hàm helper có sẵn của bạn)
+    await _sync_room_current_index(db, room_id)
+    
+    return RedirectResponse(url="/electric", status_code=303)
+
+
+@router.post("/{reading_id}/update")
+async def update_electric(
+    request: Request,
+    reading_id: str,
+    month: str = Form(...),
+    old_index: int = Form(...),
+    new_index: int = Form(...),
+    price_per_kwh: int = Form(...)
+):
+    db = get_db()
+    usage = new_index - old_index
+    
+    if usage < 0:
+        return redirect_with_flash(request, "/electric", "Lỗi: Số mới không được nhỏ hơn số cũ!", "danger")
+
+    # Tìm bản ghi cũ để biết room_id (phục vụ việc sync sau khi update)
+    old_doc = await db.electric_readings.find_one({"_id": ObjectId(reading_id)})
+    if not old_doc:
+        raise HTTPException(status_code=404, detail="Không tìm thấy bản ghi")
+
+    await db.electric_readings.update_one(
+        {"_id": ObjectId(reading_id)},
+        {"$set": {
+            "month": month,
+            "old_index": old_index,
+            "new_index": new_index,
+            "usage": usage,
+            "price_per_kwh": price_per_kwh
+        }}
+    )
+    
+    # Đồng bộ lại chỉ số phòng
+    await _sync_room_current_index(db, old_doc.get("room_id"))
+    
+    return redirect_with_flash(request, "/electric", "Đã cập nhật chỉ số thành công.", "success")
+
+
+@router.post("/{reading_id}/delete")
+async def delete_electric(request: Request, reading_id: str):
+    db = get_db()
+    
+    # Lấy thông tin bản ghi trước khi xóa để lấy room_id
+    doc = await db.electric_readings.find_one({"_id": ObjectId(reading_id)})
+    if doc:
+        room_id = doc.get("room_id")
+        await db.electric_readings.delete_one({"_id": ObjectId(reading_id)})
+        # Sau khi xóa, số hiện tại của phòng phải lùi về bản ghi trước đó
+        await _sync_room_current_index(db, room_id)
+        
+    return redirect_with_flash(request, "/electric", "Đã xóa bản ghi thành công.", "success")
+
+
+@router.get("/last/{room_id}")
+async def get_last_index(room_id: str):
+    db = get_db()
+    
+    # Tìm bản ghi có tháng mới nhất của phòng này
+    latest = await db.electric_readings.find_one(
+        {"room_id": room_id},
+        sort=[("month", -1), ("_id", -1)]
+    )
+    
+    # Nếu chưa từng có bản ghi nào, lấy số mặc định từ bảng rooms
+    if not latest:
+        room = await db.rooms.find_one({"_id": ObjectId(room_id)})
+        return {"old_index": room.get("current_electric_index", 0) if room else 0}
+        
+    return {"old_index": latest.get("new_index", 0)}

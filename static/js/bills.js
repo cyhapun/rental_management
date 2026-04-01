@@ -11,7 +11,7 @@ async function loadBills() {
     if (!tbody) return;
 
     const currentStatus = tbody.dataset.status || 'all';
-    const csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '';
+    const csrfToken = document.getElementById('global_csrf_token')?.value || '';
 
     try {
         const response = await fetch(`/bills/_data?status=${currentStatus}`);
