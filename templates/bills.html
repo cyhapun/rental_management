@@ -21,7 +21,7 @@
     <i class="fa-solid fa-receipt position-absolute text-primary" style="font-size: 150px; opacity: 0.03; right: -20px; top: -20px; z-index: 0;"></i>
     <div class="position-relative" style="z-index: 1;">
       <h6 class="fw-bold text-dark mb-3">Thông tin khởi tạo</h6>
-      <form class="row g-3" action="/bills/generate" method="post">
+      <form class="row g-3" id="generateBillForm" action="/bills/generate" method="post">
         <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token if request and request.state and request.state.csrf_token else '' }}">
         <div class="col-md-4">
           <label class="form-label small fw-semibold text-muted">Kỳ thu (Tháng)</label>
@@ -29,8 +29,8 @@
         </div>
         <div class="col-md-5">
           <label class="form-label small fw-semibold text-muted">Hợp đồng áp dụng</label>
-          <select class="form-select bg-light" name="contract_id">
-            <option value="">-- Tất cả hợp đồng (Tạo hàng loạt) --</option>
+          <select class="form-select bg-light" name="contract_id" required>
+            <option value="" disabled selected>-- Chọn hợp đồng --</option>
             {% for c in contracts %}
             <option value="{{ c.id }}">{{ c.display }}</option>
             {% endfor %}
@@ -129,6 +129,40 @@
         <div class="modal-footer bg-light rounded-bottom-4">
           <button class="btn btn-light border rounded-pill px-3" data-bs-dismiss="modal" type="button">Hủy</button>
           <button class="btn btn-primary rounded-pill px-4" type="submit">Xác nhận thu</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="inputElectricModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold"><i class="fa-solid fa-bolt text-warning me-2"></i>Chốt điện trước khi tạo</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="submitBillWithElectricForm" action="/bills/generate" method="post">
+        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token if request and request.state and request.state.csrf_token else '' }}">
+        <input type="hidden" name="contract_id" id="modal_contract_id">
+        <input type="hidden" name="month" id="modal_month">
+        
+        <div class="modal-body">
+          <div class="alert alert-info small py-2 mb-3">
+            Phòng này chưa có chỉ số điện tháng <span id="display_month" class="fw-bold"></span>. Vui lòng nhập để hệ thống tạo hóa đơn.
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-muted">Chỉ số cũ</label>
+            <input class="form-control bg-light" id="modal_old_index" type="number" readonly />
+          </div>
+          <div class="mb-2">
+            <label class="form-label small fw-semibold text-muted">Chỉ số mới</label>
+            <input class="form-control fw-bold text-primary" name="new_electric_index" id="modal_new_index" type="number" required />
+          </div>
+        </div>
+        <div class="modal-footer bg-light rounded-bottom-4">
+          <button class="btn btn-light border rounded-pill px-3" data-bs-dismiss="modal" type="button">Hủy</button>
+          <button class="btn btn-primary rounded-pill px-4" type="submit">Lưu & Tạo hóa đơn</button>
         </div>
       </form>
     </div>

@@ -257,4 +257,48 @@ document.addEventListener('DOMContentLoaded', function(){
   if (tbody && tbody.dataset.autoLoad === 'true') {
       loadBills();
   }
+  
+  const generateForm = document.getElementById('generateBillForm');
+  if (generateForm) {
+      generateForm.addEventListener('submit', async function(e) {
+          e.preventDefault(); // Chặn submit mặc định
+          
+          const btn = this.querySelector('button[type="submit"]');
+          const origText = btn.innerHTML;
+          btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang kiểm tra...';
+          btn.disabled = true;
+
+          const contractId = this.contract_id.value;
+          const month = this.month.value;
+
+          try {
+              const res = await fetch(`/bills/check-electric?contract_id=${contractId}&month=${month}`);
+              if (!res.ok) throw new Error('Lỗi kiểm tra điện');
+              
+              const data = await res.json();
+              
+              if (data.has_data) {
+                  // Đã có điện, submit form bình thường
+                  this.submit();
+              } else {
+                  // Chưa có điện, mở modal
+                  document.getElementById('modal_contract_id').value = contractId;
+                  document.getElementById('modal_month').value = month;
+                  document.getElementById('display_month').innerText = month;
+                  document.getElementById('modal_old_index').value = data.old_index;
+                  document.getElementById('modal_new_index').min = data.old_index; // Bắt buộc số mới >= số cũ
+                  
+                  const modal = new bootstrap.Modal(document.getElementById('inputElectricModal'));
+                  modal.show();
+                  btn.innerHTML = origText;
+                  btn.disabled = false;
+              }
+          } catch (error) {
+              console.error(error);
+              try{ new Notyf().error('Không thể kiểm tra chỉ số điện'); }catch(err){};
+              btn.innerHTML = origText;
+              btn.disabled = false;
+          }
+      });
+  }
 });

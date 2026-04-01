@@ -248,95 +248,83 @@ async def list_bills_data(status: str = "all"):
 
 
 @router.post("/generate")
-async def generate_monthly(month: str = Form(...), contract_id: str = Form(None)):
+async def generate_monthly(
+    month: str = Form(...), 
+    contract_id: str = Form(...), # Bỏ Form(None) vì bắt buộc
+    new_electric_index: int = Form(None) # Thêm tham số này
+):
     db = get_db()
     try:
-        created = 0
-        if contract_id:
-            try:
-                c = await db.contracts.find_one({"_id": ObjectId(contract_id)})
-            except Exception:
-                c = None
-            if not c:
-                return redirect_with_flash('/bills/?status=unpaid', 'Không tìm thấy hợp đồng để tạo hóa đơn.', 'danger')
+        c = await db.contracts.find_one({"_id": ObjectId(contract_id)})
+        if not c:
+            return redirect_with_flash('/bills/?status=unpaid', 'Không tìm thấy hợp đồng để tạo hóa đơn.', 'danger')
+        
+        room_id_val = c.get('room_id')
+        room = await db.rooms.find_one({"_id": ObjectId(room_id_val)})
+        room_price = int(room.get('price', 0)) if room else 0
+        
+        # Xử lý lưu chỉ số điện nếu có truyền lên ---
+        if new_electric_index is not None:
+            old_index = room.get('current_electric_index', 0) if room else 0
+            usage = new_electric_index - old_index
+            if usage < 0: usage = 0 # Hoặc raise lỗi tùy logic của bạn
+            kwh_price = room.get('electric_price', 3500) # Giả sử giá điện lưu ở room
+            electric_cost = usage * kwh_price
             
-            room_price = 0
-            room_id_val = c.get('room_id')
-            room = None
-            try:
-                room = await db.rooms.find_one({"_id": ObjectId(room_id_val)})
-                room_price = int(room.get('price', 0)) if room else 0
-            except Exception:
-                pass
-            
-            er = await db.electric_readings.find_one({
-                "$or": [{"room_id": room_id_val}, {"room_id": str(room_id_val)}],
-                "month": month
+            # Lưu vào db.electric_readings
+            await db.electric_readings.insert_one({
+                "room_id": str(room_id_val),
+                "month": month,
+                "old_index": old_index,
+                "new_index": new_electric_index,
+                "usage": usage,
+                "price_per_kwh": kwh_price,
+                "total": electric_cost,
+                "created_at": datetime.datetime.utcnow()
             })
             
-            if er:
-                prev_index = er.get('old_index')
-                curr_index = er.get('new_index')
-                usage = er.get('usage')
-                kwh_price = er.get('price_per_kwh')
-                
-                # Tính tiền điện: Ưu tiên lấy trường 'total', nếu không có thì lấy số kW x Đơn giá
-                electric_cost = er.get('total')
-                if not electric_cost:
-                    safe_usage = int(usage) if usage else 0
-                    safe_price = int(kwh_price) if kwh_price else 0
-                    electric_cost = safe_usage * safe_price
-            else:
-                prev_index = room.get('current_electric_index') if room else None
-                curr_index = None
-                usage = None
-                kwh_price = None
-                electric_cost = 0
-                
-            water_cost = WATER_FEE
-            total = room_price + electric_cost + water_cost
-            bill = {"contract_id": str(c.get("_id")), "month": month, "room_price": room_price, "electric_cost": electric_cost, "water_cost": water_cost, "other_cost": 0, "total": total, "status": "unpaid", "created_at": datetime.datetime.utcnow(),
-                    "prev_index": prev_index, "curr_index": curr_index, "usage": usage, "kwh_price": kwh_price}
-            await db.bills.insert_one(bill)
-            created = 1
-            return redirect_with_flash(f"/bills/?status=unpaid", f"Tạo hóa đơn cho hợp đồng thành công.")
+            # Cập nhật lại chỉ số mới cho phòng
+            await db.rooms.update_one(
+                {"_id": ObjectId(room_id_val)},
+                {"$set": {"current_electric_index": new_electric_index}}
+            )
+
+        er = await db.electric_readings.find_one({
+            "$or": [{"room_id": room_id_val}, {"room_id": str(room_id_val)}],
+            "month": month
+        })
+        
+        if er:
+            prev_index = er.get('old_index')
+            curr_index = er.get('new_index')
+            usage = er.get('usage')
+            kwh_price = er.get('price_per_kwh')
+            electric_cost = er.get('total')
+            if not electric_cost:
+                electric_cost = int(usage or 0) * int(kwh_price or 0)
         else:
-            cursor = db.contracts.find({})
-            async for c in cursor:
-                room_id_val = c.get("room_id")
-                room = None
-                try:
-                    room = await db.rooms.find_one({"_id": ObjectId(room_id_val)})
-                    room_price = int(room.get("price", 0)) if room else 0
-                except Exception:
-                    room_price = 0
-                
-                er = await db.electric_readings.find_one({
-                    "$or": [{"room_id": room_id_val}, {"room_id": str(room_id_val)}],
-                    "month": month
-                })
-                
-                electric_cost = er.get("total", 0) if er else 0
-                
-                if er:
-                    prev_index = er.get('old_index')
-                    curr_index = er.get('new_index')
-                    usage = er.get('usage')
-                    kwh_price = er.get('price_per_kwh')
-                else:
-                    prev_index = room.get('current_electric_index') if room else None
-                    curr_index = None
-                    usage = None
-                    kwh_price = None
-                    
-                water_cost = WATER_FEE
-                total = room_price + electric_cost + water_cost
-                bill = {"contract_id": str(c.get("_id")), "month": month, "room_price": room_price, "electric_cost": electric_cost, "water_cost": water_cost, "other_cost": 0, "total": total, "status": "unpaid", "created_at": datetime.datetime.utcnow(),
-                    "prev_index": prev_index, "curr_index": curr_index, "usage": usage, "kwh_price": kwh_price}
-                await db.bills.insert_one(bill)
-                created += 1
-            return redirect_with_flash(f"/bills/?status=unpaid", f"Tạo hóa đơn thành công ({created} hóa đơn).")
-    except Exception:
+            prev_index = room.get('current_electric_index') if room else None
+            curr_index = None
+            usage = None
+            kwh_price = None
+            electric_cost = 0
+            
+        water_cost = WATER_FEE
+        total = room_price + electric_cost + water_cost
+        
+        bill = {
+            "contract_id": str(c.get("_id")), "month": month, 
+            "room_price": room_price, "electric_cost": electric_cost, 
+            "water_cost": water_cost, "other_cost": 0, "total": total, 
+            "status": "unpaid", "created_at": datetime.datetime.utcnow(),
+            "prev_index": prev_index, "curr_index": curr_index, 
+            "usage": usage, "kwh_price": kwh_price
+        }
+        await db.bills.insert_one(bill)
+        return redirect_with_flash(f"/bills/?status=unpaid", f"Tạo hóa đơn cho hợp đồng thành công.")
+            
+    except Exception as e:
+        print(f"Lỗi tạo hóa đơn: {e}")
         return redirect_with_flash("/bills/?status=unpaid", "Tạo hóa đơn thất bại.", "danger")
 
 
@@ -388,3 +376,28 @@ async def delete_bill(bill_id: str):
         return redirect_with_flash(f"/bills/?status={redirect_status}", "Xóa hóa đơn thành công.")
     except Exception:
         return redirect_with_flash("/bills/", "Xóa hóa đơn thất bại.", "danger")
+    
+@router.get("/check-electric")
+async def check_electric(contract_id: str, month: str):
+    db = get_db()
+    try:
+        c = await db.contracts.find_one({"_id": ObjectId(contract_id)})
+        if not c:
+            raise HTTPException(404, "Không tìm thấy hợp đồng")
+            
+        room_id = c.get("room_id")
+        room = await db.rooms.find_one({"_id": ObjectId(room_id)})
+        
+        # Kiểm tra xem tháng này có dữ liệu điện chưa
+        er = await db.electric_readings.find_one({
+            "$or": [{"room_id": room_id}, {"room_id": str(room_id)}],
+            "month": month
+        })
+        
+        if er:
+            return {"has_data": True}
+            
+        old_index = room.get("current_electric_index", 0) if room else 0
+        return {"has_data": False, "old_index": old_index}
+    except Exception as e:
+        raise HTTPException(500, str(e))
