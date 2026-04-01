@@ -65,6 +65,8 @@ function validateCreateAccount(form){
 async function loadAccounts() {
     const tbody = document.getElementById('accountsBody');
     if (!tbody) return;
+    // Lấy CSRF token từ một form bất kỳ đã có trên trang (ví dụ form tạo tài khoản)
+    const csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '';
 
     try {
         const response = await fetch('/accounts/_data');
@@ -86,7 +88,7 @@ async function loadAccounts() {
             tr.dataset.accountId = a.id || '';
             tr.dataset.username = a.username || '';
             tr.dataset.role = a.role || '';
-
+            
             const firstChar = (a.username || '?').charAt(0).toUpperCase();
             
             const roleHtml = (a.role === 'admin') 
@@ -112,6 +114,7 @@ async function loadAccounts() {
                       <i class="fa-solid fa-pen"></i>
                     </button>
                     <form action="/accounts/${a.id}/delete" method="post" style="display:inline" onsubmit="return confirm('Cảnh báo: Bạn có chắc chắn muốn xóa tài khoản ${a.username} không?');">
+                      <input type="hidden" name="csrf_token" value="${csrfToken}">  
                       <button class="btn action-btn bg-danger-subtle text-danger" type="submit" title="Xóa tài khoản">
                         <i class="fa-solid fa-trash-can"></i>
                       </button>
