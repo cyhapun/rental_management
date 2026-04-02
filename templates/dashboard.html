@@ -10,17 +10,34 @@
 
 <div class="row mb-4">
   <div class="col-12">
-    <div class="card-metric p-3 d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3" style="border-left-color: var(--accent) !important; background: linear-gradient(to right, #ffffff, #f8fafc);">
-      <div>
+    <div class="card-metric p-3 d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3" style="border-left-color: var(--accent) !important; background: linear-gradient(to right, #ffffff, #f8fafc);">
+      <div class="flex-shrink-0 text-lg-start text-center">
         <h6 class="mb-1 fw-bold text-dark">Lối tắt quản lý</h6>
-        <div class="small text-muted">Truy cập nhanh các chức năng thường dùng</div>
+        <div class="small text-muted">Truy cập nhanh các chức năng</div>
       </div>
-      <div class="d-flex flex-wrap gap-2">
-        <a class="btn btn-primary rounded-pill px-4 shadow-sm" href="/bills/"><i class="fa-solid fa-plus me-1"></i> Tạo hóa đơn</a>
-        <a class="btn btn-light bg-white border rounded-pill px-3 shadow-sm" href="/rooms/"><i class="fa-solid fa-door-open text-primary me-1"></i> Quản lý phòng</a>
-        <a class="btn btn-light bg-white border rounded-pill px-3 shadow-sm" href="/tenants/"><i class="fa-solid fa-user-group text-success me-1"></i> Khách thuê</a>
+      
+      <div class="row g-2 flex-grow-1 mx-0 w-100">
+        <div class="col-12 col-md-6 col-xl-3 px-1">
+          <a class="btn btn-primary rounded-pill px-2 shadow-sm w-100 text-truncate" href="/bills/">
+            <i class="fa-solid fa-plus me-1"></i> Tạo hóa đơn
+          </a>
+        </div>
+        <div class="col-12 col-md-6 col-xl-3 px-1">
+          <a class="btn btn-light bg-white border rounded-pill px-2 shadow-sm w-100 text-truncate" href="/rooms/">
+            <i class="fa-solid fa-door-open text-primary me-1"></i> Quản lý phòng
+          </a>
+        </div>
+        <div class="col-12 col-md-6 col-xl-3 px-1">
+          <a class="btn btn-light bg-white border rounded-pill px-2 shadow-sm w-100 text-truncate" href="/tenants/">
+            <i class="fa-solid fa-user-group text-success me-1"></i> Khách thuê
+          </a>
+        </div>
         {% if request.state.user_role == 'admin' %}
-        <a class="btn btn-light bg-white border rounded-pill px-3 shadow-sm" href="/accounts/"><i class="fa-solid fa-shield-halved text-secondary me-1"></i> Tài khoản</a>
+        <div class="col-12 col-md-6 col-xl-3 px-1">
+          <a class="btn btn-light bg-white border rounded-pill px-2 shadow-sm w-100 text-truncate" href="/accounts/">
+            <i class="fa-solid fa-shield-halved text-secondary me-1"></i> Tài khoản
+          </a>
+        </div>
         {% endif %}
       </div>
     </div>
@@ -28,12 +45,12 @@
 </div>
 
 <div class="row g-3 mb-4 metrics-row">
-  <div class="col-6 col-md-3">
-    <div class="card-metric p-3">
-      <div class="d-flex justify-content-between align-items-center">
-        <div>
-          <div class="metric-small mb-1">Tổng số phòng</div>
-          <strong class="h4 fw-bold mb-0 text-dark" id="val-total-rooms">
+  <div class="col-6 col-lg-3 d-flex">
+    <div class="card-metric p-3 w-100 h-100">
+      <div class="d-flex justify-content-between align-items-center h-100">
+        <div class="d-flex flex-column justify-content-center">
+          <div class="metric-small mb-1 text-truncate" style="max-width: 130px;">Tổng số phòng</div>
+          <strong class="h5 fw-bold mb-0 text-dark" id="val-total-rooms">
             <span class="spinner-border spinner-border-sm text-primary"></span>
           </strong>
         </div>
@@ -41,12 +58,12 @@
       </div>
     </div>
   </div>
-  <div class="col-6 col-md-3">
-    <div class="card-metric p-3">
-      <div class="d-flex justify-content-between align-items-center">
-        <div>
-          <div class="metric-small mb-1">Đang thuê</div>
-          <strong class="h4 fw-bold mb-0 text-dark" id="val-occupied">
+  <div class="col-6 col-lg-3 d-flex">
+    <div class="card-metric p-3 w-100 h-100">
+      <div class="d-flex justify-content-between align-items-center h-100">
+        <div class="d-flex flex-column justify-content-center">
+          <div class="metric-small mb-1 text-truncate" style="max-width: 130px;">Đang thuê</div>
+          <strong class="h5 fw-bold mb-0 text-dark" id="val-occupied">
             <span class="spinner-border spinner-border-sm text-success"></span>
           </strong>
         </div>
@@ -54,12 +71,12 @@
       </div>
     </div>
   </div>
-  <div class="col-6 col-md-3">
-    <div class="card-metric p-3">
-      <div class="d-flex justify-content-between align-items-center">
-        <div>
-          <div class="metric-small mb-1">Hóa đơn chưa đóng</div>
-          <strong class="h4 fw-bold mb-0 text-danger" id="val-unpaid">
+  <div class="col-6 col-lg-3 d-flex">
+    <div class="card-metric p-3 w-100 h-100">
+      <div class="d-flex justify-content-between align-items-center h-100">
+        <div class="d-flex flex-column justify-content-center">
+          <div class="metric-small mb-1 text-truncate" style="max-width: 130px;">Chưa đóng tiền</div>
+          <strong class="h5 fw-bold mb-0 text-dark" id="val-unpaid">
             <span class="spinner-border spinner-border-sm text-danger"></span>
           </strong>
         </div>
@@ -67,12 +84,12 @@
       </div>
     </div>
   </div>
-  <div class="col-6 col-md-3">
-    <div class="card-metric p-3">
-      <div class="d-flex justify-content-between align-items-center">
-        <div>
-          <div class="metric-small mb-1">Thu tháng này</div>
-          <strong class="h5 fw-bold mb-0 text-info" id="val-paid-month">
+  <div class="col-6 col-lg-3 d-flex">
+    <div class="card-metric p-3 w-100 h-100">
+      <div class="d-flex justify-content-between align-items-center h-100">
+        <div class="d-flex flex-column justify-content-center">
+          <div class="metric-small mb-1 text-truncate" style="max-width: 130px;">Thu tháng này</div>
+          <strong class="h5 fw-bold mb-0 text-dark" id="val-paid-month">
             <span class="spinner-border spinner-border-sm text-info"></span>
           </strong>
         </div>
@@ -83,12 +100,12 @@
 </div>
 
 <div class="row g-3 mb-4 metrics-row">
-  <div class="col-6 col-md-3">
-    <div class="card-metric p-3" style="border-left-color: #94a3b8 !important;">
-      <div class="d-flex justify-content-between align-items-center">
-        <div>
-          <div class="metric-small mb-1">Giá phòng (TB)</div>
-          <strong class="h6 fw-bold mb-0 text-dark" id="val-room-price">
+  <div class="col-6 col-lg-3 d-flex">
+    <div class="card-metric p-3 w-100 h-100" style="border-left-color: #94a3b8 !important;">
+      <div class="d-flex justify-content-between align-items-center h-100">
+        <div class="d-flex flex-column justify-content-center">
+          <div class="metric-small mb-1 text-truncate" style="max-width: 130px;">Giá phòng (TB)</div>
+          <strong class="h5 fw-bold mb-0 text-dark" id="val-room-price">
             <span class="spinner-border spinner-border-sm text-secondary"></span>
           </strong>
         </div>
@@ -96,12 +113,12 @@
       </div>
     </div>
   </div>
-  <div class="col-6 col-md-3">
-    <div class="card-metric p-3" style="border-left-color: #94a3b8 !important;">
-      <div class="d-flex justify-content-between align-items-center">
-        <div>
-          <div class="metric-small mb-1">Giá điện / kWh</div>
-          <strong class="h6 fw-bold mb-0 text-dark" id="val-price-kwh">
+  <div class="col-6 col-lg-3 d-flex">
+    <div class="card-metric p-3 w-100 h-100" style="border-left-color: #94a3b8 !important;">
+      <div class="d-flex justify-content-between align-items-center h-100">
+        <div class="d-flex flex-column justify-content-center">
+          <div class="metric-small mb-1 text-truncate" style="max-width: 130px;">Giá điện / kWh</div>
+          <strong class="h5 fw-bold mb-0 text-dark" id="val-price-kwh">
             <span class="spinner-border spinner-border-sm text-warning"></span>
           </strong>
         </div>
@@ -109,12 +126,12 @@
       </div>
     </div>
   </div>
-  <div class="col-6 col-md-3">
-    <div class="card-metric p-3" style="border-left-color: #94a3b8 !important;">
-      <div class="d-flex justify-content-between align-items-center">
-        <div>
-          <div class="metric-small mb-1">Nước (phòng)</div>
-          <strong class="h6 fw-bold mb-0 text-dark" id="val-water-fee">
+  <div class="col-6 col-lg-3 d-flex">
+    <div class="card-metric p-3 w-100 h-100" style="border-left-color: #94a3b8 !important;">
+      <div class="d-flex justify-content-between align-items-center h-100">
+        <div class="d-flex flex-column justify-content-center">
+          <div class="metric-small mb-1 text-truncate" style="max-width: 130px;">Nước (phòng)</div>
+          <strong class="h5 fw-bold mb-0 text-dark" id="val-water-fee">
             <span class="spinner-border spinner-border-sm text-info"></span>
           </strong>
         </div>
@@ -122,12 +139,12 @@
       </div>
     </div>
   </div>
-  <div class="col-6 col-md-3">
-    <div class="card-metric p-3" style="border-left-color: #94a3b8 !important;">
-      <div class="d-flex justify-content-between align-items-center">
-        <div>
-          <div class="metric-small mb-1">Tài khoản</div>
-          <strong class="h6 fw-bold mb-0 text-dark" id="val-total-accounts">
+  <div class="col-6 col-lg-3 d-flex">
+    <div class="card-metric p-3 w-100 h-100" style="border-left-color: #94a3b8 !important;">
+      <div class="d-flex justify-content-between align-items-center h-100">
+        <div class="d-flex flex-column justify-content-center">
+          <div class="metric-small mb-1 text-truncate" style="max-width: 130px;">Tài khoản</div>
+          <strong class="h5 fw-bold mb-0 text-dark" id="val-total-accounts">
             <span class="spinner-border spinner-border-sm text-dark"></span>
           </strong>
         </div>
@@ -141,15 +158,15 @@
   <div class="col-12 col-lg-6">
     <div class="bg-panel h-100 d-flex flex-column">
       <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-2 border-bottom">
-        <h6 class="mb-0 fw-bold"><i class="fa-solid fa-chart-line text-primary me-2"></i>Doanh thu</h6>
-        <div class="d-flex align-items-center mt-2 mt-md-0 bg-light rounded-pill p-1 ps-3 border">
-          <select id="rangeSelect" class="form-select form-select-sm border-0 bg-transparent text-dark fw-semibold pe-4" style="box-shadow: none; cursor: pointer; width: auto; min-width: 110px;">
+        <h6 class="fw-bold"><i class="fa-solid fa-chart-line text-primary me-2"></i>Doanh thu</h6>
+        <div class="d-flex align-items-center mt-3 mt-md-0 bg-light rounded-pill p-1 ps-3 border w-100 w-md-auto justify-content-between">
+          <select id="rangeSelect" class="form-select form-select-sm border-0 bg-transparent text-dark fw-semibold pe-4 flex-grow-1" style="box-shadow: none; cursor: pointer;">
             <option value="all">Tất cả</option>
             <option value="30">30 ngày</option>
             <option value="6" selected>6 tháng</option>
             <option value="12">1 năm</option>
           </select>
-          <span id="timeUnit" class="badge bg-white text-muted border ms-1 px-3 py-2 shadow-sm rounded-pill">Đơn vị: Tháng</span>
+          <span id="timeUnit" class="badge bg-white text-muted border ms-1 px-3 py-2 shadow-sm rounded-pill text-nowrap">Đơn vị: Tháng</span>
         </div>
       </div>
       <div class="chart-container position-relative">
@@ -164,15 +181,15 @@
   <div class="col-12 col-lg-6">
     <div class="bg-panel h-100 d-flex flex-column">
       <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-2 border-bottom">
-        <h6 class="mb-0 fw-bold"><i class="fa-solid fa-people-arrows text-danger me-2"></i>Biến động thuê phòng</h6>
-        <div class="d-flex align-items-center mt-2 mt-md-0 bg-light rounded-pill p-1 ps-3 border">
-          <select id="churnRangeSelect" class="form-select form-select-sm border-0 bg-transparent text-dark fw-semibold pe-4" style="box-shadow: none; cursor: pointer; width: auto; min-width: 110px;">
+        <h6 class="fw-bold"><i class="fa-solid fa-people-arrows text-danger me-2"></i>Biến động thuê phòng</h6>
+        <div class="d-flex align-items-center mt-3 mt-md-0 bg-light rounded-pill p-1 ps-3 border w-100 w-md-auto justify-content-between">
+          <select id="churnRangeSelect" class="form-select form-select-sm border-0 bg-transparent text-dark fw-semibold pe-4 flex-grow-1" style="box-shadow: none; cursor: pointer;">
             <option value="all">Tất cả</option>
             <option value="30">30 ngày</option>
             <option value="6" selected>6 tháng</option>
             <option value="12">1 năm</option>
           </select>
-          <span id="churnTimeUnit" class="badge bg-white text-muted border ms-1 px-3 py-2 shadow-sm rounded-pill">Đơn vị: Tháng</span>
+          <span id="timeUnit" class="badge bg-white text-muted border ms-1 px-3 py-2 shadow-sm rounded-pill text-nowrap">Đơn vị: Tháng</span>
         </div>
       </div>
       <div class="chart-container position-relative">
@@ -188,17 +205,15 @@
 <div class="row mb-4">
   <div class="col-12">
     <div class="bg-panel">
-      <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-2 border-bottom">
-        <h6 class="mb-0 fw-bold"><i class="fa-solid fa-chart-gantt text-primary me-2"></i>Biểu đồ Kỳ hạn tháng này</h6>
-        <div class="small text-muted d-flex gap-3">
-            <span><i class="fa-solid fa-square text-danger"></i> Quá hạn</span>
-            <span><i class="fa-solid fa-square text-warning"></i> Hôm nay</span>
-            <span><i class="fa-solid fa-square" style="color: #fdba74;"></i> Sắp tới</span>
-            <span><i class="fa-solid fa-square text-success"></i> Còn xa</span>
-            <span><i class="fa-solid fa-square text-secondary"></i> Đã xuất HĐ</span>
+      <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-2 border-bottom gap-3">
+        <h6 class="fw-bold mb-0"><i class="fa-solid fa-chart-gantt text-primary me-2"></i>Biểu đồ Kỳ hạn tháng này</h6>
+        <div class="small text-muted d-flex flex-wrap gap-3 justify-content-start justify-content-md-end">
+            <span class="text-nowrap"><i class="fa-solid fa-square text-danger me-1"></i>Quá hạn</span>
+            <span class="text-nowrap"><i class="fa-solid fa-square me-1" style="color: #fdba74;"></i>Sắp tới</span>
+            <span class="text-nowrap"><i class="fa-solid fa-square text-success me-1"></i>Còn xa</span>
+            <span class="text-nowrap"><i class="fa-solid fa-square text-secondary me-1"></i>Đã xuất HĐ</span>
         </div>
       </div>
-
       <div class="row g-4">
         <div class="col-12 col-md-8 d-flex flex-column">
           <div class="chart-container-small position-relative">
@@ -207,11 +222,10 @@
             </div>
             <canvas id="paymentTimelineChart" class="position-relative z-2"></canvas>
           </div>
-          <div class="small text-muted mt-2 d-flex align-items-center justify-content-center">
+          <div class="small text-muted mt-2 d-flex align-items-center justify-content-center text-center">
             <i class="fa-solid fa-hand-pointer text-primary me-2"></i> Nhấn vào cột trên biểu đồ để xem chi tiết phòng
           </div>
         </div>
-
         <div class="col-12 col-md-4 d-flex flex-column">
           <h6 id="detailDayTitle" class="fw-bold text-muted mb-3 fs-7 text-uppercase">Chi tiết ngày...</h6>
           <div class="flex-grow-1 p-3 rounded-4 bg-light border custom-scrollbar" style="overflow-y: auto; max-height: 260px;">
@@ -229,14 +243,14 @@
   <div class="col-12">
     <div class="bg-panel">
       <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-2 border-bottom">
-        <h6 class="mb-0 fw-bold"><i class="fa-solid fa-bolt text-warning me-2"></i>Tiêu thụ điện năng</h6>
-        <div class="d-flex align-items-center mt-2 mt-md-0 bg-light rounded-pill p-1 ps-3 border">
-          <select id="electricRangeSelect" class="form-select form-select-sm border-0 bg-transparent text-dark fw-semibold pe-4" style="box-shadow: none; cursor: pointer; width: auto; min-width: 110px;">
+        <h6 class="fw-bold"><i class="fa-solid fa-bolt text-warning me-2"></i>Tiêu thụ điện năng</h6>
+        <div class="d-flex align-items-center mt-3 mt-md-0 bg-light rounded-pill p-1 ps-3 border w-100 w-md-auto justify-content-between">
+          <select id="electricRangeSelect" class="form-select form-select-sm border-0 bg-transparent text-dark fw-semibold pe-4 flex-grow-1" style="box-shadow: none; cursor: pointer;">
             <option value="all">Tất cả</option>
             <option value="6" selected>6 tháng</option>
             <option value="12">1 năm</option>
           </select>
-          <span id="electricTimeUnit" class="badge bg-white text-muted border ms-1 px-3 py-2 shadow-sm rounded-pill">Đơn vị: Tháng</span>
+          <span id="timeUnit" class="badge bg-white text-muted border ms-1 px-3 py-2 shadow-sm rounded-pill text-nowrap">Đơn vị: Tháng</span>
         </div>
       </div>
 

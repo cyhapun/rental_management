@@ -234,32 +234,36 @@
         // 1. TẠO PLUGIN VẼ KÝ HIỆU "HÔM NAY"
         const todayIndicatorPlugin = {
           id: 'todayIndicator',
-          afterDraw: (chart) => {
+          afterDatasetsDraw: (chart) => { // Đổi sang hook này để đảm bảo cột đã render xong (fix lỗi do animation)
             const ctx = chart.ctx;
             const xAxis = chart.scales.x;
-            const yAxis = chart.scales.y;
-            const todayStr = new Date().getDate().toString(); // Lấy ngày hiện tại
+            const chartArea = chart.chartArea;
             
-            // Tìm vị trí cột của ngày hôm nay
-            const todayIndex = chart.data.labels.indexOf(todayStr);
-            if (todayIndex === -1) return;
+            // Đảm bảo chartArea đã tồn tại trước khi vẽ
+            if (!chartArea) return; 
             
-            // Tính tọa độ X và Y để vẽ
-            const x = xAxis.getPixelForTick(todayIndex);
-            const yTop = yAxis.top;
-            const yBottom = yAxis.bottom;
+            // Tìm index thông minh hơn: parse về số nguyên để so sánh (VD: "05" và "5" đều khớp)
+            const todayDate = new Date().getDate();
+            const todayIndex = chart.data.labels.findIndex(label => parseInt(label) === todayDate);
+            
+            if (todayIndex === -1) return; // Nếu không tìm thấy ngày hiện tại trong nhãn thì bỏ qua
+            
+            // Lấy tọa độ X chuẩn xác theo trục thay vì theo Cột dữ liệu (chống sai lệch khi responsive)
+            const x = xAxis.getPixelForValue(todayIndex);
+            const yTop = chartArea.top;
+            const yBottom = chartArea.bottom;
             
             ctx.save();
-            // Vẽ đường thẳng đứt nét chạy dọc
+            // Vẽ đường nét đứt
             ctx.beginPath();
             ctx.moveTo(x, yTop - 10); 
             ctx.lineTo(x, yBottom);
             ctx.lineWidth = 1.5;
-            ctx.strokeStyle = '#ef4444'; // Màu đỏ nổi bật
-            ctx.setLineDash([5, 5]); // Nét đứt
+            ctx.strokeStyle = '#ef4444'; 
+            ctx.setLineDash([5, 5]); 
             ctx.stroke();
             
-            // Vẽ chữ "▼ HÔM NAY" trên cùng
+            // Vẽ chữ
             ctx.fillStyle = '#ef4444';
             ctx.font = 'bold 10px "Inter", sans-serif';
             ctx.textAlign = 'center';

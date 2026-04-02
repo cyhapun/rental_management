@@ -55,3 +55,44 @@
 .custom-scrollbar-x::-webkit-scrollbar-thumb:hover { 
     background: #94a3b8; 
 }
+
+/* --- TỐI ƯU CHO MOBILE (Màn hình dưới 768px) --- */
+@media (max-width: 767.98px) {
+    /* Thu nhỏ padding của các khối chứa số liệu */
+    .card-metric {
+        padding: 1rem !important; /* Tương đương p-3 giảm xuống p-3 một chút */
+    }
+    
+    /* Thu nhỏ kích thước icon */
+    .icon-shape {
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+    }
+    .icon-shape i {
+        font-size: 1rem !important; /* Thu nhỏ icon fs-5 xuống */
+    }
+
+    /* Thu nhỏ font chữ của các con số để không bị tràn dòng */
+    .card-metric .h4 { font-size: 1.25rem !important; }
+    .card-metric .h5 { font-size: 1.1rem !important; }
+    .card-metric .h6 { font-size: 1rem !important; }
+    .metric-small { font-size: 0.75rem; }
+
+    /* Điều chỉnh biểu đồ: Không gian nhỏ thì biểu đồ nên thấp lại một chút để hiển thị được nhiều nội dung hơn khi vuốt */
+    .chart-container { height: 280px; }
+    .chart-container-small { height: 240px; }
+    
+    /* Bóp nhỏ biểu đồ tròn dưới cùng để không chiếm nguyên màn hình */
+    .mini-chart-wrapper {
+        height: 150px;
+    }
+    
+    /* Khoảng cách giữa các section bớt lại */
+    .mb-4 { margin-bottom: 1.25rem !important; }
+}
+
+/* Fix lỗi tràn chữ ở sidebar Chi tiết ngày */
+#paymentTimelineDetails .badge {
+    white-space: nowrap;
+}
