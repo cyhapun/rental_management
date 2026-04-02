@@ -31,7 +31,7 @@ async def _find_room_by_number(db, room_number_value):
     return None
 
 
-async def _sync_room_current_index(db, room_id_value: str):
+async def _sync_room_current_index(db, room_id_value: str, fallback_index: int = 0):
     room_doc = None
     try:
         room_doc = await db.rooms.find_one({"_id": ObjectId(room_id_value)})
@@ -46,12 +46,19 @@ async def _sync_room_current_index(db, room_id_value: str):
         {"$or": [{"room_id": room_oid_str}, {"room_id": room_number}]},
         sort=[("month", -1), ("_id", -1)],
     )
-    try:
-        current_idx = int((latest or {}).get("new_index", 0))
-    except Exception:
-        current_idx = 0
+    
+    # Nếu còn bản ghi cũ hơn, lấy số mới của bản ghi đó. 
+    # Nếu không còn bản ghi nào, lấy số fallback dự phòng
+    if latest:
+        try:
+            current_idx = int(latest.get("new_index", 0))
+        except Exception:
+            current_idx = 0
+    else:
+        current_idx = fallback_index
+        
     await db.rooms.update_one({"_id": room_doc.get("_id")}, {"$set": {"current_electric_index": current_idx}})
-
+    
 # 1. API Trả về khung HTML siêu nhẹ
 @router.get("/")
 async def list_electric(request: Request):
@@ -193,13 +200,16 @@ async def update_electric(
 async def delete_electric(request: Request, reading_id: str):
     db = get_db()
     
-    # Lấy thông tin bản ghi trước khi xóa để lấy room_id
+    # Lấy thông tin bản ghi trước khi xóa để lấy room_id và số cũ
     doc = await db.electric_readings.find_one({"_id": ObjectId(reading_id)})
     if doc:
         room_id = doc.get("room_id")
+        old_index_fallback = doc.get("old_index", 0) # Lấy số cũ làm dự phòng
+        
         await db.electric_readings.delete_one({"_id": ObjectId(reading_id)})
-        # Sau khi xóa, số hiện tại của phòng phải lùi về bản ghi trước đó
-        await _sync_room_current_index(db, room_id)
+        
+        # Đồng bộ lại chỉ số phòng, truyền thêm số dự phòng
+        await _sync_room_current_index(db, room_id, fallback_index=old_index_fallback)
         
     return redirect_with_flash("/electric", "Đã xóa bản ghi thành công.", "success")
 
