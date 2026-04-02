@@ -327,9 +327,15 @@ async def delete_bill(bill_id: str):
         bill_status = bill.get("status", "unpaid")
         redirect_status = bill_status if bill_status in ("paid", "unpaid") else "unpaid"
 
+        # 1. BẮT BUỘC: Xóa tất cả các lịch sử thanh toán (payments) mồ côi liên kết với Hóa đơn này
+        await db.payments.delete_many({"bill_id": str(bill_id)})
+
+        # 2. Sau đó mới tiến hành Xóa Hóa đơn
         await db.bills.delete_one({"_id": ObjectId(bill_id)})
-        return redirect_with_flash(f"/bills/?status={redirect_status}", "Xóa hóa đơn thành công.")
-    except Exception:
+        
+        return redirect_with_flash(f"/bills/?status={redirect_status}", "Xóa hóa đơn và các giao dịch liên quan thành công.")
+    except Exception as e:
+        print(f"Lỗi xóa hóa đơn: {e}")
         return redirect_with_flash("/bills/", "Xóa hóa đơn thất bại.", "danger")
     
 @router.get("/check-electric")
