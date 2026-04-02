@@ -56,7 +56,7 @@ def hash_password(password: str, salt: Optional[str] = None) -> str:
     if salt is None:
         salt = generate_salt()
     dk = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt.encode("utf-8"), 100_000)
-    return f"{salt}${{dk.hex()}}"
+    return f"{salt}${dk.hex()}"
 
 
 def verify_password(stored: str, provided: str) -> bool:

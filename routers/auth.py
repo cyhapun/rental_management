@@ -35,7 +35,7 @@ async def login_post(request: Request, response: Response, username: str = Form(
         return redirect_with_flash('/login', 'Tài khoản không tồn tại', level='danger')
 
     stored_password = acct.get("password") or ""
-    if not verify_password(password, stored_password):
+    if not verify_password(stored_password, password):
         return redirect_with_flash('/login', 'Sai mật khẩu', level='danger')
 
     # Create a server-side session and set an encrypted session cookie.
