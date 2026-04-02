@@ -118,12 +118,15 @@
             <input class="form-control bg-light fw-bold text-primary" id="pay_amount" name="amount" type="number" required />
             <div class="form-text small">Mặc định điền toàn bộ số tiền còn nợ.</div>
           </div>
-          <div class="mb-2">
-            <label class="form-label small fw-semibold text-muted">Hình thức thanh toán</label>
+          <div class="mb-3"> <label class="form-label small fw-semibold text-muted">Hình thức thanh toán</label>
             <select class="form-select bg-light" name="method">
               <option value="Chuyển khoản">Chuyển khoản</option>
               <option value="Tiền mặt">Tiền mặt</option>
             </select>
+          </div>
+          <div class="mb-2">
+            <label class="form-label small fw-semibold text-muted">Ngày thanh toán</label>
+            <input class="form-control bg-light text-dark" id="payment_date" name="payment_date" type="date" required />
           </div>
         </div>
         <div class="modal-footer bg-light rounded-bottom-4">

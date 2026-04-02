@@ -206,7 +206,8 @@
       function updateChurnChart(range){
         if (!churnChart) return;
         if (range === 'all'){
-          churnChart.data.labels = D.labels_all || [];
+          // Chỉ định lấy mảng thời gian riêng của Hợp đồng
+          churnChart.data.labels = D.tenant_labels_all || D.labels_all || [];
           churnChart.data.datasets[0].data = D.tenant_started_all || [];
           churnChart.data.datasets[1].data = D.tenant_ended_all || [];
           try{ document.getElementById('churnTimeUnit').innerText = 'Đơn vị: Tháng'; }catch(e){}

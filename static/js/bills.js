@@ -170,6 +170,15 @@ window.openPayModal = function(billId, totalDue) {
     const amountInput = document.getElementById('pay_amount');
     if (amountInput) amountInput.value = totalDue || 0;
     
+    // THÊM ĐOẠN NÀY: Tự động điền ngày hôm nay chuẩn múi giờ Việt Nam
+    const dateInput = document.getElementById('payment_date');
+    if (dateInput) {
+        const today = new Date();
+        const tzOffset = today.getTimezoneOffset() * 60000; 
+        const localISOTime = (new Date(today - tzOffset)).toISOString().split('T')[0];
+        dateInput.value = localISOTime;
+    }
+    
     const modalEl = document.getElementById('payBillModal');
     if (modalEl) {
       const modal = new bootstrap.Modal(modalEl);

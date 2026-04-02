@@ -1,6 +1,13 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
+
+
+class PaymentRecord(BaseModel):
+    amount: int
+    method: str
+    date: datetime
+    recorded_at: datetime
 
 
 class BillCreate(BaseModel):
@@ -17,3 +24,8 @@ class BillCreate(BaseModel):
 class BillOut(BillCreate):
     id: str = ""
     created_at: Optional[datetime]
+    
+    paid_amount: int = 0
+    paid_method: Optional[str] = None
+    paid_at: Optional[datetime] = None
+    payment_history: Optional[List[PaymentRecord]] = []

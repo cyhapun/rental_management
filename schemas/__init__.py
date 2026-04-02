@@ -3,7 +3,6 @@ from .tenants import TenantCreate, TenantUpdate, TenantOut
 from .contracts import ContractCreate, ContractOut
 from .electric import ElectricReadingCreate, ElectricReadingOut
 from .bills import BillCreate, BillOut
-from .payments import PaymentCreate, PaymentOut
 
 __all__ = [
     'RoomCreate','RoomUpdate','RoomOut',
@@ -11,5 +10,4 @@ __all__ = [
     'ContractCreate','ContractOut',
     'ElectricReadingCreate','ElectricReadingOut',
     'BillCreate','BillOut',
-    'PaymentCreate','PaymentOut'
 ]

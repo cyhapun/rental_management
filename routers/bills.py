@@ -240,35 +240,79 @@ async def generate_monthly(
 
 
 @router.post("/{bill_id}/pay")
-async def pay_bill(bill_id: str, amount: int = Form(...), method: str = Form("Chuyển khoản")):
+async def pay_bill(
+    bill_id: str, 
+    amount: int = Form(...), 
+    method: str = Form("Chuyển khoản"),
+    payment_date: str = Form(None) # Lấy ngày thanh toán từ form
+):
     db = get_db()
     try:
         bill = await db.bills.find_one({"_id": ObjectId(bill_id)})
         if not bill:
             return redirect_with_flash("/bills/?status=unpaid", "Không tìm thấy hóa đơn.", "danger")
+        
         total_due = int(bill.get("total", 0) or 0)
         if amount <= 0:
             return redirect_with_flash(f"/bills/?status={bill.get('status','unpaid')}", "Số tiền phải lớn hơn 0.", "danger")
         if amount > total_due:
             return redirect_with_flash(f"/bills/?status={bill.get('status','unpaid')}", "Số tiền thanh toán không được lớn hơn tổng tiền.", "danger")
 
+        # Xử lý ngày thanh toán (Nếu không chọn thì lấy UTC hiện tại)
+        if payment_date:
+            try:
+                # Convert từ chuỗi YYYY-MM-DD sang datetime
+                p_date = datetime.datetime.strptime(payment_date, "%Y-%m-%d")
+            except ValueError:
+                p_date = datetime.datetime.utcnow()
+        else:
+            p_date = datetime.datetime.utcnow()
+
         remaining = total_due - amount
         existing_paid = int(bill.get('paid_amount', 0) or 0)
         new_paid = existing_paid + amount
+        
+        # 1. Cập nhật thông tin tổng quát của Bill
         update_fields = {
             'paid_amount': new_paid,
             'paid_method': method or 'Chuyển khoản',
-            'paid_at': datetime.datetime.utcnow(),
+            'paid_at': p_date, # Cập nhật ngày đóng gần nhất
         }
+        
         if new_paid >= total_due:
             update_fields['status'] = 'paid'
             update_fields['total'] = 0
         else:
             update_fields['total'] = total_due - new_paid
-        await db.bills.update_one({"_id": ObjectId(bill_id)}, {"$set": update_fields})
+            
+        # Ghi nhận lần thanh toán này vào mảng payment_history của Bill
+        new_payment_record = {
+            "amount": amount,
+            "method": method,
+            "date": p_date,
+            "recorded_at": datetime.datetime.utcnow()
+        }
 
-        return redirect_with_flash(f"/bills/?status={ 'paid' if remaining==0 else 'unpaid'}", "Thanh toán thành công.")
-    except Exception:
+        await db.bills.update_one(
+            {"_id": ObjectId(bill_id)}, 
+            {
+                "$set": update_fields,
+                "$push": {"payment_history": new_payment_record} # Thêm vào lịch sử
+            }
+        )
+
+        # 2. Thêm 1 dòng vào collection `payments` để biểu đồ Doanh Thu thống kê được
+        await db.payments.insert_one({
+            "bill_id": str(bill_id),
+            "amount": amount,
+            "method": method,
+            "payment_date": p_date, # Đây là trường dashboard.py sẽ dùng để vẽ biểu đồ
+            "created_at": datetime.datetime.utcnow()
+        })
+
+        return redirect_with_flash(f"/bills/?status={ 'paid' if remaining==0 else 'unpaid'}", "Ghi nhận thanh toán thành công.")
+    except Exception as e:
+        print(f"Lỗi thanh toán: {e}")
         return redirect_with_flash("/bills/?status=unpaid", "Thanh toán thất bại.", "danger")
 
 

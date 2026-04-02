@@ -29,7 +29,15 @@ async def dashboard_data_api():
     db = get_db()
     import datetime as _dt
     from collections import defaultdict
-    now = _dt.datetime.now()
+    from datetime import timezone, timedelta
+    
+    # Ép dùng múi giờ Việt Nam
+    tz_vn = timezone(timedelta(hours=7))
+    now = _dt.datetime.now(tz_vn)
+
+    # Tách 2 biến mốc thời gian riêng biệt
+    revenue_earliest_date = now.date()  # Dành cho tiền/điện
+    contract_earliest_date = now.date() # Dành cho hợp đồng
 
     # 1. THỐNG KÊ CƠ BẢN (Nhanh)
     total_rooms = await db.rooms.count_documents({})
@@ -241,49 +249,94 @@ async def dashboard_data_api():
     payment_by_bill = defaultdict(int)
     payment_by_month = defaultdict(int)
     payment_by_day = defaultdict(int)
-    earliest_date = now.date()
 
     async for p in db.payments.find({}, {"bill_id": 1, "amount": 1, "payment_date": 1}):
         amt = int(p.get("amount") or 0)
         bid = str(p.get("bill_id") or "")
         p_date = p.get("payment_date")
         
-        if bid: payment_by_bill[bid] += amt
+        if bid: 
+            payment_by_bill[bid] += amt
         
         if p_date:
+            # Chuẩn hóa múi giờ VN
             if isinstance(p_date, str):
-                try: p_date = _dt.datetime.fromisoformat(p_date.replace("Z", "+00:00")).date()
+                try: 
+                    dt_obj = _dt.datetime.fromisoformat(p_date.replace("Z", "+00:00"))
+                    p_date = dt_obj.astimezone(tz_vn).date()
                 except: p_date = None
-            elif isinstance(p_date, _dt.datetime): p_date = p_date.date()
+            elif isinstance(p_date, _dt.datetime): 
+                if p_date.tzinfo is None:
+                    p_date = p_date.replace(tzinfo=timezone.utc)
+                p_date = p_date.astimezone(tz_vn).date()
             
+            # Chốt chặn lệch ngày
+            today_vn = now.date()
+            if p_date and p_date > today_vn:
+                p_date = today_vn
+                
             if p_date:
-                earliest_date = min(earliest_date, p_date)
+                revenue_earliest_date = min(revenue_earliest_date, p_date)
                 p_month_str = month_label(p_date.year, p_date.month)
                 payment_by_month[p_month_str] += amt
                 payment_by_day[p_date] += amt
 
-    # C. Bills (Gom nhóm theo tháng)
+    # C. Bills (Gom nhóm theo tháng và tính luôn theo ngày cho biểu đồ 30 ngày)
     paid_bills_by_month = defaultdict(int)
     revenue_by_month = defaultdict(int)
     
-    async for b in db.bills.find({}, {"month": 1, "total": 1, "status": 1, "paid_amount": 1}):
+    # 1. Đưa dữ liệu chuẩn từ bảng payments sang bảng doanh thu tháng
+    for m, amt in payment_by_month.items():
+        revenue_by_month[m] += amt
+        
+    # 2. Quét bảng Bills để nhặt các khoản tiền cũ
+    async for b in db.bills.find({}, {"month": 1, "total": 1, "status": 1, "paid_amount": 1, "created_at": 1}):
         b_month = b.get("month")
+        bid = str(b.get("_id"))
         if not b_month: continue
         
         try:
             d = _dt.date.fromisoformat(f"{b_month}-01")
-            earliest_date = min(earliest_date, d)
+            revenue_earliest_date = min(revenue_earliest_date, d)
         except: pass
 
-        if b.get("status") == "paid":
+        is_paid = (b.get("status") == "paid")
+        if is_paid:
             paid_bills_by_month[b_month] += int(b.get("total") or 0)
             
-        paid_amt = int(b.get('paid_amount') or 0)
-        if paid_amt == 0:
-            # Fallback sang bảng payment nếu bill chưa cập nhật paid_amount
-            paid_amt = payment_by_bill.get(str(b.get("_id")), 0)
+        # === BƯỚC QUAN TRỌNG TÁCH BẠCH CŨ/MỚI ===
+        # Nếu Bill này ĐÃ CÓ lịch sử trong bảng `payments`, ta BỎ QUA để không cộng dồn 2 lần
+        if payment_by_bill.get(bid, 0) > 0:
+            continue
             
-        revenue_by_month[b_month] += paid_amt
+        # NẾU LÀ DỮ LIỆU CŨ (Không tồn tại trong db.payments):
+        paid_amt = int(b.get('paid_amount') or 0)
+        if paid_amt == 0 and is_paid:
+            paid_amt = int(b.get('total') or 0)
+            
+        if paid_amt > 0:
+            revenue_by_month[b_month] += paid_amt
+            
+            # Tính vào biểu đồ ngày bằng created_at
+            c_date = b.get("created_at")
+            if c_date:
+                if isinstance(c_date, str):
+                    try: 
+                        dt_obj = _dt.datetime.fromisoformat(c_date.replace("Z", "+00:00"))
+                        c_date = dt_obj.astimezone(tz_vn).date()
+                    except: c_date = None
+                elif isinstance(c_date, _dt.datetime):
+                    if c_date.tzinfo is None:
+                        c_date = c_date.replace(tzinfo=timezone.utc)
+                    c_date = c_date.astimezone(tz_vn).date()
+                
+                today_vn = now.date()
+                if c_date and c_date > today_vn:
+                    c_date = today_vn
+                    
+                if c_date:
+                    revenue_earliest_date = min(revenue_earliest_date, c_date)
+                    payment_by_day[c_date] += paid_amt
 
     # D. Electric Readings
     electric_by_month = defaultdict(int)
@@ -299,7 +352,7 @@ async def dashboard_data_api():
             electric_by_month[e_month] += u
             try:
                 d = _dt.date.fromisoformat(f"{e_month}-01")
-                earliest_date = min(earliest_date, d)
+                revenue_earliest_date = min(revenue_earliest_date, d)
             except: pass
             
         if rid:
@@ -313,7 +366,7 @@ async def dashboard_data_api():
                 electric_by_day[e_date] += u
             except: pass
 
-    # E. Contracts (Chỉ parse date, không kéo toàn bộ object)
+    # E. Contracts 
     tenant_starts = defaultdict(int)
     tenant_ends = defaultdict(int)
     tenant_starts_day = defaultdict(int)
@@ -333,16 +386,16 @@ async def dashboard_data_api():
         td = parse_dt(c.get("termination_date"))
         
         if sd:
-            earliest_date = min(earliest_date, sd)
+            contract_earliest_date = min(contract_earliest_date, sd) # Dùng biến của hợp đồng
             m_str = month_label(sd.year, sd.month)
             tenant_starts[m_str] += 1
             tenant_starts_day[sd] += 1
         if td:
-            earliest_date = min(earliest_date, td)
+            contract_earliest_date = min(contract_earliest_date, td) # Dùng biến của hợp đồng
             m_str = month_label(td.year, td.month)
             tenant_ends[m_str] += 1
             tenant_ends_day[td] += 1
-
+            
     # ---------------------------------------------------------
     # BƯỚC 2: RÁP DỮ LIỆU VÀO MẢNG CHART (Tra cứu Dictionary O(1))
     # ---------------------------------------------------------
@@ -369,9 +422,9 @@ async def dashboard_data_api():
     tenant_started_30 = map_series_day(days_30_objs, tenant_starts_day)
     tenant_ended_30 = map_series_day(days_30_objs, tenant_ends_day)
 
-    # Series All Time (Tính toán danh sách tháng từ earliest_date đến now)
+    # --- Trục 1: Labels Doanh thu & Điện (tính từ lúc có dữ liệu thật) ---
     labels_all = []
-    sy, sm = earliest_date.year, earliest_date.month
+    sy, sm = revenue_earliest_date.year, revenue_earliest_date.month
     ey, em = now.year, now.month
     while (sy < ey) or (sy == ey and sm <= em):
         labels_all.append(month_label(sy, sm))
@@ -380,8 +433,17 @@ async def dashboard_data_api():
 
     payments_all = map_series_month(labels_all, revenue_by_month)
     electric_series_all = map_series_month(labels_all, electric_by_month)
-    tenant_started_all = map_series_month(labels_all, tenant_starts)
-    tenant_ended_all = map_series_month(labels_all, tenant_ends)
+
+    # --- Trục 2: Labels riêng cho Biến động thuê (tính từ lúc có hợp đồng) ---
+    tenant_labels_all = []
+    sy_t, sm_t = contract_earliest_date.year, contract_earliest_date.month
+    while (sy_t < ey) or (sy_t == ey and sm_t <= em):
+        tenant_labels_all.append(month_label(sy_t, sm_t))
+        if sm_t == 12: sy_t += 1; sm_t = 1
+        else: sm_t += 1
+
+    tenant_started_all = map_series_month(tenant_labels_all, tenant_starts)
+    tenant_ended_all = map_series_month(tenant_labels_all, tenant_ends)
 
     # Top Electric Rooms (All time)
     top_rooms = sorted(electric_by_room.items(), key=lambda x: x[1], reverse=True)[:5]
@@ -444,7 +506,9 @@ async def dashboard_data_api():
         "timeline_labels": timeline_labels,
         "timeline_counts": timeline_counts,
         "timeline_colors": timeline_colors,
-        "timeline_details": details_by_day
+        "timeline_details": details_by_day,
+
+        "tenant_labels_all": tenant_labels_all,
     }
 
 @router.get('/dashboard/top-electric/{month}')
