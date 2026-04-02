@@ -54,6 +54,9 @@ async def create_account(request: Request, username: str = Form(...), password: 
     if getattr(request.state, 'user_role', None) != 'admin':
         return redirect_with_flash('/dashboard', 'Bạn không có quyền để tạo tài khoản', 'danger')
     try:
+        username = username.strip()
+        password = password.strip()
+        
         if password != confirm_password:
             return redirect_with_flash('/accounts/', 'Mật khẩu và xác nhận mật khẩu không khớp', 'danger')
         existing = await db.accounts.find_one({"username": username})

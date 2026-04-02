@@ -156,8 +156,8 @@ async def on_startup():
         existing = await db.accounts.find_one({})
         if not existing:
             from core.security import hash_password
-            default_username = "chauhuynhphuc"
-            default_password = "cyhapun"
+            default_username = "admin"
+            default_password = "password"
             pw_hash = hash_password(default_password)
             acct = {
                 "username": default_username,
