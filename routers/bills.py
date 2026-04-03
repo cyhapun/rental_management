@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Request, Form, HTTPException
 from fastapi.responses import RedirectResponse, HTMLResponse
 from core.deps import get_db
+from core import constants
 from bson import ObjectId
 import datetime
 import os
@@ -179,7 +180,7 @@ async def generate_monthly(
             old_index = room.get('current_electric_index', 0) if room else 0
             usage = new_electric_index - old_index
             if usage < 0: usage = 0 # Hoặc raise lỗi tùy logic của bạn
-            kwh_price = room.get('electric_price', 3500) # Giả sử giá điện lưu ở room
+            kwh_price = room.get(constants.PRICE_PER_KWH, 3000) # Giả sử giá điện lưu ở room
             electric_cost = usage * kwh_price
             
             # Lưu vào db.electric_readings
