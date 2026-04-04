@@ -11,13 +11,17 @@ async function loadBills() {
     if (!tbody) return;
 
     const currentStatus = tbody.dataset.status || 'all';
+    // Lấy giá trị của bộ lọc thời gian (Mặc định là month)
+    const timeFilter = document.getElementById('timeFilter')?.value || 'month';
     const csrfToken = document.getElementById('global_csrf_token')?.value || '';
 
     try {
-        const response = await fetch(`/bills/_data?status=${currentStatus}`);
+        // Truyền thêm param time_filter
+        const response = await fetch(`/bills/_data?status=${currentStatus}&time_filter=${timeFilter}`);
         if (!response.ok) throw new Error("Lỗi khi tải hóa đơn");
         
         const bills = await response.json();
+        window.currentBillsData = bills; // Lưu biến global để modal đọc lấy dữ liệu
         
         if (bills.length === 0) {
             tbody.innerHTML = `
@@ -25,7 +29,7 @@ async function loadBills() {
                 <td colspan="6">
                   <div class="p-5 text-center">
                     <i class="fa-solid fa-box-open text-muted mb-3" style="font-size: 3rem; opacity: 0.5;"></i>
-                    <p class="text-muted fw-semibold mb-0">Chưa có hóa đơn nào được tạo.</p>
+                    <p class="text-muted fw-semibold mb-0">Không có dữ liệu trong thời gian này.</p>
                   </div>
                 </td>
               </tr>`;
@@ -54,6 +58,17 @@ async function loadBills() {
                   </button>`;
             }
 
+            // Xử lý UI hiển thị Nút Lịch sử thanh toán dưới số tiền "Đã thu"
+            let historyBtnHtml = '';
+            if (b.payment_history && b.payment_history.length > 0) {
+                historyBtnHtml = `
+                <div class="mt-1">
+                  <button class="btn btn-sm btn-link text-decoration-none p-0 text-info fw-semibold" style="font-size: 0.75rem;" onclick="showPaymentHistory('${b.id}')">
+                    <i class="fa-solid fa-clock-rotate-left me-1"></i>Xem lịch sử
+                  </button>
+                </div>`;
+            }
+
             // Gắn data-attributes trực tiếp vào chuỗi tr
             return `
                 <tr class="data-row" data-tenant-name="${tenantName}" data-room="${roomNumber}" data-month="${b.month || ''}" data-total="${b.total || 0}">
@@ -75,6 +90,7 @@ async function loadBills() {
                     </td>
                     <td class="text-end" data-label="Đã thu">
                       <span class="fw-semibold text-success fs-6">${formatMoney(b.paid_amount || 0)}</span>
+                      ${historyBtnHtml}
                     </td>
                     <td class="text-end" data-label="Còn nợ">
                       <span class="fw-bold text-danger fs-6">${formatMoney(b.total || 0)}</span>
@@ -116,8 +132,35 @@ async function loadBills() {
     }
 }
 
-// 2. Xem Hóa Đơn (Iframe Modal)
-// 1. Xem Hóa Đơn (Đã tối ưu tốc độ hiển thị)
+// Hàm hiển thị Lịch sử thanh toán ra Modal
+window.showPaymentHistory = function(billId) {
+    // Tìm hóa đơn trong biến dữ liệu đã load
+    const bill = window.currentBillsData.find(b => b.id === billId);
+    if (!bill || !bill.payment_history) return;
+
+    const tbody = document.getElementById('paymentHistoryBody');
+    if (bill.payment_history.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted py-4">Chưa có giao dịch thanh toán nào</td></tr>';
+    } else {
+        // Sắp xếp lịch sử mới nhất lên đầu
+        const historySorted = [...bill.payment_history].reverse();
+        
+        tbody.innerHTML = historySorted.map(ph => `
+            <tr>
+                <td class="ps-4 fw-medium text-dark">${ph.date_fmt || '--'}</td>
+                <td class="text-end fw-bold text-success">${formatMoney(ph.amount)}</td>
+                <td class="text-center pe-4"><span class="badge bg-light text-dark border px-2 py-1">${ph.method}</span></td>
+            </tr>
+        `).join('');
+    }
+
+    // Mở Modal
+    const modalEl = document.getElementById('paymentHistoryModal');
+    const modal = new bootstrap.Modal(modalEl);
+    modal.show();
+};
+
+// 2. Xem Hóa Đơn (Đã tối ưu tốc độ hiển thị)
 window.showBill = async function(billId) {
   const frame = document.getElementById('billViewFrame');
   const modalEl = document.getElementById('billViewModal');
@@ -170,7 +213,7 @@ window.openPayModal = function(billId, totalDue) {
     const amountInput = document.getElementById('pay_amount');
     if (amountInput) amountInput.value = totalDue || 0;
     
-    // THÊM ĐOẠN NÀY: Tự động điền ngày hôm nay chuẩn múi giờ Việt Nam
+    // Tự động điền ngày hôm nay chuẩn múi giờ Việt Nam
     const dateInput = document.getElementById('payment_date');
     if (dateInput) {
         const today = new Date();
@@ -257,6 +300,31 @@ function sortBills(){
 document.addEventListener('DOMContentLoaded', function(){
   const input = document.getElementById('billSearch'); if (input) input.addEventListener('input', filterBills);
   const s = document.getElementById('billSort'); if (s) s.addEventListener('change', sortBills);
+  const timeButtons = document.querySelectorAll('#timeFilterPills button');
+  const timeHiddenInput = document.getElementById('timeFilter');
+
+  timeButtons.forEach(btn => {
+      btn.addEventListener('click', function() {
+          // Xóa class active cũ
+          timeButtons.forEach(b => {
+              b.classList.remove('bg-white', 'text-primary', 'shadow-sm', 'active-time');
+              b.classList.add('text-muted', 'border-0');
+          });
+          // Thêm class active cho nút vừa bấm
+          this.classList.remove('text-muted', 'border-0');
+          this.classList.add('bg-white', 'text-primary', 'shadow-sm', 'active-time');
+          
+          // Cập nhật giá trị và load lại data
+          timeHiddenInput.value = this.dataset.value;
+          loadBills();
+      });
+  });
+  
+  // Gắn event khi thay đổi bộ lọc thời gian
+  const timeFilterSelect = document.getElementById('timeFilter');
+  if (timeFilterSelect) {
+      timeFilterSelect.addEventListener('change', loadBills);
+  }
 
   // Kích hoạt load dữ liệu
   const tbody = document.getElementById('billsTableBody');

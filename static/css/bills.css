@@ -85,3 +85,23 @@
     }
     #billsTable td:last-child::before { content: none; }
 }
+
+.filter-group {
+    transition: all 0.3s ease;
+}
+
+.filter-group .btn {
+    font-size: 0.85rem;
+    transition: all 0.2s ease-in-out;
+}
+
+#billSearch:focus, #billSort:focus {
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.15) !important;
+    background-color: #fff !important;
+}
+
+/* Hiệu ứng hover cho các nút không active */
+.filter-group .btn.text-muted:hover {
+    color: var(--bs-primary) !important;
+    background-color: rgba(255,255,255,0.5);
+}

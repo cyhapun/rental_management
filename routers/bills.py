@@ -63,46 +63,49 @@ async def list_bills_html(request: Request, status: str = "all"):
 
 
 @router.get("/_data")
-async def list_bills_data(status: str = "all"):
+async def list_bills_data(status: str = "all", time_filter: str = "month"):
     db = get_db()
     match_stage = {}
+    
+    # 1. Logic lọc theo trạng thái
     if status in ("paid", "unpaid"):
         match_stage["status"] = status
+
+    # 2. Logic lọc theo thời gian
+    now_vn = datetime.datetime.now(VN_TZ)
+    if time_filter == "month":
+        match_stage["month"] = now_vn.strftime("%Y-%m")
+    elif time_filter == "year":
+        match_stage["month"] = {"$regex": f"^{now_vn.strftime('%Y')}-"}
+    # Nếu time_filter == "all", không thêm điều kiện lọc month vào match_stage
 
     pipeline = [
         {"$match": match_stage},
         {"$sort": {"created_at": -1}},
         
-        # 1. Ép kiểu an toàn contract_id (từ String sang ObjectId)
         {"$addFields": {
             "contract_obj_id": {"$convert": {"input": "$contract_id", "to": "objectId", "onError": None, "onNull": None}},
-            "bill_str_id": {"$toString": "$_id"} # Chuẩn bị để lookup payments
+            "bill_str_id": {"$toString": "$_id"} 
         }},
-        
-        # 2. Lookup Contract
         {"$lookup": {"from": "contracts", "localField": "contract_obj_id", "foreignField": "_id", "as": "contract_info"}},
         {"$unwind": {"path": "$contract_info", "preserveNullAndEmptyArrays": True}},
         
-        # 3. Ép kiểu room/tenant ID từ contract
         {"$addFields": {
             "room_obj_id": {"$convert": {"input": "$contract_info.room_id", "to": "objectId", "onError": None, "onNull": None}},
             "tenant_obj_id": {"$convert": {"input": "$contract_info.tenant_id", "to": "objectId", "onError": None, "onNull": None}}
         }},
         
-        # 4. Lookup Room & Tenant
         {"$lookup": {"from": "rooms", "localField": "room_obj_id", "foreignField": "_id", "as": "room_info"}},
         {"$unwind": {"path": "$room_info", "preserveNullAndEmptyArrays": True}},
         {"$lookup": {"from": "tenants", "localField": "tenant_obj_id", "foreignField": "_id", "as": "tenant_info"}},
         {"$unwind": {"path": "$tenant_info", "preserveNullAndEmptyArrays": True}},
         
-        # 5. Lookup Payments (Lấy các khoản đã đóng lẻ tẻ)
         {"$lookup": {"from": "payments", "localField": "bill_str_id", "foreignField": "bill_id", "as": "payments_list"}}
     ]
 
     bills = []
     try:
         async for b in db.bills.aggregate(pipeline):
-            # Lấy thông tin cơ bản an toàn bằng get() với giá trị mặc định, KHÔNG try/except pass
             room_price = b.get("room_price", 0) or 0
             electric_cost = b.get("electric_cost", 0) or 0
             other_cost = b.get("other_cost", 0) or 0
@@ -112,10 +115,8 @@ async def list_bills_data(status: str = "all"):
             if not water_cost:
                 water_cost = WATER_FEE
                 total = room_price + electric_cost + other_cost + water_cost
-                # Cập nhật background nếu thiếu
                 await db.bills.update_one({"_id": b["_id"]}, {"$set": {"water_cost": water_cost, "total": total}})
 
-            # Tính toán số tiền đã trả
             paid_amount = b.get("paid_amount")
             if paid_amount is None:
                 payments_list = b.get("payments_list", [])
@@ -123,31 +124,30 @@ async def list_bills_data(status: str = "all"):
             else:
                 paid_amount = int(paid_amount)
 
-            # Xử lý thời gian hiển thị (UTC -> VN_TZ)
-            paid_at_fmt = ""
-            pa = b.get("paid_at")
-            if pa:
-                if isinstance(pa, str):
-                    try:
-                        pa = datetime.datetime.fromisoformat(pa.replace('Z', '+00:00'))
-                    except ValueError:
-                        pa = None
-                if isinstance(pa, datetime.datetime):
-                    # Nếu đang ở dạng Naive (không có timezone), gán cho nó là UTC
-                    if pa.tzinfo is None:
-                        pa = pa.replace(tzinfo=timezone.utc)
-                    # Chuyển sang giờ Việt Nam
-                    pa_vn = pa.astimezone(VN_TZ)
-                    paid_at_fmt = pa_vn.strftime('%d/%m/%Y %H:%M')
+            # Xử lý Lịch sử thanh toán từ schema PaymentRecord
+            raw_history = b.get("payment_history", [])
+            formatted_history = []
+            for ph in raw_history:
+                ph_date = ph.get("date")
+                ph_date_fmt = ""
+                if isinstance(ph_date, datetime.datetime):
+                    if ph_date.tzinfo is None:
+                        ph_date = ph_date.replace(tzinfo=timezone.utc)
+                    ph_date_fmt = ph_date.astimezone(VN_TZ).strftime('%d/%m/%Y %H:%M')
+                
+                formatted_history.append({
+                    "amount": int(ph.get("amount", 0)),
+                    "method": ph.get("method", "Chuyển khoản"),
+                    "date_fmt": ph_date_fmt
+                })
 
-            # Build dict trả về cho JSON Front-end
             bills.append({
                 "id": str(b["_id"]),
                 "month": b.get("month", ""),
                 "total": total,
                 "paid_amount": paid_amount,
-                "paid_at_fmt": paid_at_fmt,
                 "status": b.get("status", "unpaid"),
+                "payment_history": formatted_history, 
                 "contract_display": {
                     "tenant_name": b.get("tenant_info", {}).get("full_name", ""),
                     "room_number": b.get("room_info", {}).get("room_number", "")
@@ -155,7 +155,6 @@ async def list_bills_data(status: str = "all"):
             })
     except Exception as e:
         print(f"[API_ERROR] list_bills_data: {str(e)}")
-        # Có thể raise HTTPException nếu muốn hiển thị lỗi ra FE
 
     return bills
 
@@ -262,12 +261,19 @@ async def pay_bill(
         # Xử lý ngày thanh toán (Nếu không chọn thì lấy UTC hiện tại)
         if payment_date:
             try:
-                # Convert từ chuỗi YYYY-MM-DD sang datetime
-                p_date = datetime.datetime.strptime(payment_date, "%Y-%m-%d")
+                # Lấy giờ, phút, giây hiện tại ở VN
+                now_vn = datetime.datetime.now(VN_TZ)
+                # Chuyển string date thành datetime và gắn giờ hiện tại vào
+                p_date = datetime.datetime.strptime(payment_date, "%Y-%m-%d").replace(
+                    hour=now_vn.hour, 
+                    minute=now_vn.minute, 
+                    second=now_vn.second,
+                    tzinfo=VN_TZ
+                )
             except ValueError:
-                p_date = datetime.datetime.utcnow()
+                p_date = datetime.datetime.now(VN_TZ)
         else:
-            p_date = datetime.datetime.utcnow()
+            p_date = datetime.datetime.now(VN_TZ)
 
         remaining = total_due - amount
         existing_paid = int(bill.get('paid_amount', 0) or 0)

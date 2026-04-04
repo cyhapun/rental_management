@@ -45,22 +45,30 @@
 </div>
 
 <div class="bg-panel p-3 mb-4 d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
-  <div class="d-flex bg-light rounded-pill p-1 border shadow-sm" style="width: fit-content;">
-    <a class="btn btn-sm rounded-pill px-3 fw-semibold {% if status == 'all' or status not in ['paid', 'unpaid'] %}bg-white text-primary shadow-sm{% else %}text-muted border-0{% endif %}" href="/bills/?status=all">Tất cả</a>
-    <a class="btn btn-sm rounded-pill px-3 fw-semibold {% if status == 'unpaid' %}bg-white text-danger shadow-sm{% else %}text-muted border-0{% endif %}" href="/bills/?status=unpaid">Chưa đóng</a>
-    <a class="btn btn-sm rounded-pill px-3 fw-semibold {% if status == 'paid' %}bg-white text-success shadow-sm{% else %}text-muted border-0{% endif %}" href="/bills/?status=paid">Đã đóng</a>
+  <div class="d-flex flex-wrap gap-3">
+    <div class="filter-group bg-light rounded-pill p-1 border shadow-sm">
+      <a class="btn btn-sm rounded-pill px-3 fw-semibold {% if status == 'all' or status not in ['paid', 'unpaid'] %}bg-white text-primary shadow-sm{% else %}text-muted border-0{% endif %}" href="/bills/?status=all">Tất cả</a>
+      <a class="btn btn-sm rounded-pill px-3 fw-semibold {% if status == 'unpaid' %}bg-white text-danger shadow-sm{% else %}text-muted border-0{% endif %}" href="/bills/?status=unpaid">Chưa đóng</a>
+      <a class="btn btn-sm rounded-pill px-3 fw-semibold {% if status == 'paid' %}bg-white text-success shadow-sm{% else %}text-muted border-0{% endif %}" href="/bills/?status=paid">Đã đóng</a>
+    </div>
+
+    <div class="filter-group bg-light rounded-pill p-1 border shadow-sm d-flex" id="timeFilterPills">
+      <button class="btn btn-sm rounded-pill px-3 fw-semibold active-time bg-white text-primary shadow-sm" data-value="month">Tháng này</button>
+      <button class="btn btn-sm rounded-pill px-3 fw-semibold text-muted border-0" data-value="year">Năm này</button>
+      <button class="btn btn-sm rounded-pill px-3 fw-semibold text-muted border-0" data-value="all">Tất cả</button>
+      <input type="hidden" id="timeFilter" value="month">
+    </div>
   </div>
 
   <div class="d-flex flex-wrap gap-2">
     <div class="input-group" style="max-width: 250px;">
-      <span class="input-group-text bg-light border-end-0 text-muted"><i class="fa-solid fa-magnifying-glass"></i></span>
-      <input class="form-control border-start-0 bg-light" id="billSearch" placeholder="Tìm tên, phòng..." />
+      <span class="input-group-text bg-light border-end-0 text-muted border-0 shadow-sm" style="border-radius: 20px 0 0 20px;"><i class="fa-solid fa-magnifying-glass"></i></span>
+      <input class="form-control border-start-0 bg-light border-0 shadow-sm" id="billSearch" placeholder="Tìm tên, phòng..." style="border-radius: 0 20px 20px 0;" />
     </div>
-    <select class="form-select bg-light border-0 fw-semibold text-dark" id="billSort" style="width: auto; cursor: pointer; min-width: 150px;">
+    <select class="form-select bg-light border-0 fw-semibold text-dark shadow-sm rounded-pill" id="billSort" style="width: auto; cursor: pointer;">
       <option value="month_desc">Mới nhất</option>
       <option value="month_asc">Cũ nhất</option>
       <option value="total_desc">Nợ cao nhất</option>
-      <option value="total_asc">Nợ thấp nhất</option>
     </select>
   </div>
 </div>
@@ -168,6 +176,35 @@
           <button class="btn btn-primary rounded-pill px-4" type="submit">Lưu & Tạo hóa đơn</button>
         </div>
       </form>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="paymentHistoryModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold"><i class="fa-solid fa-clock-rotate-left text-info me-2"></i>Lịch sử thanh toán</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-0">
+        <div class="table-responsive m-0">
+          <table class="table table-hover mb-0">
+            <thead class="table-light">
+              <tr>
+                <th class="ps-4">Thời gian</th>
+                <th class="text-end">Số tiền</th>
+                <th class="text-center pe-4">Hình thức</th>
+              </tr>
+            </thead>
+            <tbody id="paymentHistoryBody">
+              </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer bg-light">
+        <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Đóng</button>
+      </div>
     </div>
   </div>
 </div>
