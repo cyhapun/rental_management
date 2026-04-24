@@ -86,14 +86,20 @@ async def _normalize_room_id_to_oid_str(db, room_id_value):
 
 async def _refresh_room_statuses(db):
     latest_by_room = {}
+    today = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=7))).date()
+    
     cursor = db.contracts.find({})
     async for c in cursor:
+        if not _is_active_contract(c, today):
+            continue
+            
         rid_norm = await _normalize_room_id_to_oid_str(db, c.get("room_id"))
         if not rid_norm:
             continue
         current = latest_by_room.get(rid_norm)
         if (not current) or (_contract_order_key(c) > _contract_order_key(current)):
             latest_by_room[rid_norm] = c
+            
     occupied_room_ids = set(latest_by_room.keys())
 
     rooms_cursor = db.rooms.find({})
@@ -147,10 +153,6 @@ async def _normalize_contract_refs(db):
 @router.get("/")
 async def list_contracts(request: Request):
     db = get_db()
-    
-    # [Đã GỠ BỎ]: Tuyệt đối không gọi _normalize_contract_refs() và _refresh_room_statuses() 
-    # trong Endpoint GET vì sẽ gây ghi đè Database liên tục mỗi khi F5.
-    
     # Chỉ load danh sách phòng và khách thuê cho Dropdown Modal
     tenants = []
     async for t in db.tenants.find({}).sort("full_name", 1):
@@ -223,13 +225,18 @@ async def list_contracts_data(request: Request):
     contract_ids = []
     
     for c in all_contracts:
-        c_id_str = str(c["_id"])
-        contract_ids.append(c_id_str)
+        c_id = str(c["_id"])
+        c["id"] = c_id
+        
+        c["is_active"] = (c_id in latest_contract_ids) and _is_active_contract(c, today)
+        
         rid_norm = get_room_id_str(c.get("room_id"))
-        if rid_norm:
-            current = latest_by_room.get(rid_norm)
-            if (not current) or (_contract_order_key(c) > _contract_order_key(current)):
-                latest_by_room[rid_norm] = c
+        tid_str = str(c.get("tenant_id")) if c.get("tenant_id") else None
+
+        # Lúc này active_room_ids và active_tenant_ids (để đếm số liệu thẻ xanh) mới chạy đúng
+        if c["is_active"]:
+            if rid_norm: active_room_ids.add(rid_norm)
+            if tid_str: active_tenant_ids.add(tid_str)
 
     latest_contract_ids = {str(v["_id"]) for v in latest_by_room.values()}
     active_room_ids = set()
@@ -459,18 +466,110 @@ async def delete_contract(request: Request, contract_id: str):
         return redirect_with_flash("/contracts/", "Xóa hợp đồng thất bại.", "danger")
 
 @router.post("/{contract_id}/end")
-async def end_contract(request: Request, contract_id: str):
+async def end_contract(
+    request: Request, 
+    contract_id: str,
+    new_electric_index: int = Form(None) # Nhận thêm chỉ số điện mới từ Form
+):
     db = get_db()
     if getattr(request.state, "user_role", None) not in ("admin", "manager"):
         return redirect_with_flash("/dashboard", "Bạn không có quyền kết thúc hợp đồng", "danger")
+    
     import datetime as _dt
+    today_dt = _dt.datetime.now(_dt.timezone(_dt.timedelta(hours=7)))
+    today_iso = today_dt.date().isoformat()
+    current_month = today_dt.strftime("%Y-%m")
+
     try:
-        today_iso = _dt.date.today().isoformat()
-        await db.contracts.update_one({"_id": ObjectId(contract_id)}, {"$set": {"termination_date": today_iso, "end_date": today_iso}})
-        try:
-            await _refresh_room_statuses(db)
-        except Exception:
-            pass
-        return redirect_with_flash("/contracts/", "Kết thúc hợp đồng thành công.")
-    except Exception:
-        return redirect_with_flash("/contracts/", "Kết thúc hợp đồng thất bại.", "danger")
+        # 1. Tìm hợp đồng và phòng liên quan
+        contract = await db.contracts.find_one({"_id": ObjectId(contract_id)})
+        if not contract:
+            return redirect_with_flash("/contracts/", "Không tìm thấy hợp đồng.", "danger")
+
+        room_id = contract.get("room_id")
+        room_oid = ObjectId(room_id) if len(str(room_id)) == 24 else None
+        room = await db.rooms.find_one({"_id": room_oid}) if room_oid else await db.rooms.find_one({"room_number": room_id})
+        
+        if not room:
+            return redirect_with_flash("/contracts/", "Không tìm thấy phòng liên kết.", "danger")
+
+        # Lấy chỉ số điện cũ của phòng
+        old_index = int(room.get("current_electric_index", 0))
+
+        # 2. Kiểm tra chỉ số điện tháng hiện tại
+        existing_reading = await db.electric_readings.find_one({
+            "room_id": str(room.get("_id")),
+            "month": current_month
+        })
+
+        used_kwh = 0
+        
+        if existing_reading:
+            # Đã chốt điện tháng này, lấy số liệu đã chốt
+            used_kwh = int(existing_reading.get("new_index", old_index)) - int(existing_reading.get("old_index", old_index))
+        else:
+            # Chưa chốt điện tháng này
+            if new_electric_index is None:
+                # Trả về lỗi nếu Frontend không gửi số điện lên
+                return redirect_with_flash("/contracts/", f"Phòng chưa có số điện tháng {current_month}. Vui lòng nhập số điện!", "warning")
+            elif new_electric_index < old_index:
+                return redirect_with_flash("/contracts/", "Chỉ số mới không được nhỏ hơn chỉ số cũ.", "danger")
+            else:
+                # Ghi nhận chỉ số điện mới
+                used_kwh = new_electric_index - old_index
+                await db.electric_readings.insert_one({
+                    "room_id": str(room.get("_id")),
+                    "month": current_month,
+                    "old_index": old_index,
+                    "new_index": new_electric_index,
+                    "created_at": today_dt
+                })
+                # Cập nhật số điện hiện tại của phòng
+                await db.rooms.update_one({"_id": room.get("_id")}, {"$set": {"current_electric_index": new_electric_index}})
+
+        # 3. Tạo hóa đơn thanh lý (Chỉ tính tiền điện)
+        electric_price = constants.PRICE_PER_KWH
+        water_fee = constants.WATER_FEE 
+        electric_amount = used_kwh * electric_price
+        total_amount = electric_amount + water_fee
+
+        bill_doc = {
+            "contract_id": contract_id,
+            "room_id": str(room.get("_id")),
+            "tenant_id": contract.get("tenant_id"),
+            "month": current_month,
+            "rent_amount": 0,
+            "electric_amount": electric_amount,
+            "water_amount": water_fee, # Lưu tiền nước khoán
+            "total_amount": total_amount,
+            "status": "unpaid",
+            "type": "liquidation",
+            "created_at": today_dt
+        }
+        await db.bills.insert_one(bill_doc)
+
+        # 4. Cập nhật trạng thái kết thúc hợp đồng
+        # Lùi end_date về 1 ngày trước để hợp đồng MẤT HIỆU LỰC NGAY LẬP TỨC
+        yesterday_iso = (today_dt - _dt.timedelta(days=1)).date().isoformat()
+        
+        await db.contracts.update_one(
+            {"_id": ObjectId(contract_id)}, 
+            {"$set": {
+                "termination_date": today_iso, 
+                "end_date": yesterday_iso  # <-- Quan trọng
+            }}
+        )
+        
+        # Làm mới trạng thái phòng (để phòng chuyển thành "Trống")
+        await _refresh_room_statuses(db)
+
+        # Cập nhật lại câu thông báo có cả Tiền Nước
+        return redirect_with_flash(
+            "/contracts/", 
+            f"Thanh lý thành công! Đã tạo hóa đơn (Điện: {electric_amount:,.0f}đ, Nước: {water_fee:,.0f}đ).", 
+            "success"
+        )
+    
+    except Exception as e:
+        print(f"Lỗi khi kết thúc hợp đồng: {e}")
+        return redirect_with_flash("/contracts/", "Có lỗi xảy ra khi kết thúc hợp đồng.", "danger")

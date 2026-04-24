@@ -182,11 +182,15 @@ async function loadContracts() {
 
             let endBtnHtml = '';
             if (c.is_active) {
+                const hasElectricThisMonth = (c.electric && c.electric.month === todayMonth);
+                const oldIndex = (c.electric && c.electric.current_kwh) ? c.electric.current_kwh : 0;
+                
                 endBtnHtml = `
-                <form action="/contracts/${c.id}/end" method="post" style="display:inline" onsubmit="return confirm('Bạn chắc chắn muốn KẾT THÚC hợp đồng này?');">
-                  <input type="hidden" name="csrf_token" value="${csrfToken}" />  
-                  <button class="btn action-btn bg-warning-subtle text-warning" type="submit" title="Kết thúc"><i class="fa-solid fa-ban"></i></button>
-                </form>`;
+                <button class="btn action-btn bg-warning-subtle text-warning" type="button" 
+                    onclick="openEndContractModal('${c.id}', '${roomName}', ${oldIndex}, ${hasElectricThisMonth})" 
+                    title="Kết thúc/Thanh lý">
+                    <i class="fa-solid fa-ban"></i>
+                </button>`;
             }
 
             tr.innerHTML = `
@@ -305,3 +309,32 @@ function submitToBillsGenerate(contractId, month, csrfToken) {
     document.body.appendChild(form);
     form.submit();
 }
+
+// Hàm mở Modal thanh lý hợp đồng
+window.openEndContractModal = function(contractId, roomName, oldIndex, hasElectricThisMonth) {
+    document.getElementById('endContractForm').action = `/contracts/${contractId}/end`;
+    document.getElementById('end_room_display').innerText = roomName;
+
+    const electricSection = document.getElementById('end_electric_section');
+    const doneMsg = document.getElementById('end_electric_done_msg');
+    const newIndexInput = document.getElementById('end_new_index');
+    const oldIndexInput = document.getElementById('end_old_index');
+
+    if (hasElectricThisMonth) {
+        electricSection.style.display = 'none';
+        doneMsg.style.display = 'block';
+        newIndexInput.removeAttribute('required');
+        newIndexInput.value = '';
+    } else {
+        electricSection.style.display = 'block';
+        doneMsg.style.display = 'none';
+        
+        oldIndexInput.value = oldIndex;
+        newIndexInput.setAttribute('required', 'required');
+        newIndexInput.min = oldIndex;
+        newIndexInput.value = oldIndex;
+    }
+
+    const modal = new bootstrap.Modal(document.getElementById('endContractModal'));
+    modal.show();
+};
