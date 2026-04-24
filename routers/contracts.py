@@ -651,6 +651,30 @@ async def end_contract(
         # Làm mới trạng thái phòng (để phòng chuyển thành "Trống")
         await _refresh_room_statuses(db)
 
+        # Tự động cập nhật trạng thái người thuê thành "Đã kết thúc" nếu họ không còn hợp đồng active nào
+        tenant_id = contract.get("tenant_id")
+        if tenant_id:
+            has_active = False
+            today_date = today_dt.date()
+            tenant_val = str(tenant_id)
+            try:
+                tenant_oid = ObjectId(tenant_val)
+                query = {"$or": [{"tenant_id": tenant_val}, {"tenant_id": tenant_oid}]}
+            except Exception:
+                query = {"tenant_id": tenant_val}
+            
+            async for other_c in db.contracts.find(query):
+                if _is_active_contract(other_c, today_date):
+                    has_active = True
+                    break
+                    
+            if not has_active:
+                try:
+                    t_query = {"$or": [{"_id": ObjectId(tenant_val)}, {"_id": tenant_val}]}
+                except Exception:
+                    t_query = {"_id": tenant_val}
+                await db.tenants.update_one(t_query, {"$set": {"rental_status": "Đã kết thúc"}})
+
         # Cập nhật lại câu thông báo có cả Tiền Nước
         return redirect_with_flash(
             "/contracts/", 
