@@ -123,35 +123,12 @@ async def list_bills_data(status: str = "all", time_filter: str = "month"):
                 water_cost = int(b.get("water_cost") or b.get("water_amount") or b.get("water") or 0)
             except Exception:
                 water_cost = 0
-            try:
-                total = int(b.get("total") or b.get("total_amount") or 0)
-            except Exception:
-                total = 0
 
-            # Backfill new field names from legacy fields so subsequent logic uses normalized schema
-            backfill_updates = {}
-            if "electric_cost" not in b and ("electric_amount" in b):
-                backfill_updates["electric_cost"] = electric_cost
-            if "room_price" not in b and ("rent_amount" in b):
-                backfill_updates["room_price"] = room_price
-            if "water_cost" not in b and ("water_amount" in b):
-                backfill_updates["water_cost"] = water_cost
-            if "total" not in b and ("total_amount" in b):
-                backfill_updates["total"] = total
-            if backfill_updates:
-                try:
-                    await db.bills.update_one({"_id": b["_id"]}, {"$set": backfill_updates})
-                except Exception as e:
-                    print(f"[WARN] Failed to backfill bill {b.get('_id')}: {e}")
-
-            # Ensure water_cost and total exist (use WATER_FEE if missing)
-            if not water_cost:
-                water_cost = WATER_FEE
-                total = room_price + electric_cost + other_cost + water_cost
-                try:
-                    await db.bills.update_one({"_id": b["_id"]}, {"$set": {"water_cost": water_cost, "total": total}})
-                except Exception as e:
-                    print(f"[WARN] Failed to set water_cost/total for bill {b.get('_id')}: {e}")
+            # Tính lại tổng nợ chuẩn (Không lấy từ b.get("total") vì có thể nó đã bị hàm phía dưới ghi đè thành 0 hoặc số còn lại!)
+            full_total = room_price + electric_cost + other_cost + water_cost
+            if not water_cost and ("water_cost" not in b):
+                 water_cost = WATER_FEE
+                 full_total = room_price + electric_cost + other_cost + water_cost
 
             paid_amount = b.get("paid_amount")
             if paid_amount is None:
@@ -159,6 +136,17 @@ async def list_bills_data(status: str = "all", time_filter: str = "month"):
                 paid_amount = sum(int(p.get("amount", 0) or 0) for p in payments_list)
             else:
                 paid_amount = int(paid_amount)
+                
+            remaining_debt = max(0, full_total - paid_amount)
+            correct_status = "paid" if paid_amount >= full_total and full_total > 0 else "unpaid"
+            
+            # Cập nhật lại db nếu status bị lệch hoặc total bị sai do bug cũ
+            db_total = b.get("total")
+            if db_total != full_total or b.get("status") != correct_status:
+                try:
+                    await db.bills.update_one({"_id": b["_id"]}, {"$set": {"total": full_total, "status": correct_status}})
+                except:
+                    pass
 
             # Xử lý Lịch sử thanh toán từ schema PaymentRecord
             raw_history = b.get("payment_history", [])
@@ -180,9 +168,10 @@ async def list_bills_data(status: str = "all", time_filter: str = "month"):
             bills.append({
                 "id": str(b["_id"]),
                 "month": b.get("month", ""),
-                "total": total,
+                "full_total": full_total,
+                "total": remaining_debt, # Frontend renders b.total as "Còn nợ" (Remaining Debt)
                 "paid_amount": paid_amount,
-                "status": b.get("status", "unpaid"),
+                "status": correct_status,
                 "payment_history": formatted_history, 
                 "contract_display": {
                     "tenant_name": b.get("tenant_info", {}).get("full_name", ""),
@@ -288,11 +277,20 @@ async def pay_bill(
         if not bill:
             return redirect_with_flash("/bills/?status=unpaid", "Không tìm thấy hóa đơn.", "danger")
         
-        total_due = int(bill.get("total", 0) or 0)
+        try:
+            full_total = int(bill.get("room_price", 0) or 0) + int(bill.get("electric_cost", 0) or 0) + int(bill.get("water_cost", 0) or 0) + int(bill.get("other_cost", 0) or 0)
+            if full_total == 0:
+                full_total = int(bill.get("total", 0) or 0)
+        except:
+            full_total = int(bill.get("total", 0) or 0)
+
+        existing_paid = int(bill.get('paid_amount', 0) or 0)
+        remaining_debt = full_total - existing_paid
+
         if amount <= 0:
             return redirect_with_flash(f"/bills/?status={bill.get('status','unpaid')}", "Số tiền phải lớn hơn 0.", "danger")
-        if amount > total_due:
-            return redirect_with_flash(f"/bills/?status={bill.get('status','unpaid')}", "Số tiền thanh toán không được lớn hơn tổng tiền.", "danger")
+        if amount > remaining_debt:
+            return redirect_with_flash(f"/bills/?status={bill.get('status','unpaid')}", "Số tiền thanh toán không được lớn hơn dư nợ.", "danger")
 
         # Xử lý ngày thanh toán (Nếu không chọn thì lấy UTC hiện tại)
         if payment_date:
@@ -311,22 +309,22 @@ async def pay_bill(
         else:
             p_date = datetime.datetime.now(VN_TZ)
 
-        remaining = total_due - amount
-        existing_paid = int(bill.get('paid_amount', 0) or 0)
         new_paid = existing_paid + amount
         
-        # 1. Cập nhật thông tin tổng quát của Bill
+        # 1. Cập nhật thông tin tổng quát của Bill (Không thay đổi 'total')
         update_fields = {
             'paid_amount': new_paid,
             'paid_method': method or 'Chuyển khoản',
             'paid_at': p_date, # Cập nhật ngày đóng gần nhất
+            'total': full_total # Ghi đè lại nếu có lỗi cũ
         }
         
-        if new_paid >= total_due:
+        if new_paid >= full_total and full_total > 0:
             update_fields['status'] = 'paid'
-            update_fields['total'] = 0
         else:
-            update_fields['total'] = total_due - new_paid
+            update_fields['status'] = 'unpaid'
+            
+        remaining = full_total - new_paid
             
         # Ghi nhận lần thanh toán này vào mảng payment_history của Bill
         new_payment_record = {
