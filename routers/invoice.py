@@ -213,6 +213,15 @@ async def print_invoice(bill_id: str, request: Request):
                     await db.bills.update_one({"_id": bill.get('_id')}, {"$set": {"prev_index": bill.get('prev_index'), "curr_index": bill.get('curr_index'), "usage": bill.get('usage'), "kwh_price": bill.get('kwh_price'), "electric_cost": bill.get('electric_cost')}})
                 except Exception:
                     pass
+            # Recompute total after possible backfill of electric_cost/other fields
+            try:
+                room_price = int(bill.get("room_price", 0) or 0)
+                electric_cost = int(bill.get("electric_cost", 0) or 0)
+                water_cost = int(bill.get("water_cost", 0) or 0)
+                other_cost = int(bill.get("other_cost", 0) or 0)
+                bill["total"] = room_price + electric_cost + water_cost + other_cost
+            except Exception:
+                pass
     except Exception:
         pass
 

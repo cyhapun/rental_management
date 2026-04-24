@@ -33,6 +33,16 @@ async def _find_room_by_number(db, room_number_value):
     return None
 
 def _is_active_contract(contract_doc: dict, today: datetime.date) -> bool:
+    # If contract has a termination_date (immediate termination), treat it as inactive
+    term = contract_doc.get("termination_date")
+    if term:
+        try:
+            term_date = datetime.date.fromisoformat(str(term))
+            if term_date <= today:
+                return False
+        except Exception:
+            pass
+
     end = contract_doc.get("end_date")
     if not end:
         return True
@@ -167,8 +177,11 @@ async def list_contracts(request: Request):
     rooms = []
     active_room_ids = []
     latest_by_room = {}
-    
+    # Lọc chỉ các hợp đồng còn hiệu lực khi tính phòng đang thuê
+    today_vn_calc = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=7))).date()
     async for c in db.contracts.find({}):
+        if not _is_active_contract(c, today_vn_calc):
+            continue
         rid_norm = await _normalize_room_id_to_oid_str(db, c.get("room_id"))
         if rid_norm:
             current = latest_by_room.get(rid_norm)
@@ -220,28 +233,26 @@ async def list_contracts_data(request: Request):
     all_contracts = []
     async for c in db.contracts.find({}):
         all_contracts.append(c)
-        
-    latest_by_room = {}
-    contract_ids = []
-    
-    for c in all_contracts:
-        c_id = str(c["_id"])
-        c["id"] = c_id
-        
-        c["is_active"] = (c_id in latest_contract_ids) and _is_active_contract(c, today)
-        
-        rid_norm = get_room_id_str(c.get("room_id"))
-        tid_str = str(c.get("tenant_id")) if c.get("tenant_id") else None
 
-        # Lúc này active_room_ids và active_tenant_ids (để đếm số liệu thẻ xanh) mới chạy đúng
-        if c["is_active"]:
-            if rid_norm: active_room_ids.add(rid_norm)
-            if tid_str: active_tenant_ids.add(tid_str)
+    # Xác định ngày hôm nay (theo múi giờ VN) trước khi tính toán hợp đồng active
+    today = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=7))).date()
+
+    # Tìm hợp đồng active mới nhất cho từng phòng
+    latest_by_room = {}
+    for c in all_contracts:
+        if not _is_active_contract(c, today):
+            continue
+        rid_norm = get_room_id_str(c.get("room_id"))
+        if not rid_norm:
+            continue
+        current = latest_by_room.get(rid_norm)
+        if (not current) or (_contract_order_key(c) > _contract_order_key(current)):
+            latest_by_room[rid_norm] = c
 
     latest_contract_ids = {str(v["_id"]) for v in latest_by_room.values()}
-    active_room_ids = set()
+    contract_ids = list(latest_contract_ids)
+    active_room_ids = set(latest_by_room.keys())
     active_tenant_ids = set()
-    today = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=7))).date()
 
     # Aggregation lấy toàn bộ Hóa Đơn mới nhất của TẤT CẢ các phòng trong 1 Query duy nhất
     bills_map = {}
@@ -493,60 +504,143 @@ async def end_contract(
         if not room:
             return redirect_with_flash("/contracts/", "Không tìm thấy phòng liên kết.", "danger")
 
-        # Lấy chỉ số điện cũ của phòng
+        # Lấy chỉ số điện cũ của phòng (dùng fallback tìm reading mới nhất nếu có)
         old_index = int(room.get("current_electric_index", 0))
 
-        # 2. Kiểm tra chỉ số điện tháng hiện tại
+        # 2. Kiểm tra chỉ số điện tháng hiện tại (so khớp nhiều dạng room_id)
         existing_reading = await db.electric_readings.find_one({
-            "room_id": str(room.get("_id")),
-            "month": current_month
+            "$and": [
+                {"month": current_month},
+                {"$or": [{"room_id": str(room.get("_id"))}, {"room_id": room.get("_id")}, {"room_id": str(room.get("room_number"))}, {"room_id": room.get("room_number")} ]}
+            ]
         })
 
+        # Nếu không có bản chốt cho tháng này, tìm bản ghi mới nhất để lấy prev_index chính xác
+        last_reading = None
+        if not existing_reading:
+            candidates = []
+            try:
+                candidates.append(room.get("_id"))
+            except Exception:
+                pass
+            try:
+                candidates.append(str(room.get("_id")))
+            except Exception:
+                pass
+            try:
+                rn = room.get("room_number")
+                if rn is not None:
+                    candidates.append(rn)
+                    candidates.append(str(rn))
+            except Exception:
+                pass
+            or_clauses = [{"room_id": c} for c in candidates] if candidates else []
+            if or_clauses:
+                try:
+                    last_reading = await db.electric_readings.find_one({"$or": or_clauses}, sort=[("month", -1), ("_id", -1)])
+                except Exception:
+                    last_reading = None
+
         used_kwh = 0
-        
+        prev_index = old_index
+        curr_index = old_index
+
         if existing_reading:
             # Đã chốt điện tháng này, lấy số liệu đã chốt
-            used_kwh = int(existing_reading.get("new_index", old_index)) - int(existing_reading.get("old_index", old_index))
+            prev_index = int(existing_reading.get("old_index", old_index))
+            curr_index = int(existing_reading.get("new_index", prev_index))
+            used_kwh = max(0, curr_index - prev_index)
+            # Đồng bộ lại chỉ số phòng nếu cần
+            try:
+                await db.rooms.update_one({"_id": room.get("_id")}, {"$set": {"current_electric_index": curr_index}})
+            except Exception:
+                pass
         else:
-            # Chưa chốt điện tháng này
+            # Chưa chốt điện tháng này -> sử dụng last_reading làm prev nếu có
+            if last_reading:
+                try:
+                    prev_index = int(last_reading.get("new_index", old_index))
+                except Exception:
+                    prev_index = old_index
+            else:
+                prev_index = old_index
+
             if new_electric_index is None:
                 # Trả về lỗi nếu Frontend không gửi số điện lên
                 return redirect_with_flash("/contracts/", f"Phòng chưa có số điện tháng {current_month}. Vui lòng nhập số điện!", "warning")
-            elif new_electric_index < old_index:
+            elif new_electric_index < prev_index:
                 return redirect_with_flash("/contracts/", "Chỉ số mới không được nhỏ hơn chỉ số cũ.", "danger")
             else:
                 # Ghi nhận chỉ số điện mới
-                used_kwh = new_electric_index - old_index
+                curr_index = new_electric_index
+                used_kwh = curr_index - prev_index
                 await db.electric_readings.insert_one({
                     "room_id": str(room.get("_id")),
                     "month": current_month,
-                    "old_index": old_index,
-                    "new_index": new_electric_index,
+                    "old_index": prev_index,
+                    "new_index": curr_index,
+                    "usage": used_kwh,
+                    "price_per_kwh": constants.PRICE_PER_KWH,
+                    "total": used_kwh * constants.PRICE_PER_KWH,
                     "created_at": today_dt
                 })
                 # Cập nhật số điện hiện tại của phòng
-                await db.rooms.update_one({"_id": room.get("_id")}, {"$set": {"current_electric_index": new_electric_index}})
+                await db.rooms.update_one({"_id": room.get("_id")}, {"$set": {"current_electric_index": curr_index}})
 
-        # 3. Tạo hóa đơn thanh lý (Chỉ tính tiền điện)
+        # 3. Tạo hóa đơn thanh lý (dùng schema giống /bills/generate)
         electric_price = constants.PRICE_PER_KWH
-        water_fee = constants.WATER_FEE 
-        electric_amount = used_kwh * electric_price
-        total_amount = electric_amount + water_fee
+        water_fee = constants.WATER_FEE
+        electric_cost = used_kwh * electric_price
+        total = electric_cost + water_fee
 
         bill_doc = {
             "contract_id": contract_id,
             "room_id": str(room.get("_id")),
             "tenant_id": contract.get("tenant_id"),
             "month": current_month,
-            "rent_amount": 0,
-            "electric_amount": electric_amount,
-            "water_amount": water_fee, # Lưu tiền nước khoán
-            "total_amount": total_amount,
+            "room_price": 0,
+            "electric_cost": electric_cost,
+            "water_cost": water_fee,
+            "other_cost": 0,
+            "total": total,
             "status": "unpaid",
             "type": "liquidation",
-            "created_at": today_dt
+            "created_at": datetime.datetime.utcnow(),
+            "prev_index": prev_index,
+            "curr_index": curr_index,
+            "usage": used_kwh,
+            "kwh_price": electric_price
         }
-        await db.bills.insert_one(bill_doc)
+        # Nếu đã có hóa đơn cho hợp đồng này trong tháng hiện tại, cập nhật nó thay vì chèn mới
+        try:
+            existing_bill = await db.bills.find_one({"contract_id": contract_id, "month": current_month})
+            if not existing_bill:
+                existing_bill = await db.bills.find_one({"contract_id": str(contract.get("_id")), "month": current_month})
+        except Exception:
+            existing_bill = None
+
+        if existing_bill:
+            try:
+                await db.bills.update_one({"_id": existing_bill.get("_id")}, {"$set": {
+                    "room_price": 0,
+                    "electric_cost": electric_cost,
+                    "water_cost": water_fee,
+                    "other_cost": 0,
+                    "total": total,
+                    "status": "unpaid",
+                    "type": "liquidation",
+                    "prev_index": prev_index,
+                    "curr_index": curr_index,
+                    "usage": used_kwh,
+                    "kwh_price": electric_price
+                }})
+                print(f"[INFO] Updated existing liquidation bill for contract {contract_id}: electric_cost={electric_cost}, total={total}")
+            except Exception as e:
+                print(f"[WARN] Failed to update existing bill: {e}")
+                await db.bills.insert_one(bill_doc)
+        else:
+            await db.bills.insert_one(bill_doc)
+            print(f"[INFO] Inserted new liquidation bill for contract {contract_id}: electric_cost={electric_cost}, total={total}")
 
         # 4. Cập nhật trạng thái kết thúc hợp đồng
         # Lùi end_date về 1 ngày trước để hợp đồng MẤT HIỆU LỰC NGAY LẬP TỨC
@@ -566,7 +660,7 @@ async def end_contract(
         # Cập nhật lại câu thông báo có cả Tiền Nước
         return redirect_with_flash(
             "/contracts/", 
-            f"Thanh lý thành công! Đã tạo hóa đơn (Điện: {electric_amount:,.0f}đ, Nước: {water_fee:,.0f}đ).", 
+            f"Thanh lý thành công! Đã tạo hóa đơn (Điện: {electric_cost:,.0f}đ, Nước: {water_fee:,.0f}đ).", 
             "success"
         )
     

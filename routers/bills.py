@@ -106,16 +106,52 @@ async def list_bills_data(status: str = "all", time_filter: str = "month"):
     bills = []
     try:
         async for b in db.bills.aggregate(pipeline):
-            room_price = b.get("room_price", 0) or 0
-            electric_cost = b.get("electric_cost", 0) or 0
-            other_cost = b.get("other_cost", 0) or 0
-            water_cost = b.get("water_cost", 0) or 0
-            total = b.get("total", 0) or 0
-            
+            # Normalize fields: support legacy names (rent_amount, electric_amount, water_amount, total_amount)
+            try:
+                room_price = int(b.get("room_price") or b.get("rent_amount") or 0)
+            except Exception:
+                room_price = 0
+            try:
+                electric_cost = int(b.get("electric_cost") or b.get("electric_amount") or b.get("electric") or 0)
+            except Exception:
+                electric_cost = 0
+            try:
+                other_cost = int(b.get("other_cost") or 0)
+            except Exception:
+                other_cost = 0
+            try:
+                water_cost = int(b.get("water_cost") or b.get("water_amount") or b.get("water") or 0)
+            except Exception:
+                water_cost = 0
+            try:
+                total = int(b.get("total") or b.get("total_amount") or 0)
+            except Exception:
+                total = 0
+
+            # Backfill new field names from legacy fields so subsequent logic uses normalized schema
+            backfill_updates = {}
+            if "electric_cost" not in b and ("electric_amount" in b):
+                backfill_updates["electric_cost"] = electric_cost
+            if "room_price" not in b and ("rent_amount" in b):
+                backfill_updates["room_price"] = room_price
+            if "water_cost" not in b and ("water_amount" in b):
+                backfill_updates["water_cost"] = water_cost
+            if "total" not in b and ("total_amount" in b):
+                backfill_updates["total"] = total
+            if backfill_updates:
+                try:
+                    await db.bills.update_one({"_id": b["_id"]}, {"$set": backfill_updates})
+                except Exception as e:
+                    print(f"[WARN] Failed to backfill bill {b.get('_id')}: {e}")
+
+            # Ensure water_cost and total exist (use WATER_FEE if missing)
             if not water_cost:
                 water_cost = WATER_FEE
                 total = room_price + electric_cost + other_cost + water_cost
-                await db.bills.update_one({"_id": b["_id"]}, {"$set": {"water_cost": water_cost, "total": total}})
+                try:
+                    await db.bills.update_one({"_id": b["_id"]}, {"$set": {"water_cost": water_cost, "total": total}})
+                except Exception as e:
+                    print(f"[WARN] Failed to set water_cost/total for bill {b.get('_id')}: {e}")
 
             paid_amount = b.get("paid_amount")
             if paid_amount is None:
