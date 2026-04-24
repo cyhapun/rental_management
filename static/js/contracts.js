@@ -1,32 +1,32 @@
 // contracts.js - behaviors for contracts page (CSR Model)
 function escapeHTML(str) {
-    if (str === null || str === undefined) return '';
-    return str.toString().replace(/[&<>'"]/g, 
-        tag => ({
-            '&': '&amp;',
-            '<': '&lt;',
-            '>': '&gt;',
-            "'": '&#39;',
-            '"': '&quot;'
-        }[tag] || tag)
-    );
+  if (str === null || str === undefined) return '';
+  return str.toString().replace(/[&<>'"]/g,
+    tag => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      "'": '&#39;',
+      '"': '&quot;'
+    }[tag] || tag)
+  );
 }
 
-function openEditContract(btn){
+function openEditContract(btn) {
   const row = btn.closest('tr');
   const id = row.dataset.contractId;
   const currentRoomId = row.dataset.roomId || '';
-  
+
   // Lấy thẻ select phòng
   const roomSelect = document.getElementById('edit_contract_room');
-  
+
   // Lặp qua các option: Khóa option nếu phòng đã có người VÀ không phải là phòng hiện tại của hợp đồng
   Array.from(roomSelect.options).forEach(opt => {
-      if (opt.dataset.busy === "1" && opt.value !== currentRoomId) {
-          opt.disabled = true;
-      } else {
-          opt.disabled = false;
-      }
+    if (opt.dataset.busy === "1" && opt.value !== currentRoomId) {
+      opt.disabled = true;
+    } else {
+      opt.disabled = false;
+    }
   });
 
   document.getElementById('edit_contract_room').value = currentRoomId;
@@ -35,27 +35,36 @@ function openEditContract(btn){
   document.getElementById('edit_contract_end').value = row.dataset.endDateIso || row.dataset.endDate || '';
   document.getElementById('edit_contract_type').value = row.dataset.contractType || '';
   document.getElementById('edit_contract_deposit').value = row.dataset.deposit || 0;
-  
+
   const form = document.getElementById('editContractForm');
   form.action = `/contracts/${id}/update`;
   const modal = new bootstrap.Modal(document.getElementById('editContractModal'));
   modal.show();
 }
 
-function filterContracts(){
+function filterContracts() {
   const q = (document.getElementById('contractSearch').value || '').toLowerCase();
   const payFilter = (document.getElementById('contractPaymentFilter').value || '').toLowerCase();
+  const statusEl = document.getElementById('contractStatusFilter');
+  const statusFilter = statusEl ? statusEl.value : 'active';
   const rows = document.querySelectorAll('#contractsTableBody tr[data-contract-id]');
-  
+
   rows.forEach(r => {
     const tenant = (r.dataset.tenantName || '').toLowerCase();
     const room = (r.dataset.room || '').toLowerCase();
     const status = (r.dataset.status || '').toLowerCase();
-    
+    const isActive = r.dataset.isActive === 'true';
+
     const okSearch = tenant.includes(q) || room.includes(q);
     const okPay = !payFilter || status.includes(payFilter);
-    
-    r.style.display = (okSearch && okPay) ? '' : 'none';
+    let okStatus = true;
+    if (statusFilter === 'active') {
+      okStatus = isActive;
+    } else if (statusFilter === 'terminated') {
+      okStatus = !isActive;
+    }
+
+    r.style.display = (okSearch && okPay && okStatus) ? '' : 'none';
   });
 }
 
@@ -69,58 +78,58 @@ function parseVnDate(dateStr) {
   return 0;
 }
 
-function sortContracts(){
+function sortContracts() {
   const sortVal = document.getElementById('contractSort').value;
   const tbody = document.getElementById('contractsTableBody');
-  if(!tbody) return;
+  if (!tbody) return;
   const rows = Array.from(tbody.querySelectorAll('tr[data-contract-id]'));
-  
-  rows.sort((a,b) => {
+
+  rows.sort((a, b) => {
     const startA = parseVnDate(a.dataset.startDateIso || a.dataset.startDate);
     const startB = parseVnDate(b.dataset.startDateIso || b.dataset.startDate);
-    
+
     const roomA = a.dataset.room || '';
     const roomB = b.dataset.room || '';
-    
+
     if (sortVal === 'start_desc') return startB - startA;
     if (sortVal === 'start_asc') return startA - startB;
     if (sortVal === 'room_asc') return roomA.localeCompare(roomB, undefined, { numeric: true, sensitivity: 'base' });
     if (sortVal === 'room_desc') return roomB.localeCompare(roomA, undefined, { numeric: true, sensitivity: 'base' });
     return 0;
   });
-  
+
   rows.forEach(r => tbody.appendChild(r));
 }
 
 // HÀM FETCH DỮ LIỆU TỪ SERVER VÀ VẼ GIAO DIỆN
 async function loadContracts() {
-    const tbody = document.getElementById('contractsTableBody');
-    if (!tbody) return;
-    
-    const csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '';
-    
-    try {
-        const response = await fetch('/contracts/_data');
-        if (!response.ok) throw new Error("Fetch failed");
-        
-        const data = await response.json();
-        
-        // Cập nhật số liệu Metrics
-        document.getElementById('val-active-rooms').innerText = data.active_rooms_count || 0;
-        document.getElementById('val-active-tenants').innerText = data.active_tenants_count || 0;
-        
-        // Vẽ phần Cảnh báo Sắp đến hạn
-        const duesContainer = document.getElementById('upcomingDuesContainer');
-        if (data.upcoming_dues && data.upcoming_dues.length > 0) {
-            let listHtml = data.upcoming_dues.map(u => `
+  const tbody = document.getElementById('contractsTableBody');
+  if (!tbody) return;
+
+  const csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '';
+
+  try {
+    const response = await fetch('/contracts/_data');
+    if (!response.ok) throw new Error("Fetch failed");
+
+    const data = await response.json();
+
+    // Cập nhật số liệu Metrics
+    document.getElementById('val-active-rooms').innerText = data.active_rooms_count || 0;
+    document.getElementById('val-active-tenants').innerText = data.active_tenants_count || 0;
+
+    // Vẽ phần Cảnh báo Sắp đến hạn
+    const duesContainer = document.getElementById('upcomingDuesContainer');
+    if (data.upcoming_dues && data.upcoming_dues.length > 0) {
+      let listHtml = data.upcoming_dues.map(u => `
                 <li>Phòng ${u.room_number || '?'} - ${u.tenant_name || '?'}
-                    ${u.days_left === 0 
-                        ? '<strong class="text-danger">(Hôm nay đến kì hạn)</strong>' 
-                        : `<strong class="text-secondary">(còn ${u.days_left} ngày)</strong>`}
+                    ${u.days_left === 0
+          ? '<strong class="text-danger">(Hôm nay đến kì hạn)</strong>'
+          : `<strong class="text-secondary">(còn ${u.days_left} ngày)</strong>`}
                 </li>
             `).join('');
-            
-            duesContainer.innerHTML = `
+
+      duesContainer.innerHTML = `
               <div class="bg-warning-subtle text-dark p-3 rounded-4 border border-warning-subtle d-flex shadow-sm h-100">
                 <div class="me-3 mt-1"><i class="fa-solid fa-bell fs-4 text-warning"></i></div>
                 <div>
@@ -129,71 +138,72 @@ async function loadContracts() {
                 </div>
               </div>
             `;
-            duesContainer.style.display = 'block';
-        }
+      duesContainer.style.display = 'block';
+    }
 
-        // Xóa spinner bảng
-        tbody.innerHTML = '';
-        if (!data.contracts || data.contracts.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">Chưa có dữ liệu hợp đồng.</td></tr>';
-            return;
-        }
+    // Xóa spinner bảng
+    tbody.innerHTML = '';
+    if (!data.contracts || data.contracts.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">Chưa có dữ liệu hợp đồng.</td></tr>';
+      return;
+    }
 
-        const formatMoney = (amount) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
-        const todayMonth = tbody.dataset.today || '';
+    const formatMoney = (amount) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+    const todayMonth = tbody.dataset.today || '';
 
-        // Dựng HTML cho từng hàng
-        data.contracts.forEach(c => {
-            const tr = document.createElement('tr');
-            if (c.is_active) tr.classList.add('row-active-contract');
-            
-            // Lấy dữ liệu thô
-            const rawTenantName = (c.tenant && c.tenant.full_name) ? c.tenant.full_name : (c.tenant_id || '?');
-            const rawRoomName = (c.room && c.room.room_number) ? c.room.room_number : (c.room_id || '?');
+    // Dựng HTML cho từng hàng
+    data.contracts.forEach(c => {
+      const tr = document.createElement('tr');
+      if (c.is_active) tr.classList.add('row-active-contract');
 
-            // Mã hóa dữ liệu để chống XSS
-            const tenantName = escapeHTML(rawTenantName);
-            const roomName = escapeHTML(rawRoomName);
-            const firstChar = tenantName.charAt(0).toUpperCase();
-            
-            let statusText = 'Chưa tới kì hạn';
-            let badgeHtml = `<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-3 py-1 rounded-pill">Chưa tới kì hạn</span>`;
-            
-            if (c.rent_payment_status === 'paid') {
-                statusText = 'Đã đóng';
-                badgeHtml = `<span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1 rounded-pill">Đã đóng</span>`;
-            } else if (c.rent_payment_status === 'unpaid') {
-                statusText = 'Chưa đóng';
-                badgeHtml = `<span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-1 rounded-pill">Chưa đóng</span>`;
-            }
+      // Lấy dữ liệu thô
+      const rawTenantName = (c.tenant && c.tenant.full_name) ? c.tenant.full_name : (c.tenant_id || '?');
+      const rawRoomName = (c.room && c.room.room_number) ? c.room.room_number : (c.room_id || '?');
 
-            tr.dataset.contractId = c.id;
-            tr.dataset.tenantId = c.tenant_id || '';
-            tr.dataset.tenantName = tenantName;
-            tr.dataset.roomId = c.room_id || '';
-            tr.dataset.room = roomName;
-            tr.dataset.startDate = c.start_date || '';
-            tr.dataset.endDate = c.end_date || '';
-            tr.dataset.startDateIso = c.start_date_iso || '';
-            tr.dataset.endDateIso = c.end_date_iso || '';
-            tr.dataset.contractType = c.contract_type || '';
-            tr.dataset.deposit = c.deposit || 0;
-            tr.dataset.status = statusText;
+      // Mã hóa dữ liệu để chống XSS
+      const tenantName = escapeHTML(rawTenantName);
+      const roomName = escapeHTML(rawRoomName);
+      const firstChar = tenantName.charAt(0).toUpperCase();
 
-            let endBtnHtml = '';
-            if (c.is_active) {
-                const hasElectricThisMonth = (c.electric && c.electric.month === todayMonth);
-                const oldIndex = (c.electric && c.electric.current_kwh) ? c.electric.current_kwh : 0;
-                
-                endBtnHtml = `
+      let statusText = 'Chưa tới kì hạn';
+      let badgeHtml = `<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-3 py-1 rounded-pill">Chưa tới kì hạn</span>`;
+
+      if (c.rent_payment_status === 'paid') {
+        statusText = 'Đã đóng';
+        badgeHtml = `<span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1 rounded-pill">Đã đóng</span>`;
+      } else if (c.rent_payment_status === 'unpaid') {
+        statusText = 'Chưa đóng';
+        badgeHtml = `<span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-1 rounded-pill">Chưa đóng</span>`;
+      }
+
+      tr.dataset.contractId = c.id;
+      tr.dataset.isActive = c.is_active ? 'true' : 'false';
+      tr.dataset.tenantId = c.tenant_id || '';
+      tr.dataset.tenantName = tenantName;
+      tr.dataset.roomId = c.room_id || '';
+      tr.dataset.room = roomName;
+      tr.dataset.startDate = c.start_date || '';
+      tr.dataset.endDate = c.end_date || '';
+      tr.dataset.startDateIso = c.start_date_iso || '';
+      tr.dataset.endDateIso = c.end_date_iso || '';
+      tr.dataset.contractType = c.contract_type || '';
+      tr.dataset.deposit = c.deposit || 0;
+      tr.dataset.status = statusText;
+
+      let endBtnHtml = '';
+      if (c.is_active) {
+        const hasElectricThisMonth = (c.electric && c.electric.month === todayMonth);
+        const oldIndex = (c.electric && c.electric.current_kwh) ? c.electric.current_kwh : 0;
+
+        endBtnHtml = `
                 <button class="btn action-btn bg-warning-subtle text-warning" type="button" 
                     onclick="openEndContractModal('${c.id}', '${roomName}', ${oldIndex}, ${hasElectricThisMonth})" 
                     title="Kết thúc/Thanh lý">
                     <i class="fa-solid fa-ban"></i>
                 </button>`;
-            }
+      }
 
-            tr.innerHTML = `
+      tr.innerHTML = `
                 <td class="ps-4">
                   <div class="d-flex align-items-center">
                     <div class="avatar-circle bg-primary-subtle text-primary me-3 shadow-sm d-none d-md-flex" style="width:36px; height:36px; border-radius:10px; align-items:center; justify-content:center; font-weight:bold; font-size:0.95rem;">
@@ -230,111 +240,112 @@ async function loadContracts() {
                   </div>
                 </td>
             `;
-            tbody.appendChild(tr);
-        });
-        
-        // Gọi lại sắp xếp và bộ lọc sau khi đổ dữ liệu
-        sortContracts();
-        filterContracts();
+      tbody.appendChild(tr);
+    });
 
-    } catch (e) {
-        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-danger py-4"><i class="fa-solid fa-circle-exclamation me-2"></i>Lỗi khi tải dữ liệu hợp đồng</td></tr>';
-        console.error("loadContracts error", e);
-    }
+    // Gọi lại sắp xếp và bộ lọc sau khi đổ dữ liệu
+    sortContracts();
+    filterContracts();
+
+  } catch (e) {
+    tbody.innerHTML = '<tr><td colspan="8" class="text-center text-danger py-4"><i class="fa-solid fa-circle-exclamation me-2"></i>Lỗi khi tải dữ liệu hợp đồng</td></tr>';
+    console.error("loadContracts error", e);
+  }
 }
 
-document.addEventListener('DOMContentLoaded', function(){
+document.addEventListener('DOMContentLoaded', function () {
   const input = document.getElementById('contractSearch'); if (input) input.addEventListener('input', filterContracts);
   const p = document.getElementById('contractPaymentFilter'); if (p) p.addEventListener('change', filterContracts);
   const s = document.getElementById('contractSort'); if (s) s.addEventListener('change', sortContracts);
-  
+  const st = document.getElementById('contractStatusFilter'); if (st) st.addEventListener('change', filterContracts);
+
   const tbody = document.getElementById('contractsTableBody');
   if (tbody && tbody.dataset.autoLoad === 'true') {
-      loadContracts();
+    loadContracts();
   }
 });
 
 // Hàm bắt sự kiện nhấn nút "Tạo hóa đơn" trên giao diện Hợp đồng
-window.triggerBillGeneration = async function(contractId, month, csrfToken, btnElement) {
-    const origHtml = btnElement.innerHTML;
-    btnElement.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
-    btnElement.disabled = true;
+window.triggerBillGeneration = async function (contractId, month, csrfToken, btnElement) {
+  const origHtml = btnElement.innerHTML;
+  btnElement.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+  btnElement.disabled = true;
 
-    try {
-        // Tận dụng lại API check-electric bên bills
-        const res = await fetch(`/bills/check-electric?contract_id=${contractId}&month=${month}`);
-        if (!res.ok) throw new Error('Lỗi khi kiểm tra chỉ số điện');
-        
-        const data = await res.json();
-        
-        if (data.has_data) {
-            // Đã có số điện => Bắn form POST thẳng sang /bills/generate
-            submitToBillsGenerate(contractId, month, csrfToken);
-        } else {
-            // Chưa có số điện => Mở Modal yêu cầu nhập số
-            document.getElementById('modal_contract_id').value = contractId;
-            document.getElementById('modal_month').value = month;
-            document.getElementById('display_month').innerText = month;
-            document.getElementById('modal_old_index').value = data.old_index;
-            document.getElementById('modal_new_index').min = data.old_index; // Ràng buộc số mới >= cũ
-            
-            const modal = new bootstrap.Modal(document.getElementById('inputElectricModal'));
-            modal.show();
-        }
-    } catch (error) {
-        console.error(error);
-        alert('Không thể kiểm tra dữ liệu điện. Vui lòng thử lại!');
-    } finally {
-        btnElement.innerHTML = origHtml;
-        btnElement.disabled = false;
+  try {
+    // Tận dụng lại API check-electric bên bills
+    const res = await fetch(`/bills/check-electric?contract_id=${contractId}&month=${month}`);
+    if (!res.ok) throw new Error('Lỗi khi kiểm tra chỉ số điện');
+
+    const data = await res.json();
+
+    if (data.has_data) {
+      // Đã có số điện => Bắn form POST thẳng sang /bills/generate
+      submitToBillsGenerate(contractId, month, csrfToken);
+    } else {
+      // Chưa có số điện => Mở Modal yêu cầu nhập số
+      document.getElementById('modal_contract_id').value = contractId;
+      document.getElementById('modal_month').value = month;
+      document.getElementById('display_month').innerText = month;
+      document.getElementById('modal_old_index').value = data.old_index;
+      document.getElementById('modal_new_index').min = data.old_index; // Ràng buộc số mới >= cũ
+
+      const modal = new bootstrap.Modal(document.getElementById('inputElectricModal'));
+      modal.show();
     }
+  } catch (error) {
+    console.error(error);
+    alert('Không thể kiểm tra dữ liệu điện. Vui lòng thử lại!');
+  } finally {
+    btnElement.innerHTML = origHtml;
+    btnElement.disabled = false;
+  }
 };
 
 // Hàm tạo form ẩn để submit POST sang Router của Bills
 function submitToBillsGenerate(contractId, month, csrfToken) {
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = '/bills/generate';
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = '/bills/generate';
 
-    const inputs = { contract_id: contractId, month: month, csrf_token: csrfToken };
+  const inputs = { contract_id: contractId, month: month, csrf_token: csrfToken };
 
-    for (const key in inputs) {
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = key;
-        input.value = inputs[key];
-        form.appendChild(input);
-    }
-    
-    document.body.appendChild(form);
-    form.submit();
+  for (const key in inputs) {
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = key;
+    input.value = inputs[key];
+    form.appendChild(input);
+  }
+
+  document.body.appendChild(form);
+  form.submit();
 }
 
 // Hàm mở Modal thanh lý hợp đồng
-window.openEndContractModal = function(contractId, roomName, oldIndex, hasElectricThisMonth) {
-    document.getElementById('endContractForm').action = `/contracts/${contractId}/end`;
-    document.getElementById('end_room_display').innerText = roomName;
+window.openEndContractModal = function (contractId, roomName, oldIndex, hasElectricThisMonth) {
+  document.getElementById('endContractForm').action = `/contracts/${contractId}/end`;
+  document.getElementById('end_room_display').innerText = roomName;
 
-    const electricSection = document.getElementById('end_electric_section');
-    const doneMsg = document.getElementById('end_electric_done_msg');
-    const newIndexInput = document.getElementById('end_new_index');
-    const oldIndexInput = document.getElementById('end_old_index');
+  const electricSection = document.getElementById('end_electric_section');
+  const doneMsg = document.getElementById('end_electric_done_msg');
+  const newIndexInput = document.getElementById('end_new_index');
+  const oldIndexInput = document.getElementById('end_old_index');
 
-    if (hasElectricThisMonth) {
-        electricSection.style.display = 'none';
-        doneMsg.style.display = 'block';
-        newIndexInput.removeAttribute('required');
-        newIndexInput.value = '';
-    } else {
-        electricSection.style.display = 'block';
-        doneMsg.style.display = 'none';
-        
-        oldIndexInput.value = oldIndex;
-        newIndexInput.setAttribute('required', 'required');
-        newIndexInput.min = oldIndex;
-        newIndexInput.value = oldIndex;
-    }
+  if (hasElectricThisMonth) {
+    electricSection.style.display = 'none';
+    doneMsg.style.display = 'block';
+    newIndexInput.removeAttribute('required');
+    newIndexInput.value = '';
+  } else {
+    electricSection.style.display = 'block';
+    doneMsg.style.display = 'none';
 
-    const modal = new bootstrap.Modal(document.getElementById('endContractModal'));
-    modal.show();
+    oldIndexInput.value = oldIndex;
+    newIndexInput.setAttribute('required', 'required');
+    newIndexInput.min = oldIndex;
+    newIndexInput.value = oldIndex;
+  }
+
+  const modal = new bootstrap.Modal(document.getElementById('endContractModal'));
+  modal.show();
 };

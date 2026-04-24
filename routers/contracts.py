@@ -43,14 +43,8 @@ def _is_active_contract(contract_doc: dict, today: datetime.date) -> bool:
         except Exception:
             pass
 
-    end = contract_doc.get("end_date")
-    if not end:
-        return True
-    try:
-        end_date = datetime.date.fromisoformat(str(end))
-    except Exception:
-        return True
-    return end_date >= today
+    # Hợp đồng được chấm dứt mới kết thúc, còn thời gian trong "thời hạn" (end_date) không được dùng để đưa về báo kết thúc.
+    return True
 
 def _contract_order_key(contract_doc: dict):
     start = contract_doc.get("start_date")
