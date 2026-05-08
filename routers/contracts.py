@@ -363,6 +363,12 @@ async def list_contracts_data(request: Request):
             c["rent_payment_status"] = "no_bill"
             c["rent_payment_month"] = None
 
+        # Prepare ISO/formatted dates used by display logic
+        c["start_date_iso"] = _to_iso_date(c.get("start_date"))
+        c["start_date"] = _fmt_date_iso(c.get("start_date"))
+        c["end_date_iso"] = _to_iso_date(c.get("end_date"))
+        c["end_date"] = _fmt_date_iso(c.get("end_date"))
+
         # Compute display status for UI according to business rules:
         # Priority:
         # 1) If there's a bill for current month: 'Đã đóng' or 'Chưa đóng' depending on bill.status
@@ -415,11 +421,6 @@ async def list_contracts_data(request: Request):
 
         c["display_status"] = display_status
         c["display_status_badge_class"] = display_badge_class
-
-        c["start_date_iso"] = _to_iso_date(c.get("start_date"))
-        c["end_date_iso"] = _to_iso_date(c.get("end_date"))
-        c["start_date"] = _fmt_date_iso(c.get("start_date"))
-        c["end_date"] = _fmt_date_iso(c.get("end_date"))
 
         c.pop('_id', None)
         contracts_result.append(c)
