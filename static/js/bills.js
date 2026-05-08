@@ -352,8 +352,25 @@ document.addEventListener('DOMContentLoaded', function(){
               const data = await res.json();
               
               if (data.has_data) {
-                  // Đã có điện, submit form bình thường
-                  this.submit();
+            // Đã có điện -> submit via AJAX so page won't reload
+            try {
+              const formData = new FormData(this);
+              const postResp = await fetch(this.action, { method: 'POST', body: formData, credentials: 'include' });
+              if (postResp.ok) {
+                try { new Notyf().success('Tạo hóa đơn thành công'); } catch(e) {}
+                // Close modal if open
+                const genModalEl = document.getElementById('generateBillModal');
+                const genModal = bootstrap.Modal.getInstance(genModalEl) || null;
+                if (genModal) genModal.hide();
+                loadBills();
+              } else {
+                // fallback to full submit if server didn't accept AJAX
+                this.submit();
+              }
+            } catch (e) {
+              console.error('AJAX generate failed, falling back', e);
+              this.submit();
+            }
               } else {
                   // Chưa có điện, mở modal
                   document.getElementById('modal_contract_id').value = contractId;
@@ -374,5 +391,38 @@ document.addEventListener('DOMContentLoaded', function(){
               btn.disabled = false;
           }
       });
+  }
+
+  // Intercept modal-based electric submit (when user inputs missing electric index)
+  const electricModalForm = document.getElementById('submitBillWithElectricForm');
+  if (electricModalForm) {
+    electricModalForm.addEventListener('submit', async function(e){
+      e.preventDefault();
+      const btn = this.querySelector('button[type="submit"]');
+      const origText = btn ? btn.innerHTML : '';
+      if (btn) { btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang lưu...'; btn.disabled = true; }
+      try {
+        const formData = new FormData(this);
+        const resp = await fetch(this.action, { method: 'POST', body: formData, credentials: 'include' });
+        if (resp.ok) {
+          try { new Notyf().success('Chốt điện và tạo hóa đơn thành công'); } catch(e) {}
+          // hide input modal
+          const modalEl = document.getElementById('inputElectricModal');
+          const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+          modal.hide();
+          // Also hide generate modal if present
+          try { const genEl = document.getElementById('generateBillModal'); const gm = bootstrap.Modal.getInstance(genEl); if (gm) gm.hide(); } catch(e){}
+          loadBills();
+        } else {
+          const text = await resp.text(); console.error('Server error on generate:', text);
+          try { new Notyf().error('Tạo hóa đơn thất bại'); } catch(e){}
+        }
+      } catch (err) {
+        console.error('Error submitting electric modal form', err);
+        try { new Notyf().error('Không thể tạo hóa đơn'); } catch(e){}
+      } finally {
+        if (btn) { btn.innerHTML = origText; btn.disabled = false; }
+      }
+    });
   }
 });
