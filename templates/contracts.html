@@ -120,10 +120,25 @@
           <div class="mb-3">
             <label class="form-label small fw-semibold text-muted">Người thuê đại diện</label>
             <select class="form-select bg-light" name="tenant_id" required>
-              <option value="" selected disabled>-- Chọn khách thuê --</option>
-              {% for t in tenants %}<option value="{{ t.id }}">{{ t.full_name }}{% if t.phone %} - {{ t.phone }}{% endif
-                %}</option>{% endfor %}
-            </select>
+                <option value="" selected disabled>-- Chọn khách thuê --</option>
+                {# Render tenants who are not currently renting first (highlight as available) #}
+                {% for t in tenants %}
+                  {% set ended = (t.rental_status == 'Đã kết thúc') %}
+                  {% if active_tenant_ids is defined and t.id not in active_tenant_ids %}
+                    {% if ended %}
+                      <option value="{{ t.id }}" class="tenant-ended">{{ t.full_name }} - {{ t.cccd }} (Đã kết thúc)</option>
+                    {% else %}
+                      <option value="{{ t.id }}" class="tenant-no-room">{{ t.full_name }} - {{ t.cccd }} (Chưa thuê)</option>
+                    {% endif %}
+                  {% endif %}
+                {% endfor %}
+                {# Then render tenants who are currently renting #}
+                {% for t in tenants %}
+                  {% if active_tenant_ids is defined and t.id in active_tenant_ids %}
+                    <option value="{{ t.id }}" class="tenant-available">{{ t.full_name }} - {{ t.cccd }}</option>
+                  {% endif %}
+                {% endfor %}
+              </select>
           </div>
           <div class="row g-2 mb-3">
             <div class="col-6">
@@ -142,7 +157,7 @@
             </div>
             <div class="col-6">
               <label class="form-label small fw-semibold text-muted">Tiền cọc (VNĐ)</label>
-              <input class="form-control bg-light" name="deposit" type="number" value="800000" />
+              <input class="form-control bg-light" name="deposit" type="number" value="1000000" />
             </div>
           </div>
         </div>
@@ -177,7 +192,18 @@
           <div class="mb-3">
             <label class="form-label small fw-semibold text-muted">Người thuê đại diện</label>
             <select class="form-select bg-light" id="edit_contract_tenant" name="tenant_id" required>
-              {% for t in tenants %}<option value="{{ t.id }}">{{ t.full_name }}</option>{% endfor %}
+              {% for t in tenants %}
+                {% set ended = (t.rental_status == 'Đã kết thúc') %}
+                {% if active_tenant_ids is defined and t.id in active_tenant_ids %}
+                  <option value="{{ t.id }}" class="tenant-available">{{ t.full_name }} - {{ t.cccd }}</option>
+                {% else %}
+                  {% if ended %}
+                    <option value="{{ t.id }}" class="tenant-ended">{{ t.full_name }} - {{ t.cccd }} (Đã kết thúc)</option>
+                  {% else %}
+                    <option value="{{ t.id }}" class="tenant-no-room">{{ t.full_name }} - {{ t.cccd }} (Chưa thuê)</option>
+                  {% endif %}
+                {% endif %}
+              {% endfor %}
             </select>
           </div>
           <div class="row g-2 mb-3">

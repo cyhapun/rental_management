@@ -166,6 +166,7 @@ async def list_contracts(request: Request):
             "full_name": t.get("full_name"),
             "phone": decrypt_value(t.get("phone")),
             "cccd": mask_cccd(decrypt_value(t.get("cccd"))),
+            "rental_status": t.get("rental_status", "")
         })
         
     rooms = []
@@ -189,12 +190,20 @@ async def list_contracts(request: Request):
 
     today_vn = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=7)))
     today_str = today_vn.date().isoformat()
+    # compute active tenant ids for template to mark available tenants
+    active_tenant_ids = []
+    for v in latest_by_room.values():
+        tid = v.get('tenant_id')
+        if tid:
+            active_tenant_ids.append(str(tid))
+
     tpl = env.get_template("contracts.html")
     html = tpl.render(
         request=request,
         tenants=tenants,
         rooms=rooms,
         active_room_ids=active_room_ids,
+        active_tenant_ids=active_tenant_ids,
         today=today_str,
     )
     return HTMLResponse(content=html)

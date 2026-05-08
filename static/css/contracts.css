@@ -59,3 +59,9 @@
     border: none;
 }
 .action-btn:hover { transform: translateY(-2px); }
+
+/* Tenant option status coloring
+    Note: styling <option> may be browser-dependent; this provides colors where supported. */
+option.tenant-no-room { color: #c92a2a; font-weight: 700; } /* red */
+option.tenant-ended { color: #b78b00; font-weight: 600; } /* yellow/golden */
+option.tenant-available { color: inherit; font-weight: 500; }
