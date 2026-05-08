@@ -288,7 +288,7 @@ async def dashboard_data_api():
     # 1. Đưa dữ liệu chuẩn từ bảng payments sang bảng doanh thu tháng
     for m, amt in payment_by_month.items():
         revenue_by_month[m] += amt
-        
+
     # 2. Quét bảng Bills để nhặt các khoản tiền cũ
     async for b in db.bills.find({}, {"month": 1, "total": 1, "status": 1, "paid_amount": 1, "created_at": 1}):
         b_month = b.get("month")
@@ -303,20 +303,56 @@ async def dashboard_data_api():
         is_paid = (b.get("status") == "paid")
         if is_paid:
             paid_bills_by_month[b_month] += int(b.get("total") or 0)
-            
-        # === BƯỚC QUAN TRỌNG TÁCH BẠCH CŨ/MỚI ===
-        # Nếu Bill này ĐÃ CÓ lịch sử trong bảng `payments`, ta BỎ QUA để không cộng dồn 2 lần
-        if payment_by_bill.get(bid, 0) > 0:
+
+        # Reconcile with payments: payments_by_month already contains sums from db.payments.
+        # If this bill has payments recorded in db.payments (payment_by_bill), but the
+        # authoritative `paid_amount` stored on the bill differs, adjust the revenue_by_month
+        # so the dashboard reflects the DB-stored `paid_amount`.
+        recorded_payments_for_bill = payment_by_bill.get(bid, 0)
+        bill_paid_amount = 0
+        try:
+            bill_paid_amount = int(b.get('paid_amount') or 0)
+        except Exception:
+            bill_paid_amount = 0
+
+        if recorded_payments_for_bill > 0:
+            # There are payment records; prefer `paid_amount` on bill when present
+            if bill_paid_amount != recorded_payments_for_bill:
+                delta = bill_paid_amount - recorded_payments_for_bill
+                try:
+                    revenue_by_month[b_month] += delta
+                except Exception:
+                    revenue_by_month[b_month] = revenue_by_month.get(b_month, 0) + delta
+                # Also adjust daily series if created_at is available
+                c_date = b.get("created_at")
+                if c_date:
+                    try:
+                        if isinstance(c_date, str):
+                            dt_obj = _dt.datetime.fromisoformat(c_date.replace("Z", "+00:00"))
+                            c_date = dt_obj.astimezone(tz_vn).date()
+                        elif isinstance(c_date, _dt.datetime):
+                            if c_date.tzinfo is None:
+                                c_date = c_date.replace(tzinfo=timezone.utc)
+                            c_date = c_date.astimezone(tz_vn).date()
+                    except Exception:
+                        c_date = None
+                    if c_date:
+                        today_vn = now.date()
+                        if c_date and c_date > today_vn:
+                            c_date = today_vn
+                        if c_date:
+                            payment_by_day[c_date] += delta
+                            revenue_earliest_date = min(revenue_earliest_date, c_date)
+            # Do not add paid_amt again because payments already contributed
             continue
-            
-        # NẾU LÀ DỮ LIỆU CŨ (Không tồn tại trong db.payments):
+
+        # If there are no payment records, fall back to bill.paid_amount or total
         paid_amt = int(b.get('paid_amount') or 0)
         if paid_amt == 0 and is_paid:
             paid_amt = int(b.get('total') or 0)
-            
+
         if paid_amt > 0:
             revenue_by_month[b_month] += paid_amt
-            
             # Tính vào biểu đồ ngày bằng created_at
             c_date = b.get("created_at")
             if c_date:
@@ -329,11 +365,11 @@ async def dashboard_data_api():
                     if c_date.tzinfo is None:
                         c_date = c_date.replace(tzinfo=timezone.utc)
                     c_date = c_date.astimezone(tz_vn).date()
-                
+
                 today_vn = now.date()
                 if c_date and c_date > today_vn:
                     c_date = today_vn
-                    
+
                 if c_date:
                     revenue_earliest_date = min(revenue_earliest_date, c_date)
                     payment_by_day[c_date] += paid_amt
