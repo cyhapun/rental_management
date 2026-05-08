@@ -364,6 +364,15 @@ async def invoice_pdf(bill_id: str):
     status = bill.get("status", "")
     status_vi = "Đã đóng" if status == "paid" else ("Chưa đóng" if status == "unpaid" else str(status))
     c.drawRightString(width - x_margin, y, f"Trạng thái: {status_vi}")
+    # Bill type label
+    try:
+        type_label = bill.get('type_label') or (('Tất toán hợp đồng' if bill.get('type') == 'liquidation' else str(bill.get('type'))) if bill.get('type') else '')
+    except Exception:
+        type_label = ''
+    if type_label:
+        y -= 6 * mm
+        c.setFont(font_regular, 10)
+        c.drawString(x_margin, y, f"Loại hóa đơn: {type_label}")
     y -= 10 * mm
 
     tenant_name = tenant.get("full_name") if tenant else ""

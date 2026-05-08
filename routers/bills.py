@@ -206,6 +206,8 @@ async def list_bills_data(status: str = "all", time_filter: str = "month"):
             bills.append({
                 "id": str(b["_id"]),
                 "month": b.get("month", ""),
+                "type": b.get("type"),
+                "type_label": ("Tất toán hợp đồng" if b.get("type") == "liquidation" else b.get("type")),
                 "full_total": full_total,
                 "total": remaining_debt, # Frontend renders b.total as "Còn nợ" (Remaining Debt)
                 "paid_amount": paid_amount,

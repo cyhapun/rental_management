@@ -69,6 +69,14 @@ async function loadBills() {
                 </div>`;
             }
 
+            // Badge for special bill types (e.g., liquidation = final settlement)
+            let typeBadgeHtml = '';
+            try {
+                if (b.type === 'liquidation' || (b.type_label && b.type_label.toLowerCase().includes('tất toán'))) {
+                    typeBadgeHtml = `<span class="badge bg-danger-subtle text-danger border px-2 py-1 me-1 fw-semibold">Tất toán</span>`;
+                }
+            } catch(e) { typeBadgeHtml = ''; }
+
             // Gắn data-attributes trực tiếp vào chuỗi tr
             return `
                 <tr class="data-row" data-tenant-name="${tenantName}" data-room="${roomNumber}" data-month="${b.month || ''}" data-total="${b.total || 0}">
@@ -80,7 +88,7 @@ async function loadBills() {
                         <div>
                           <div class="fw-bold text-dark">${displayName}</div>
                           <div class="small text-muted mt-1">
-                            <span class="badge bg-light text-dark border px-2 py-1">Phòng ${displayRoom}</span>
+                            ${typeBadgeHtml}<span class="badge bg-light text-dark border px-2 py-1">Phòng ${displayRoom}</span>
                           </div>
                         </div>
                       </div>

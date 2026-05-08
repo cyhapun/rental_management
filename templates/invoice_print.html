@@ -52,6 +52,15 @@
         font-size: 0.95rem; 
         font-weight: 500;
       }
+      .badge {
+        display: inline-block;
+        padding: 0.35rem 0.6rem;
+        border-radius: 999px;
+        font-weight: 700;
+        font-size: 0.78rem;
+        margin-top: 0.6rem;
+      }
+      .badge-liquidation { background: #fff1f2; color: #b91c1c; border: 1px solid rgba(255,255,255,0.12); }
       
       .invoice-body { padding: 2rem; }
 
@@ -180,6 +189,11 @@
       <div class="invoice-header">
         <h1>HÓA ĐƠN TIỀN TRỌ</h1>
         <p>Kỳ thu: Tháng {{ bill.month if bill and bill.month else '...' }}</p>
+        {% if bill and (bill.type == 'liquidation' or (bill.type_label and 'Thanh toán' in bill.type_label)) %}
+        <div>
+          <span class="badge badge-liquidation">Tất toán hợp đồng</span>
+        </div>
+        {% endif %}
       </div>
 
       <div class="invoice-body">
