@@ -30,31 +30,61 @@ async def list_bills_html(request: Request, status: str = "all"):
     default_month = datetime.datetime.now(VN_TZ).strftime("%Y-%m")
     contracts_list = []
     
+    # Load rooms and tenants into memory to build display text without N+1 queries
+    rooms_map = {}
+    async for r in db.rooms.find({}):
+        rooms_map[str(r.get("_id"))] = r
+        if r.get("room_number") is not None:
+            rooms_map[str(r.get("room_number"))] = r
+
+    tenants_map = {}
+    async for t in db.tenants.find({}):
+        tenants_map[str(t.get("_id"))] = t
+
     try:
-        # Dùng Aggregation thay cho N+1 queries
-        pipeline = [
-            # Biến đổi string room_id và tenant_id thành ObjectId để join
-            {"$addFields": {
-                "room_obj_id": {"$convert": {"input": "$room_id", "to": "objectId", "onError": None, "onNull": None}},
-                "tenant_obj_id": {"$convert": {"input": "$tenant_id", "to": "objectId", "onError": None, "onNull": None}}
-            }},
-            {"$lookup": {"from": "rooms", "localField": "room_obj_id", "foreignField": "_id", "as": "room_info"}},
-            {"$lookup": {"from": "tenants", "localField": "tenant_obj_id", "foreignField": "_id", "as": "tenant_info"}},
-            {"$unwind": {"path": "$room_info", "preserveNullAndEmptyArrays": True}},
-            {"$unwind": {"path": "$tenant_info", "preserveNullAndEmptyArrays": True}}
-        ]
-        
-        async for c in db.contracts.aggregate(pipeline):
+        async for c in db.contracts.find({}):
+            # Determine if contract is active (skip terminated/ended contracts)
+            today = datetime.datetime.now(VN_TZ).date()
+            # Consider a contract ended ONLY when it has a termination marker
+            # (i.e., explicitly terminated). Do not infer ended-ness from end_date.
+            term = c.get("termination_date") or c.get("termination") or c.get("termination_date_iso")
+            if term:
+                ended = True
+            else:
+                ended = False
+
+            if ended:
+                continue
+
             cid = str(c.get("_id"))
-            room_number = c.get("room_info", {}).get("room_number", "")
-            tenant_name = c.get("tenant_info", {}).get("full_name", "")
-            
+            # Resolve room number via normalized room_id or room_number fallback
+            room_number = ""
+            rid = c.get("room_id")
+            if rid is not None:
+                room_doc = None
+                try:
+                    room_doc = rooms_map.get(str(rid))
+                except Exception:
+                    room_doc = None
+                if not room_doc:
+                    try:
+                        room_doc = rooms_map.get(str(int(rid)))
+                    except Exception:
+                        room_doc = rooms_map.get(str(rid))
+                if room_doc:
+                    room_number = room_doc.get("room_number", "")
+
+            tenant_name = ""
+            tid = c.get("tenant_id")
+            if tid is not None:
+                tenant_doc = tenants_map.get(str(tid))
+                if tenant_doc:
+                    tenant_name = tenant_doc.get("full_name", "")
+
             display_text = f"{tenant_name} - Phòng {room_number}".strip(" - ")
             if display_text:
                 contracts_list.append({"id": cid, "display": display_text})
-                
     except Exception as e:
-        # In lỗi rõ ràng ra console thay vì dùng "pass" mù quáng
         print(f"[API_ERROR] list_bills_html: {str(e)}")
 
     tpl = env.get_template("bills.html")
