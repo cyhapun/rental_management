@@ -18,8 +18,24 @@ function filterElectric(){
   const rows = document.querySelectorAll('#electricTableBody tr.data-row');
   let visibleCount = 0;
   
+  const timeFilter = (document.getElementById('timeFilter') && document.getElementById('timeFilter').value) || 'month';
+  const now = new Date();
+  const currentMonth = now.toISOString().slice(0,7); // YYYY-MM
+  const currentYear = now.getFullYear().toString();
+
   rows.forEach(r => { 
-    if (r.textContent.toLowerCase().includes(q)) { 
+    const matchesQuery = r.textContent.toLowerCase().includes(q);
+    const rowMonth = (r.dataset.month || '');
+    let matchesTime = true;
+    if (timeFilter === 'month') {
+      matchesTime = (rowMonth === currentMonth);
+    } else if (timeFilter === 'year') {
+      matchesTime = rowMonth.startsWith(currentYear);
+    } else {
+      matchesTime = true;
+    }
+
+    if (matchesQuery && matchesTime) { 
         r.style.display = ''; 
         visibleCount++; 
     } else { 
@@ -145,6 +161,22 @@ document.addEventListener('DOMContentLoaded', function(){
   if (input) input.addEventListener('input', filterElectric);
   const s = document.getElementById('electricSort'); 
   if (s) s.addEventListener('change', sortElectric);
+
+  // Time filter pills
+  const timePills = document.getElementById('timeFilterPills');
+  if (timePills) {
+    Array.from(timePills.querySelectorAll('button[data-value]')).forEach(btn => {
+      btn.addEventListener('click', function(e){
+        // toggle active styles
+        Array.from(timePills.querySelectorAll('button')).forEach(b => b.classList.remove('bg-white','text-primary','shadow-sm'));
+        this.classList.add('bg-white','text-primary','shadow-sm');
+        const val = this.getAttribute('data-value');
+        const inputHidden = document.getElementById('timeFilter');
+        if (inputHidden) inputHidden.value = val;
+        filterElectric();
+      });
+    });
+  }
 
   // Auto-Load dữ liệu AJAX
   const tbody = document.getElementById('electricTableBody');

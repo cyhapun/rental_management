@@ -21,13 +21,14 @@
     <input class="form-control border-start-0 bg-light" id="electricSearch" placeholder="Tìm theo phòng / tháng..." />
   </div>
 
-  <div class="d-flex flex-wrap gap-2">
+  <div class="d-flex flex-wrap gap-2 align-items-center">
+    {% include 'partials/time_filter_pills.html' %}
     <select class="form-select bg-light border-0 fw-semibold text-dark" id="electricSort" style="width: auto; cursor: pointer; min-width: 200px;">
       <option value="default">Sắp xếp mặc định</option>
-      <option value="month_desc" selected>Tháng: Mới nhất</option>
-      <option value="month_asc">Tháng: Cũ nhất</option>
-      <option value="usage_desc">Đã dùng: Cao -> Thấp</option>
-      <option value="usage_asc">Đã dùng: Thấp -> Cao</option>
+      <option value="month_desc" selected>Mới nhất</option>
+      <option value="month_asc">Cũ nhất</option>
+      <option value="usage_desc">Tiêu thụ nhiều nhất</option>
+      <option value="usage_asc">Tiêu thụ thấp nhất</option>
     </select>
   </div>
 </div>
