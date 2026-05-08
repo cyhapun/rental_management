@@ -225,15 +225,16 @@
         </div>
 
         <div class="total-box">
-          <div class="total-label">Tổng thanh toán</div>
+          <div class="total-label">Tổng hóa đơn</div>
           <div class="total-amount">{{ bill.total | money }}</div>
+          <div class="mt-2" style="font-size:0.95rem; color:var(--muted);">Đã thu: <strong style="color:var(--success);">{{ (bill.paid_amount or 0) | money }}</strong> &nbsp;|&nbsp; Còn nợ: <strong style="color:#dc2626;">{{ (bill.amount_due or 0) | money }}</strong></div>
         </div>
 
-        {% if bill.status != 'paid' %}
+        {% if (bill.amount_due or 0) > 0 %}
         <div class="qr-section">
           <div class="qr-title"><i class="fa-solid fa-qrcode text-primary me-2"></i>Quét mã để thanh toán nhanh</div>
           <div class="qr-desc">Mở App Ngân hàng quét mã - Tự động nhập số tiền và nội dung</div>
-          <img class="qr-image" crossorigin="anonymous" src="https://img.vietqr.io/image/vcb-9778847258-compact2.png?amount={{ bill.total | default(0) }}&addInfo=Tien%20phong%20{{ current_room_number }}%20thang%20{{ bill.month }}&accountName=CHAU%20DANG%20VINH" alt="QR Code Thanh Toán">
+          <img class="qr-image" crossorigin="anonymous" src="https://img.vietqr.io/image/vcb-9778847258-compact2.png?amount={{ bill.amount_due | default(0) }}&addInfo=Tien%20phong%20{{ current_room_number }}%20thang%20{{ bill.month }}&accountName=CHAU%20DANG%20VINH" alt="QR Code Thanh Toán">
         </div>
 
         <div class="bank-info">

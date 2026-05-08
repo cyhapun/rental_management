@@ -154,29 +154,37 @@ async def list_bills_data(status: str = "all", time_filter: str = "month"):
             except Exception:
                 water_cost = 0
 
-            # Tính lại tổng nợ chuẩn (Không lấy từ b.get("total") vì có thể nó đã bị hàm phía dưới ghi đè thành 0 hoặc số còn lại!)
-            full_total = room_price + electric_cost + other_cost + water_cost
-            if not water_cost and ("water_cost" not in b):
-                 water_cost = WATER_FEE
-                 full_total = room_price + electric_cost + other_cost + water_cost
+            # Prefer authoritative stored values in DB: use stored `total` and `status` when present.
+            # Only compute fallback totals from components when `total` is missing.
+            stored_total = b.get("total")
+            if stored_total is None:
+                full_total = room_price + electric_cost + other_cost + water_cost
+                if not water_cost and ("water_cost" not in b):
+                    water_cost = WATER_FEE
+                    full_total = room_price + electric_cost + other_cost + water_cost
+            else:
+                try:
+                    full_total = int(stored_total)
+                except Exception:
+                    full_total = room_price + electric_cost + other_cost + water_cost
 
             paid_amount = b.get("paid_amount")
             if paid_amount is None:
                 payments_list = b.get("payments_list", [])
                 paid_amount = sum(int(p.get("amount", 0) or 0) for p in payments_list)
             else:
-                paid_amount = int(paid_amount)
-                
-            remaining_debt = max(0, full_total - paid_amount)
-            correct_status = "paid" if paid_amount >= full_total and full_total > 0 else "unpaid"
-            
-            # Cập nhật lại db nếu status bị lệch hoặc total bị sai do bug cũ
-            db_total = b.get("total")
-            if db_total != full_total or b.get("status") != correct_status:
                 try:
-                    await db.bills.update_one({"_id": b["_id"]}, {"$set": {"total": full_total, "status": correct_status}})
-                except:
-                    pass
+                    paid_amount = int(paid_amount)
+                except Exception:
+                    paid_amount = 0
+
+            remaining_debt = max(0, full_total - paid_amount)
+            # Respect stored status when present; otherwise compute from paid vs total
+            stored_status = b.get("status")
+            if stored_status:
+                correct_status = stored_status
+            else:
+                correct_status = "paid" if paid_amount >= full_total and full_total > 0 else "unpaid"
 
             # Xử lý Lịch sử thanh toán từ schema PaymentRecord
             raw_history = b.get("payment_history", [])

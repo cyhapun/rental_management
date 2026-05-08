@@ -141,22 +141,43 @@ async def print_invoice(bill_id: str, request: Request):
     # Backfill legacy bills missing water_cost/total so invoice modal shows đúng.
     try:
         water_cost_val = bill.get("water_cost")
-        if water_cost_val is None or int(water_cost_val) == 0:
+        # Only backfill water_cost when it's missing (None). Do NOT override explicit 0 values from DB.
+        if water_cost_val is None:
             bill["water_cost"] = WATER_FEE
     except Exception:
         bill["water_cost"] = WATER_FEE
+    # Prefer authoritative values from DB: use stored `total` and `paid_amount` when present.
     try:
-        room_price = int(bill.get("room_price", 0) or 0)
-        electric_cost = int(bill.get("electric_cost", 0) or 0)
-        water_cost = int(bill.get("water_cost", 0) or 0)
-        other_cost = int(bill.get("other_cost", 0) or 0)
-        bill["total"] = room_price + electric_cost + water_cost + other_cost
+        stored_total = bill.get("total")
+        if stored_total is None:
+            # fallback: compute total from components only if `total` missing
+            room_price = int(bill.get("room_price", 0) or 0)
+            electric_cost = int(bill.get("electric_cost", 0) or 0)
+            water_cost = int(bill.get("water_cost", 0) or 0)
+            other_cost = int(bill.get("other_cost", 0) or 0)
+            bill["total"] = room_price + electric_cost + water_cost + other_cost
+        else:
+            bill["total"] = stored_total
+    except Exception:
+        bill["total"] = bill.get("total", 0)
+
+    try:
+        paid_amount = int(bill.get('paid_amount', 0) or 0)
+    except Exception:
+        paid_amount = 0
+
+    bill['paid_amount'] = paid_amount
+    try:
+        bill['amount_due'] = max(0, int(bill.get('total', 0) or 0) - int(paid_amount or 0))
+    except Exception:
+        bill['amount_due'] = bill.get('total', 0)
     except Exception:
         pass
 
     # If bill is missing electric indices/usage, try to find the electric reading for the room/month
     try:
-        if (not bill.get('prev_index') or not bill.get('curr_index') or not bill.get('usage')) and room:
+        # Only attempt to backfill missing electric indices when the stored values are None.
+        if ((bill.get('prev_index') is None) or (bill.get('curr_index') is None) or (bill.get('usage') is None)) and room:
             month_val = bill.get('month')
             candidates = []
             r_id = room.get('_id')
@@ -201,18 +222,19 @@ async def print_invoice(bill_id: str, request: Request):
                     reading = None
 
             if reading:
-                bill['prev_index'] = bill.get('prev_index') or reading.get('old_index')
-                bill['curr_index'] = bill.get('curr_index') or reading.get('new_index')
-                bill['usage'] = bill.get('usage') or reading.get('usage')
-                bill['kwh_price'] = bill.get('kwh_price') or reading.get('price_per_kwh')
-                # update electric_cost if missing
-                if not bill.get('electric_cost'):
+                if bill.get('prev_index') is None:
+                    bill['prev_index'] = reading.get('old_index')
+                if bill.get('curr_index') is None:
+                    bill['curr_index'] = reading.get('new_index')
+                if bill.get('usage') is None:
+                    bill['usage'] = reading.get('usage')
+                if bill.get('kwh_price') is None:
+                    bill['kwh_price'] = reading.get('price_per_kwh')
+                # update electric_cost only if it's missing (None)
+                if bill.get('electric_cost') is None:
                     bill['electric_cost'] = reading.get('total') or bill.get('electric_cost')
-                # Also backfill bill in DB asynchronously when useful
-                try:
-                    await db.bills.update_one({"_id": bill.get('_id')}, {"$set": {"prev_index": bill.get('prev_index'), "curr_index": bill.get('curr_index'), "usage": bill.get('usage'), "kwh_price": bill.get('kwh_price'), "electric_cost": bill.get('electric_cost')}})
-                except Exception:
-                    pass
+                # Do NOT write back to DB here: viewing an invoice should not mutate stored bill values.
+                # If you want to persist any backfill, provide a dedicated endpoint or background job.
             # Recompute total after possible backfill of electric_cost/other fields
             try:
                 room_price = int(bill.get("room_price", 0) or 0)
