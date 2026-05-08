@@ -268,28 +268,99 @@ window.triggerBillGeneration = async function (contractId, month, csrfToken, btn
 
   try {
     // Tận dụng lại API check-electric bên bills
-    const res = await fetch(`/bills/check-electric?contract_id=${contractId}&month=${month}`);
+    const res = await fetch(`/bills/check-electric?contract_id=${contractId}&month=${month}`, { headers: { 'Accept': 'application/json' } });
     if (!res.ok) throw new Error('Lỗi khi kiểm tra chỉ số điện');
 
-    const data = await res.json();
+    // Guard against non-JSON or invalid JSON responses (e.g., HTML login page)
+    let data;
+    try {
+      const ct = (res.headers.get('content-type') || '').toLowerCase();
+      if (ct.includes('application/json')) {
+        data = await res.json();
+      } else {
+        // try to parse text as JSON, otherwise fallback
+        const text = await res.text();
+        try { data = JSON.parse(text); }
+        catch (e) {
+          console.warn('check-electric returned non-JSON response:', text);
+          data = { has_data: false, old_index: 0 };
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to parse check-electric response', e);
+      data = { has_data: false, old_index: 0 };
+    }
 
     if (data.has_data) {
       // Đã có số điện => Bắn form POST thẳng sang /bills/generate
       submitToBillsGenerate(contractId, month, csrfToken);
     } else {
-      // Chưa có số điện => Mở Modal yêu cầu nhập số
-      document.getElementById('modal_contract_id').value = contractId;
-      document.getElementById('modal_month').value = month;
-      document.getElementById('display_month').innerText = month;
-      document.getElementById('modal_old_index').value = data.old_index;
-      document.getElementById('modal_new_index').min = data.old_index; // Ràng buộc số mới >= cũ
+      // Chưa có số điện => nếu bills modal tồn tại (trên trang /bills/) dùng modal,
+      // nếu không thì fallback sang prompt nhẹ nhàng để người dùng nhập chỉ số.
+      const modalContractEl = document.getElementById('modal_contract_id');
+      if (modalContractEl) {
+        try {
+          document.getElementById('modal_contract_id').value = contractId;
+          document.getElementById('modal_month').value = month;
+          document.getElementById('display_month').innerText = month;
+          document.getElementById('modal_old_index').value = data.old_index;
+          document.getElementById('modal_new_index').min = data.old_index; // Ràng buộc số mới >= cũ
 
-      const modal = new bootstrap.Modal(document.getElementById('inputElectricModal'));
-      modal.show();
+          const modal = new bootstrap.Modal(document.getElementById('inputElectricModal'));
+          modal.show();
+        } catch (e) {
+          console.warn('Failed to open bills modal, falling back to prompt', e);
+          // fallback to prompt below
+          const oldIndex = Number(data.old_index || 0);
+          const answer = prompt(`Phòng chưa có chỉ số điện cho ${month}. Chỉ số cũ: ${oldIndex}. Nhập chỉ số mới:`, oldIndex);
+          if (answer === null) {
+            // user cancelled
+          } else {
+            const newIdx = parseInt(answer, 10);
+            if (isNaN(newIdx) || newIdx < oldIndex) {
+              alert('Chỉ số mới không hợp lệ.');
+            } else {
+              submitToBillsGenerate(contractId, month, csrfToken, newIdx);
+            }
+          }
+        }
+      } else {
+        // No modal present on contracts page: use prompt fallback
+        const oldIndex = Number(data.old_index || 0);
+        const answer = prompt(`Phòng chưa có chỉ số điện cho ${month}. Chỉ số cũ: ${oldIndex}. Nhập chỉ số mới:`, oldIndex);
+        if (answer === null) {
+          // user cancelled
+        } else {
+          const newIdx = parseInt(answer, 10);
+          if (isNaN(newIdx) || newIdx < oldIndex) {
+            alert('Chỉ số mới không hợp lệ.');
+          } else {
+            submitToBillsGenerate(contractId, month, csrfToken, newIdx);
+          }
+        }
+      }
     }
   } catch (error) {
     console.error(error);
-    alert('Không thể kiểm tra dữ liệu điện. Vui lòng thử lại!');
+    // Offer a last-resort prompt so user can still create the bill even if check failed
+    try {
+      const fallback = confirm('Không thể kiểm tra dữ liệu điện. Bạn muốn nhập chỉ số điện thủ công để tạo hóa đơn không?');
+      if (fallback) {
+        const oldIndexFallback = 0;
+        const answer = prompt(`Nhập chỉ số mới (số):`, oldIndexFallback);
+        if (answer !== null) {
+          const newIdx = parseInt(answer, 10);
+          if (!isNaN(newIdx)) {
+            submitToBillsGenerate(contractId, month, csrfToken, newIdx);
+          } else {
+            alert('Chỉ số không hợp lệ.');
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Fallback prompt failed', e);
+    }
+    alert('Không thể kiểm tra dữ liệu điện. Vui lòng thử lại! ' + (error && error.message ? error.message : ''));
   } finally {
     btnElement.innerHTML = origHtml;
     btnElement.disabled = false;
@@ -297,12 +368,15 @@ window.triggerBillGeneration = async function (contractId, month, csrfToken, btn
 };
 
 // Hàm tạo form ẩn để submit POST sang Router của Bills
-function submitToBillsGenerate(contractId, month, csrfToken) {
+function submitToBillsGenerate(contractId, month, csrfToken, newElectricIndex) {
   const form = document.createElement('form');
   form.method = 'POST';
   form.action = '/bills/generate';
 
   const inputs = { contract_id: contractId, month: month, csrf_token: csrfToken };
+  if (typeof newElectricIndex !== 'undefined' && newElectricIndex !== null) {
+    inputs['new_electric_index'] = newElectricIndex;
+  }
 
   for (const key in inputs) {
     const input = document.createElement('input');
