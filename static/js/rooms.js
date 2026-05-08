@@ -88,7 +88,7 @@ async function loadRooms(q){
           <button type="button" class="btn action-btn bg-primary-subtle text-primary" onclick="openEditRoom(this)" title="Sửa thông tin">
             <i class="fa-solid fa-pen"></i>
           </button>
-          <form action="/rooms/${r.id}/delete" method="post" style="display:inline" onsubmit="return confirm('Cảnh báo: Xóa phòng này sẽ mất các dữ liệu liên quan. Bạn có chắc chắn?');">
+          <form action="/rooms/${r.id}/delete" method="post" style="display:inline" class="needs-confirm" data-confirm-message="Cảnh báo: Xóa phòng này sẽ mất các dữ liệu liên quan. Bạn có chắc chắn?">
             <input type="hidden" name="csrf_token" value="${csrfToken}">  
             <button type="submit" class="btn action-btn bg-danger-subtle text-danger" title="Xóa phòng">
               <i class="fa-solid fa-trash-can"></i>

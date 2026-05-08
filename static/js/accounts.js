@@ -113,7 +113,7 @@ async function loadAccounts() {
                     <button class="btn action-btn bg-primary-subtle text-primary" type="button" onclick="openEditAccount(this)" title="Sửa quyền/mật khẩu">
                       <i class="fa-solid fa-pen"></i>
                     </button>
-                    <form action="/accounts/${a.id}/delete" method="post" style="display:inline" onsubmit="return confirm('Cảnh báo: Bạn có chắc chắn muốn xóa tài khoản ${a.username} không?');">
+                    <form action="/accounts/${a.id}/delete" method="post" style="display:inline" class="needs-confirm" data-confirm-message="Cảnh báo: Bạn có chắc chắn muốn xóa tài khoản ${a.username} không?">
                       <input type="hidden" name="csrf_token" value="${csrfToken}">  
                       <button class="btn action-btn bg-danger-subtle text-danger" type="submit" title="Xóa tài khoản">
                         <i class="fa-solid fa-trash-can"></i>

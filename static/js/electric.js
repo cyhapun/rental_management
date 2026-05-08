@@ -128,7 +128,7 @@ async function loadElectric() {
                   <button class="btn action-btn bg-primary-subtle text-primary" type="button" onclick="openEditReading(this)" title="Sửa">
                     <i class="fa-solid fa-pen"></i>
                   </button>
-                  <form action="/electric/${r.id}/delete" method="post" style="display:inline" onsubmit="return confirm('Cảnh báo: Bạn có chắc chắn muốn xóa bản ghi chỉ số điện này không?');">
+                  <form action="/electric/${r.id}/delete" method="post" style="display:inline" class="needs-confirm" data-confirm-message="Cảnh báo: Bạn có chắc chắn muốn xóa bản ghi chỉ số điện này không?">
                     <input type="hidden" name="csrf_token" value="${csrfToken}">  
                     <button class="btn action-btn bg-danger-subtle text-danger" type="submit" title="Xóa">
                       <i class="fa-solid fa-trash-can"></i>

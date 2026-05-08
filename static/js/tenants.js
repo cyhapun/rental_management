@@ -132,7 +132,7 @@ async function loadTenants(q){
                         <button type="button" class="btn action-btn bg-primary-subtle text-primary" onclick="openEditTenant(this)" title="Sửa thông tin">
                             <i class="fa-solid fa-pen"></i>
                         </button>
-                        <form action="/tenants/${t.id}/delete" method="post" style="display:inline" onsubmit="return confirm('Cảnh báo: Xóa khách thuê này? Bạn nên đảm bảo họ đã thanh toán đủ tiền trước khi xóa.');">
+                        <form action="/tenants/${t.id}/delete" method="post" style="display:inline" class="needs-confirm" data-confirm-message="Cảnh báo: Xóa khách thuê này? Bạn nên đảm bảo họ đã thanh toán đủ tiền trước khi xóa.">
                             <input type="hidden" name="csrf_token" value="${csrfToken}">  
                             <button type="submit" class="btn action-btn bg-danger-subtle text-danger" title="Xóa">
                                 <i class="fa-solid fa-trash-can"></i>

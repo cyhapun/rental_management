@@ -228,7 +228,7 @@ async function loadContracts() {
                       <i class="fa-solid fa-file-invoice-dollar"></i>
                     </button>
                     ${endBtnHtml}
-                    <form action="/contracts/${c.id}/delete" method="post" style="display:inline" onsubmit="return confirm('Cảnh báo: Xóa hợp đồng này sẽ xóa cả dữ liệu liên quan. Vẫn tiếp tục?');">
+                    <form action="/contracts/${c.id}/delete" method="post" style="display:inline" class="needs-confirm" data-confirm-message="Cảnh báo: Xóa hợp đồng này sẽ xóa cả dữ liệu liên quan. Vẫn tiếp tục?">
                       <input type="hidden" name="csrf_token" value="${csrfToken}">  
                       <button class="btn action-btn bg-danger-subtle text-danger" type="submit" title="Xóa"><i class="fa-solid fa-trash-can"></i></button>
                     </form>

@@ -141,6 +141,33 @@
         printElementAsImage(btn.getAttribute('data-print-target'), btn.getAttribute('data-print-title'));
       });
     });
+    
+    // Global confirmation modal handler: intercept forms with class 'needs-confirm' or data-confirm-message
+    document.addEventListener('submit', function(e){
+      const form = e.target;
+      if (!(form instanceof HTMLFormElement)) return;
+      const msg = form.dataset.confirmMessage || (form.classList.contains('needs-confirm') ? form.getAttribute('data-confirm-message') : null);
+      if (!msg) return;
+      // Prevent default submit and show modal
+      e.preventDefault();
+      try {
+        const modalEl = document.getElementById('globalConfirmModal');
+        const msgEl = document.getElementById('globalConfirmMessage');
+        const okBtn = document.getElementById('globalConfirmOk');
+        if (msgEl) msgEl.innerText = msg;
+        const modal = new bootstrap.Modal(modalEl);
+        // bind once
+        okBtn.onclick = function(){
+          try { modal.hide(); } catch(e){}
+          // submit the form programmatically
+          form.submit();
+        };
+        modal.show();
+      } catch (err) {
+        // fallback to native confirm if modal fails
+        if (!confirm(msg)) e.preventDefault();
+      }
+    });
   });
 
 })();
