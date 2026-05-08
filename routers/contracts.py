@@ -230,6 +230,7 @@ async def list_contracts_data(request: Request):
 
     # Xác định ngày hôm nay (theo múi giờ VN) trước khi tính toán hợp đồng active
     today = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=7))).date()
+    current_month = today.strftime("%Y-%m")
 
     # Tìm hợp đồng active mới nhất cho từng phòng
     latest_by_room = {}
@@ -258,6 +259,16 @@ async def list_contracts_data(request: Request):
         ]
         async for b_group in db.bills.aggregate(pipeline_bills):
             bills_map[str(b_group["_id"])] = b_group["latest_bill"]
+
+    # Map contract_id -> count of unpaid bills from previous months (month < current_month)
+    unpaid_prev_map = {}
+    if contract_ids:
+        pipeline_unpaid_prev = [
+            {"$match": {"contract_id": {"$in": contract_ids}, "status": "unpaid", "month": {"$lt": current_month}}},
+            {"$group": {"_id": "$contract_id", "count": {"$sum": 1}}}
+        ]
+        async for g in db.bills.aggregate(pipeline_unpaid_prev):
+            unpaid_prev_map[str(g["_id"])] = g.get("count", 0)
 
     # Aggregation lấy Số điện mới nhất của TẤT CẢ các phòng trong 1 Query duy nhất
     er_map = {}
@@ -351,6 +362,59 @@ async def list_contracts_data(request: Request):
         else:
             c["rent_payment_status"] = "no_bill"
             c["rent_payment_month"] = None
+
+        # Compute display status for UI according to business rules:
+        # Priority:
+        # 1) If there's a bill for current month: 'Đã đóng' or 'Chưa đóng' depending on bill.status
+        # 2) Else if there exist unpaid bills from previous months -> 'Chưa đóng tháng trước'
+        # 3) Else if today == due date -> 'Tới kì hạn'
+        # 4) Else if due date this month has passed and no bill for this month -> 'Quá kì hạn'
+        # 5) Otherwise -> 'Chưa tới kì hạn'
+        display_status = "Chưa tới kì hạn"
+        display_badge_class = "bg-secondary-subtle text-secondary border border-secondary-subtle"
+
+        if c.get("is_active"):
+            # current month check
+            if c.get("rent_payment_status") == "paid" and c.get("rent_payment_month") == current_month:
+                display_status = "Đã đóng"
+                display_badge_class = "bg-success-subtle text-success border border-success-subtle"
+            elif c.get("rent_payment_status") == "unpaid" and c.get("rent_payment_month") == current_month:
+                display_status = "Chưa đóng"
+                display_badge_class = "bg-danger-subtle text-danger border border-danger-subtle"
+            elif unpaid_prev_map.get(c_id):
+                display_status = "Chưa đóng tháng trước"
+                display_badge_class = "bg-warning-subtle text-warning border border-warning-subtle"
+            else:
+                # compute due date for this month based on contract start day
+                start_iso = c.get("start_date_iso")
+                if start_iso:
+                    try:
+                        sdt = datetime.date.fromisoformat(str(start_iso))
+                        day = sdt.day
+                        year = today.year
+                        month = today.month
+                        try:
+                            due_this_month = datetime.date(year, month, day)
+                        except ValueError:
+                            if month == 12:
+                                next_first = datetime.date(year + 1, 1, 1)
+                            else:
+                                next_first = datetime.date(year, month + 1, 1)
+                            due_this_month = next_first - datetime.timedelta(days=1)
+
+                        if due_this_month == today:
+                            display_status = "Tới kì hạn"
+                            display_badge_class = "bg-info-subtle text-info border border-info-subtle"
+                        elif due_this_month < today:
+                            # no bill for current month -> overdue
+                            if c.get("rent_payment_month") != current_month:
+                                display_status = "Quá kì hạn"
+                                display_badge_class = "bg-danger-subtle text-danger border border-danger-subtle"
+                    except Exception:
+                        pass
+
+        c["display_status"] = display_status
+        c["display_status_badge_class"] = display_badge_class
 
         c["start_date_iso"] = _to_iso_date(c.get("start_date"))
         c["end_date_iso"] = _to_iso_date(c.get("end_date"))

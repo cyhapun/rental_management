@@ -165,16 +165,10 @@ async function loadContracts() {
       const roomName = escapeHTML(rawRoomName);
       const firstChar = tenantName.charAt(0).toUpperCase();
 
-      let statusText = 'Chưa tới kì hạn';
-      let badgeHtml = `<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-3 py-1 rounded-pill">Chưa tới kì hạn</span>`;
-
-      if (c.rent_payment_status === 'paid') {
-        statusText = 'Đã đóng';
-        badgeHtml = `<span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1 rounded-pill">Đã đóng</span>`;
-      } else if (c.rent_payment_status === 'unpaid') {
-        statusText = 'Chưa đóng';
-        badgeHtml = `<span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-1 rounded-pill">Chưa đóng</span>`;
-      }
+      // Use server-side computed display status when available, else fallback to basic rent_payment_status
+      const statusText = c.display_status || (c.rent_payment_status === 'paid' ? 'Đã đóng' : (c.rent_payment_status === 'unpaid' ? 'Chưa đóng' : 'Chưa tới kì hạn'));
+      const badgeClass = c.display_status_badge_class || (c.rent_payment_status === 'paid' ? 'bg-success-subtle text-success border border-success-subtle' : (c.rent_payment_status === 'unpaid' ? 'bg-danger-subtle text-danger border border-danger-subtle' : 'bg-secondary-subtle text-secondary border border-secondary-subtle'));
+      const badgeHtml = `<span class="badge ${badgeClass} px-3 py-1 rounded-pill">${escapeHTML(statusText)}</span>`;
 
       tr.dataset.contractId = c.id;
       tr.dataset.isActive = c.is_active ? 'true' : 'false';
