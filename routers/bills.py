@@ -194,22 +194,61 @@ async def generate_monthly(
         c = await db.contracts.find_one({"_id": ObjectId(contract_id)})
         if not c:
             return redirect_with_flash('/bills/?status=unpaid', 'Không tìm thấy hợp đồng để tạo hóa đơn.', 'danger')
-        
+        # Robust room lookup (support ObjectId, string id, and room_number)
         room_id_val = c.get('room_id')
-        room = await db.rooms.find_one({"_id": ObjectId(room_id_val)})
+        room = None
+        if room_id_val is not None:
+            try:
+                room = await db.rooms.find_one({"_id": ObjectId(str(room_id_val))})
+            except Exception:
+                room = None
+
+            if not room:
+                try:
+                    room = await db.rooms.find_one({"_id": room_id_val})
+                except Exception:
+                    room = None
+
+            if not room:
+                # try room_number
+                or_clauses = []
+                try:
+                    or_clauses.append({"room_number": int(room_id_val)})
+                except Exception:
+                    pass
+                try:
+                    or_clauses.append({"room_number": str(room_id_val)})
+                except Exception:
+                    pass
+                if or_clauses:
+                    try:
+                        room = await db.rooms.find_one({"$or": or_clauses})
+                    except Exception:
+                        room = None
+
         room_price = int(room.get('price', 0)) if room else 0
         
         # Xử lý lưu chỉ số điện nếu có truyền lên ---
         if new_electric_index is not None:
             old_index = room.get('current_electric_index', 0) if room else 0
             usage = new_electric_index - old_index
-            if usage < 0: usage = 0 # Hoặc raise lỗi tùy logic của bạn
-            kwh_price = room.get(constants.PRICE_PER_KWH, 3000) # Giả sử giá điện lưu ở room
+            if usage < 0:
+                usage = 0
+            kwh_price = room.get(constants.PRICE_PER_KWH, 3000) if room else constants.PRICE_PER_KWH
             electric_cost = usage * kwh_price
-            
-            # Lưu vào db.electric_readings
+
+            # Lưu vào db.electric_readings, use normalized room _id string if available
+            save_room_id = None
+            if room and room.get("_id") is not None:
+                save_room_id = str(room.get("_id"))
+            else:
+                try:
+                    save_room_id = str(room_id_val)
+                except Exception:
+                    save_room_id = None
+
             await db.electric_readings.insert_one({
-                "room_id": str(room_id_val),
+                "room_id": save_room_id,
                 "month": month,
                 "old_index": old_index,
                 "new_index": new_electric_index,
@@ -218,17 +257,54 @@ async def generate_monthly(
                 "total": electric_cost,
                 "created_at": datetime.datetime.utcnow()
             })
-            
-            # Cập nhật lại chỉ số mới cho phòng
-            await db.rooms.update_one(
-                {"_id": ObjectId(room_id_val)},
-                {"$set": {"current_electric_index": new_electric_index}}
-            )
 
-        er = await db.electric_readings.find_one({
-            "$or": [{"room_id": room_id_val}, {"room_id": str(room_id_val)}],
-            "month": month
-        })
+            # Cập nhật lại chỉ số mới cho phòng (use room._id directly if available)
+            try:
+                if room and room.get("_id") is not None:
+                    await db.rooms.update_one({"_id": room.get("_id")}, {"$set": {"current_electric_index": new_electric_index}})
+                else:
+                    # fallback: attempt to update by string id or room_number
+                    try:
+                        await db.rooms.update_one({"_id": ObjectId(str(room_id_val))}, {"$set": {"current_electric_index": new_electric_index}})
+                    except Exception:
+                        try:
+                            await db.rooms.update_one({"_id": room_id_val}, {"$set": {"current_electric_index": new_electric_index}})
+                        except Exception:
+                            pass
+            except Exception:
+                pass
+
+        # Find electric reading robustly
+        er = None
+        try:
+            or_clauses = []
+            if room and room.get("_id") is not None:
+                or_clauses.append({"room_id": str(room.get("_id"))})
+                or_clauses.append({"room_id": room.get("_id")})
+            if room and room.get("room_number") is not None:
+                or_clauses.append({"room_id": str(room.get("room_number"))})
+                or_clauses.append({"room_id": room.get("room_number")})
+            if room_id_val is not None:
+                or_clauses.append({"room_id": str(room_id_val)})
+                or_clauses.append({"room_id": room_id_val})
+
+            # dedupe
+            seen = set()
+            uniq_or = []
+            for o in or_clauses:
+                v = list(o.values())[0]
+                key = str(v)
+                if key in seen:
+                    continue
+                seen.add(key)
+                uniq_or.append({"room_id": v})
+
+            if uniq_or:
+                er = await db.electric_readings.find_one({"$or": uniq_or, "month": month})
+            else:
+                er = None
+        except Exception:
+            er = None
         
         if er:
             prev_index = er.get('old_index')
@@ -383,22 +459,92 @@ async def delete_bill(bill_id: str):
 async def check_electric(contract_id: str, month: str):
     db = get_db()
     try:
-        c = await db.contracts.find_one({"_id": ObjectId(contract_id)})
+        # Find contract robustly (accept both ObjectId and string id)
+        c = None
+        try:
+            c = await db.contracts.find_one({"_id": ObjectId(contract_id)})
+        except Exception:
+            c = await db.contracts.find_one({"_id": contract_id})
+
         if not c:
             raise HTTPException(404, "Không tìm thấy hợp đồng")
-            
+
         room_id = c.get("room_id")
-        room = await db.rooms.find_one({"_id": ObjectId(room_id)})
-        
-        # Kiểm tra xem tháng này có dữ liệu điện chưa
-        er = await db.electric_readings.find_one({
-            "$or": [{"room_id": room_id}, {"room_id": str(room_id)}],
-            "month": month
-        })
-        
+        room = None
+
+        # Try multiple strategies to find the room (ObjectId, string id, room_number)
+        if room_id is not None:
+            # 1) Try ObjectId lookup
+            try:
+                room = await db.rooms.find_one({"_id": ObjectId(str(room_id))})
+            except Exception:
+                room = None
+
+            # 2) Try exact string id
+            if not room:
+                try:
+                    room = await db.rooms.find_one({"_id": room_id})
+                except Exception:
+                    room = None
+
+            # 3) Try room_number lookups (both numeric and string)
+            if not room:
+                or_clauses = []
+                try:
+                    or_clauses.append({"room_number": int(room_id)})
+                except Exception:
+                    pass
+                try:
+                    or_clauses.append({"room_number": str(room_id)})
+                except Exception:
+                    pass
+                if or_clauses:
+                    try:
+                        room = await db.rooms.find_one({"$or": or_clauses})
+                    except Exception:
+                        room = None
+
+        # Build a robust query to find electric reading for this room for the given month
+        er = None
+        try:
+            or_clauses = []
+            # Prefer normalized room._id if available
+            if room:
+                rid = room.get("_id")
+                if rid is not None:
+                    or_clauses.append({"room_id": str(rid)})
+                    or_clauses.append({"room_id": rid})
+                rn = room.get("room_number")
+                if rn is not None:
+                    or_clauses.append({"room_id": str(rn)})
+                    or_clauses.append({"room_id": rn})
+            # Fallback to contract.room_id variants
+            if room_id is not None:
+                or_clauses.append({"room_id": str(room_id)})
+                or_clauses.append({"room_id": room_id})
+
+            # Remove duplicates while preserving order
+            seen = set()
+            uniq_or = []
+            for o in or_clauses:
+                v = list(o.values())[0]
+                key = str(v)
+                if key in seen:
+                    continue
+                seen.add(key)
+                uniq_or.append({"room_id": v})
+
+            if uniq_or:
+                er = await db.electric_readings.find_one({"$or": uniq_or, "month": month})
+            else:
+                # Last resort: try matching by month only (should be rare)
+                er = None
+        except Exception:
+            er = None
+
         if er:
             return {"has_data": True}
-            
+
         old_index = room.get("current_electric_index", 0) if room else 0
         return {"has_data": False, "old_index": old_index}
     except Exception as e:
