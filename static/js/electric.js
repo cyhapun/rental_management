@@ -26,11 +26,13 @@ function filterElectric(){
   rows.forEach(r => { 
     const matchesQuery = r.textContent.toLowerCase().includes(q);
     const rowMonth = (r.dataset.month || '');
+    // Normalize month to YYYY-MM for robust comparison (handles YYYY-MM or YYYY-MM-DD)
+    const rowMonthPrefix = rowMonth.length >= 7 ? rowMonth.slice(0,7) : rowMonth;
     let matchesTime = true;
     if (timeFilter === 'month') {
-      matchesTime = (rowMonth === currentMonth);
+      matchesTime = (rowMonthPrefix === currentMonth);
     } else if (timeFilter === 'year') {
-      matchesTime = rowMonth.startsWith(currentYear);
+      matchesTime = rowMonthPrefix.startsWith(currentYear);
     } else {
       matchesTime = true;
     }
