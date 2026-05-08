@@ -10,36 +10,44 @@
     <p class="text-muted small mb-0">Theo dõi, tạo mới và quản lý các khoản thu chi hàng tháng.</p>
   </div>
   <div>
-    <button class="btn btn-primary rounded-pill px-4 shadow-sm w-100" type="button" data-bs-toggle="collapse" data-bs-target="#collapseGenerate">
+    <button class="btn btn-primary rounded-pill px-4 shadow-sm w-100" type="button" data-bs-toggle="modal" data-bs-target="#generateBillModal">
       <i class="fa-solid fa-plus me-2"></i>Tạo hóa đơn
     </button>
   </div>
 </div>
 
-<div class="collapse mb-4" id="collapseGenerate">
-  <div class="bg-panel p-4 position-relative overflow-hidden">
-    <i class="fa-solid fa-receipt position-absolute text-primary" style="font-size: 150px; opacity: 0.03; right: -20px; top: -20px; z-index: 0;"></i>
-    <div class="position-relative" style="z-index: 1;">
-      <h6 class="fw-bold text-dark mb-3">Thông tin khởi tạo</h6>
-      <form class="row g-3" id="generateBillForm" action="/bills/generate" method="post">
-        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token if request and request.state and request.state.csrf_token else '' }}">
-        <div class="col-md-4">
-          <label class="form-label small fw-semibold text-muted">Kỳ thu (Tháng)</label>
-          <input class="form-control bg-light" name="month" type="month" value="{{ default_month }}" required />
+<!-- Generate Bill Modal -->
+<div class="modal fade mb-4" id="generateBillModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold"><i class="fa-solid fa-receipt text-primary me-2"></i>Tạo hóa đơn</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="bg-panel p-0">
+          <form class="row g-3" id="generateBillForm" action="/bills/generate" method="post">
+            <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token if request and request.state and request.state.csrf_token else '' }}">
+            <div class="col-12 mb-2">
+              <label class="form-label small fw-semibold text-muted">Kỳ thu (Tháng)</label>
+              <input class="form-control bg-light" name="month" type="month" value="{{ default_month }}" required />
+            </div>
+            <div class="col-12 mb-3">
+              <label class="form-label small fw-semibold text-muted">Hợp đồng áp dụng</label>
+              <select class="form-select bg-light" name="contract_id" required>
+                <option value="" disabled selected>-- Chọn hợp đồng --</option>
+                {% for c in contracts %}
+                <option value="{{ c.id }}">{{ c.display }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-12 d-flex justify-content-end gap-2">
+              <button class="btn btn-light border rounded-pill px-4" data-bs-dismiss="modal" type="button">Hủy</button>
+              <button class="btn btn-success rounded-pill px-4 shadow-sm" type="submit">Xác nhận tạo</button>
+            </div>
+          </form>
         </div>
-        <div class="col-md-5">
-          <label class="form-label small fw-semibold text-muted">Hợp đồng áp dụng</label>
-          <select class="form-select bg-light" name="contract_id" required>
-            <option value="" disabled selected>-- Chọn hợp đồng --</option>
-            {% for c in contracts %}
-            <option value="{{ c.id }}">{{ c.display }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="col-md-3 d-flex align-items-end">
-          <button class="btn btn-success rounded-pill px-4 w-100 shadow-sm" type="submit">Xác nhận tạo</button>
-        </div>
-      </form>
+      </div>
     </div>
   </div>
 </div>
