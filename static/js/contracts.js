@@ -56,7 +56,8 @@ function filterContracts() {
     const isActive = r.dataset.isActive === 'true';
 
     const okSearch = tenant.includes(q) || room.includes(q);
-    const okPay = !payFilter || status.includes(payFilter);
+    // Use exact match for payment status filter to avoid substring collisions
+    const okPay = !payFilter || status === payFilter;
     let okStatus = true;
     if (statusFilter === 'active') {
       okStatus = isActive;
