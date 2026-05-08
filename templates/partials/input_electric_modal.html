@@ -1,31 +1,49 @@
 <div class="modal fade" id="inputElectricModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered modal-sm">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title fw-bold"><i class="fa-solid fa-bolt text-warning me-2"></i>Chốt điện trước khi tạo</h5>
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content rounded-4 shadow-sm border-0">
+      <div class="modal-header border-0 pb-0">
+        <div class="d-flex align-items-center gap-3">
+          <span class="bg-warning text-white rounded-circle d-inline-flex align-items-center justify-content-center" style="width:44px;height:44px;">
+            <i class="fa-solid fa-bolt"></i>
+          </span>
+          <div>
+            <h5 class="modal-title fw-bold mb-0">Chốt điện trước khi tạo</h5>
+            <div class="small text-muted">Nhập chỉ số để hệ thống tạo hóa đơn chính xác</div>
+          </div>
+        </div>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <form id="submitBillWithElectricForm" action="/bills/generate" method="post">
         <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token if request and request.state and request.state.csrf_token else '' }}">
         <input type="hidden" name="contract_id" id="modal_contract_id">
         <input type="hidden" name="month" id="modal_month">
-        
-        <div class="modal-body">
+
+        <div class="modal-body pt-3">
           <div class="alert alert-info small py-2 mb-3">
             Phòng này chưa có chỉ số điện tháng <span id="display_month" class="fw-bold"></span>. Vui lòng nhập để hệ thống tạo hóa đơn.
           </div>
+
           <div class="mb-3">
             <label class="form-label small fw-semibold text-muted">Chỉ số cũ</label>
-            <input class="form-control bg-light" id="modal_old_index" type="number" readonly />
+            <div class="input-group">
+              <span class="input-group-text bg-light border-0"><i class="fa-solid fa-hashtag"></i></span>
+              <input class="form-control bg-light" id="modal_old_index" type="number" readonly />
+            </div>
           </div>
-          <div class="mb-2">
-            <label class="form-label small fw-semibold text-muted">Chỉ số mới</label>
-            <input class="form-control fw-bold text-primary" name="new_electric_index" id="modal_new_index" type="number" required />
+
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-muted">Chỉ số mới <span class="text-danger">*</span></label>
+            <div class="input-group">
+              <span class="input-group-text bg-light border-0"><i class="fa-solid fa-arrow-up"></i></span>
+              <input class="form-control fw-bold text-primary" name="new_electric_index" id="modal_new_index" type="number" required min="0" />
+            </div>
+            <div class="form-text small text-muted">Nhập chỉ số (kWh). Hệ thống sẽ tính theo đơn giá cấu hình.</div>
           </div>
+
         </div>
         <div class="modal-footer bg-light rounded-bottom-4">
-          <button class="btn btn-light border rounded-pill px-3" data-bs-dismiss="modal" type="button">Hủy</button>
-          <button class="btn btn-primary rounded-pill px-4" type="submit">Lưu & Tạo hóa đơn</button>
+          <button class="btn btn-light border rounded-pill px-4" data-bs-dismiss="modal" type="button">Hủy</button>
+          <button class="btn btn-primary rounded-pill px-4" type="submit"><i class="fa-solid fa-floppy-disk me-2"></i>Lưu & Tạo</button>
         </div>
       </form>
     </div>
