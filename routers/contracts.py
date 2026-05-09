@@ -493,7 +493,43 @@ async def create_contract(request: Request, tenant_id: str = Form(...), room_id:
             "contract_type": contract_type,
             "deposit": deposit
         }
-        await db.contracts.insert_one(contract)
+        # Insert contract and create an initial bill for the starting month
+        res = await db.contracts.insert_one(contract)
+        contract_id = str(res.inserted_id) if res and getattr(res, 'inserted_id', None) else None
+
+        # Prepare initial bill: include room price and current electric index with 0 consumption
+        try:
+            # Determine month to charge: use start_date's year-month when possible
+            try:
+                sd = datetime.date.fromisoformat(str(start_date))
+                bill_month = sd.strftime("%Y-%m")
+            except Exception:
+                bill_month = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=7))).strftime("%Y-%m")
+
+            room_price = int(room.get("price") or 0)
+            curr_idx = int(room.get("current_electric_index") or 0)
+
+            bill_doc = {
+                "contract_id": contract_id,
+                "room_id": str(room_oid),
+                "tenant_id": str(tenant_oid),
+                "month": bill_month,
+                "room_price": room_price,
+                "electric_cost": 0,
+                "water_cost": 0,
+                "other_cost": 0,
+                "total": room_price,
+                "status": "unpaid",
+                "created_at": datetime.datetime.utcnow(),
+                "prev_index": curr_idx,
+                "curr_index": curr_idx,
+                "usage": 0,
+                "kwh_price": constants.PRICE_PER_KWH
+            }
+            await db.bills.insert_one(bill_doc)
+        except Exception as e:
+            print(f"[WARN] failed to create initial bill for contract {contract_id}: {e}")
+
         await _refresh_room_statuses(db)
         return redirect_with_flash("/contracts/", "Tạo hợp đồng thành công.")
     except Exception:
