@@ -440,6 +440,48 @@ async def list_contracts_data(request: Request):
         c.pop('_id', None)
         contracts_result.append(c)
 
+    # Append placeholder entries for rooms that currently don't have an active contract
+    for r in all_rooms:
+        rid_str = str(r.get("_id"))
+        if rid_str in active_room_ids:
+            continue
+        # Create a lightweight placeholder contract-like object so frontend can display the room as empty
+        placeholder = {
+            "id": f"room_{rid_str}",
+            "is_active": False,
+            "tenant_id": None,
+            "tenant": {
+                "full_name": "Trống",
+                "phone": "",
+                "id": None,
+                "cccd": ""
+            },
+            "room": {
+                "room_number": r.get("room_number"),
+                "price": r.get("price"),
+                "status": r.get("status"),
+                "id": rid_str,
+                "current_electric_index": r.get("current_electric_index")
+            },
+            "electric": {
+                "current_kwh": int(r.get("current_electric_index") or 0),
+                "used_kwh": 0,
+                "month": None
+            },
+            "deposit": 0,
+            "rent_payment_status": "no_contract",
+            "rent_payment_month": None,
+            "start_date_iso": None,
+            "start_date": None,
+            "end_date_iso": None,
+            "end_date": None,
+            "display_status": "Trống",
+            "display_status_badge_class": "bg-secondary-subtle text-secondary border border-secondary-subtle",
+            "contract_type": None,
+            "is_placeholder": True
+        }
+        contracts_result.append(placeholder)
+
     upcoming_dues = []
     for c in contracts_result:
         if not c.get("is_active"): continue

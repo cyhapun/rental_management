@@ -60,9 +60,11 @@ function filterContracts() {
     const okPay = !payFilter || status === payFilter;
     let okStatus = true;
     if (statusFilter === 'active') {
-      okStatus = isActive;
+      // also show placeholder empty rooms (tenantName === 'Trống') together with active contracts
+      okStatus = isActive || tenant === 'trống';
     } else if (statusFilter === 'terminated') {
-      okStatus = !isActive;
+      // terminated should exclude placeholder empty rows
+      okStatus = !isActive && tenant !== 'trống';
     }
 
     r.style.display = (okSearch && okPay && okStatus) ? '' : 'none';
@@ -198,6 +200,25 @@ async function loadContracts() {
                 </button>`;
       }
 
+      // Build action buttons. For placeholder empty rooms, show 'Tạo hợp đồng' only.
+      let actionHtml = '';
+      if (c.is_placeholder) {
+        const roomBtnId = (c.room && c.room.id) ? c.room.id : (c.room_id || '');
+        actionHtml = `
+            <button class="btn action-btn bg-primary-subtle text-primary" type="button" onclick="openCreateContractForRoom('${roomBtnId}')" title="Tạo hợp đồng"><i class="fa-solid fa-plus"></i></button>`;
+      } else {
+        actionHtml = `
+                    <button class="btn action-btn bg-primary-subtle text-primary" type="button" onclick="openEditContract(this)" title="Sửa"><i class="fa-solid fa-pen"></i></button>
+                    <button class="btn action-btn bg-success-subtle text-success" type="button" onclick="triggerBillGeneration('${c.id}', '${todayMonth}', '${csrfToken}', this)" title="Tạo hóa đơn">
+                      <i class="fa-solid fa-file-invoice-dollar"></i>
+                    </button>
+                    ${endBtnHtml}
+                    <form action="/contracts/${c.id}/delete" method="post" style="display:inline" class="needs-confirm" data-confirm-message="Cảnh báo: Xóa hợp đồng này sẽ xóa cả dữ liệu liên quan. Vẫn tiếp tục?">
+                      <input type="hidden" name="csrf_token" value="${csrfToken}">  
+                      <button class="btn action-btn bg-danger-subtle text-danger" type="submit" title="Xóa"><i class="fa-solid fa-trash-can"></i></button>
+                    </form>`;
+      }
+
       tr.innerHTML = `
                 <td class="ps-4">
                   <div class="d-flex align-items-center">
@@ -206,7 +227,7 @@ async function loadContracts() {
                     </div>
                     <div>
                       <div class="fw-bold text-dark text-truncate" style="max-width: 180px;">${tenantName}</div>
-                      ${!c.is_active ? '<div class="small text-muted mt-1"><i class="fa-solid fa-lock me-1"></i>Đã kết thúc</div>' : ''}
+                      ${(!c.is_active && !c.is_placeholder) ? '<div class="small text-muted mt-1"><i class="fa-solid fa-lock me-1"></i>Đã kết thúc</div>' : ''}
                     </div>
                   </div>
                 </td>
@@ -223,15 +244,7 @@ async function loadContracts() {
                 </td>
                 <td class="text-center pe-3">
                   <div class="d-flex justify-content-center gap-1">
-                    <button class="btn action-btn bg-primary-subtle text-primary" type="button" onclick="openEditContract(this)" title="Sửa"><i class="fa-solid fa-pen"></i></button>
-                    <button class="btn action-btn bg-success-subtle text-success" type="button" onclick="triggerBillGeneration('${c.id}', '${todayMonth}', '${csrfToken}', this)" title="Tạo hóa đơn">
-                      <i class="fa-solid fa-file-invoice-dollar"></i>
-                    </button>
-                    ${endBtnHtml}
-                    <form action="/contracts/${c.id}/delete" method="post" style="display:inline" class="needs-confirm" data-confirm-message="Cảnh báo: Xóa hợp đồng này sẽ xóa cả dữ liệu liên quan. Vẫn tiếp tục?">
-                      <input type="hidden" name="csrf_token" value="${csrfToken}">  
-                      <button class="btn action-btn bg-danger-subtle text-danger" type="submit" title="Xóa"><i class="fa-solid fa-trash-can"></i></button>
-                    </form>
+                    ${actionHtml}
                   </div>
                 </td>
             `;
@@ -259,6 +272,21 @@ document.addEventListener('DOMContentLoaded', function () {
     loadContracts();
   }
 });
+
+// Open Create Contract modal and preselect given room id
+window.openCreateContractForRoom = function(roomId) {
+  const select = document.querySelector('form[action="/contracts/create"] select[name="room_id"]');
+  if (select) {
+    // Ensure the option is enabled and select it
+    Array.from(select.options).forEach(opt => { if (opt.value === roomId) opt.disabled = false; });
+    select.value = roomId;
+  }
+  const modalEl = document.getElementById('createContractModal');
+  if (modalEl) {
+    const modal = new bootstrap.Modal(modalEl);
+    modal.show();
+  }
+};
 
 // Hàm bắt sự kiện nhấn nút "Tạo hóa đơn" trên giao diện Hợp đồng
 window.triggerBillGeneration = async function (contractId, month, csrfToken, btnElement) {
