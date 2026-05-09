@@ -11,3 +11,4 @@ reportlab
 mangum
 python-dotenv
 python-multipart
+pytest
