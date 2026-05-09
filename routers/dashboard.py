@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 import os
-from fastapi.templating import Jinja2Templates
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 from core.deps import get_db
 from core.template_filters import money
 from core import constants
@@ -12,13 +12,15 @@ from datetime import timezone, timedelta
 router = APIRouter(tags=["dashboard"]) 
 
 TEMPLATES_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "templates"))
-templates = Jinja2Templates(directory=TEMPLATES_DIR)
-templates.env.filters["money"] = money
+env = Environment(loader=FileSystemLoader(TEMPLATES_DIR), autoescape=select_autoescape(["html", "xml"]))
+env.filters["money"] = money
 
 # 1. API Trả về khung HTML (Load ngay lập tức)
 @router.get("/dashboard", response_class=HTMLResponse)
 async def dashboard_view(request: Request):
-    return templates.TemplateResponse("dashboard.html", {"request": request})
+    tpl = env.get_template("dashboard.html")
+    html = tpl.render(request=request)
+    return HTMLResponse(content=html)
 
 # 2. API Trả về JSON Dữ liệu (Sẽ được gọi ngầm qua Javascript)
 @router.get("/dashboard/_data")

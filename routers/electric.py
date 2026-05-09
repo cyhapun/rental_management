@@ -4,7 +4,7 @@ from core.deps import get_db
 from bson import ObjectId
 import os
 import datetime
-from fastapi.templating import Jinja2Templates
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from core.security import decrypt_value, mask_cccd
 from core.flash import redirect_with_flash
@@ -12,7 +12,7 @@ from core.flash import redirect_with_flash
 router = APIRouter(prefix="/electric", tags=["electric"])
 
 TEMPLATES_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "templates"))
-templates = Jinja2Templates(directory=TEMPLATES_DIR)
+env = Environment(loader=FileSystemLoader(TEMPLATES_DIR), autoescape=select_autoescape(["html", "xml"]))
 
 
 async def _find_room_by_number(db, room_number_value):
@@ -75,8 +75,10 @@ async def list_electric(request: Request):
         
     import datetime
     default_month = datetime.date.today().strftime("%Y-%m")
-    
-    return templates.TemplateResponse("electric.html", {"request": request, "rooms": rooms, "default_month": default_month})
+
+    tpl = env.get_template("electric.html")
+    html = tpl.render(request=request, rooms=rooms, default_month=default_month)
+    return HTMLResponse(content=html)
 
 
 # 2. API Trả về dữ liệu JSON (Javascript sẽ gọi ngầm cái này)

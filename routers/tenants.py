@@ -3,7 +3,7 @@ from fastapi.responses import RedirectResponse, HTMLResponse
 from core.deps import get_db
 from bson import ObjectId
 import os
-from fastapi.templating import Jinja2Templates
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from core.security import decrypt_value, encrypt_value, hash_value, tenant_doc_to_ui
 from core.flash import redirect_with_flash
@@ -11,7 +11,7 @@ from core.flash import redirect_with_flash
 router = APIRouter(prefix="/tenants", tags=["tenants"])
 
 TEMPLATES_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "templates"))
-templates = Jinja2Templates(directory=TEMPLATES_DIR)
+env = Environment(loader=FileSystemLoader(TEMPLATES_DIR), autoescape=select_autoescape(["html", "xml"]))
 
 
 async def _find_room_by_number(db, room_number_value):
@@ -96,7 +96,9 @@ def _fix_id(doc):
 async def list_tenants(request: Request, q: str = ""):
     db = get_db()
     await _refresh_tenant_statuses(db)
-    return templates.TemplateResponse("tenants.html", {"request": request, "q": q or ""})
+    tpl = env.get_template("tenants.html")
+    html = tpl.render(request=request, q=q or "")
+    return HTMLResponse(content=html)
 
 
 # 2. API Trả về dữ liệu JSON (MỚI THÊM)
