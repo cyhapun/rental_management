@@ -5,7 +5,7 @@ from core import constants
 from bson import ObjectId
 import datetime
 import os
-from jinja2 import Environment, FileSystemLoader
+from fastapi.templating import Jinja2Templates
 
 # Thêm thư viện timezone để xử lý giờ Việt Nam
 from datetime import timezone, timedelta
@@ -19,8 +19,8 @@ from core.flash import redirect_with_flash
 router = APIRouter(prefix="/bills", tags=["bills"])
 
 TEMPLATES_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "templates"))
-env = Environment(loader=FileSystemLoader(TEMPLATES_DIR))
-env.filters["money"] = money
+templates = Jinja2Templates(directory=TEMPLATES_DIR)
+templates.env.filters["money"] = money
 
 # 1. API Render khung HTML cực nhanh (chỉ lấy danh sách hợp đồng cho Dropdown)
 @router.get("/")
@@ -87,9 +87,7 @@ async def list_bills_html(request: Request, status: str = "all"):
     except Exception as e:
         print(f"[API_ERROR] list_bills_html: {str(e)}")
 
-    tpl = env.get_template("bills.html")
-    html = tpl.render(request=request, default_month=default_month, status=status, contracts=contracts_list)
-    return HTMLResponse(content=html)
+    return templates.TemplateResponse("bills.html", {"request": request, "default_month": default_month, "status": status, "contracts": contracts_list})
 
 
 @router.get("/_data")

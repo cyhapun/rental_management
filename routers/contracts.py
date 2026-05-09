@@ -4,7 +4,7 @@ from core.deps import get_db
 from bson import ObjectId
 import datetime
 import os
-from jinja2 import Environment, FileSystemLoader
+from fastapi.templating import Jinja2Templates
 
 from core.security import decrypt_value, mask_cccd, hash_value
 from core import constants
@@ -14,8 +14,8 @@ from core.flash import redirect_with_flash
 router = APIRouter(prefix="/contracts", tags=["contracts"])
 
 TEMPLATES_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "templates"))
-env = Environment(loader=FileSystemLoader(TEMPLATES_DIR))
-env.filters["money"] = money
+templates = Jinja2Templates(directory=TEMPLATES_DIR)
+templates.env.filters["money"] = money
 
 async def _find_room_by_number(db, room_number_value):
     if room_number_value is None:
@@ -197,16 +197,14 @@ async def list_contracts(request: Request):
         if tid:
             active_tenant_ids.append(str(tid))
 
-    tpl = env.get_template("contracts.html")
-    html = tpl.render(
-        request=request,
-        tenants=tenants,
-        rooms=rooms,
-        active_room_ids=active_room_ids,
-        active_tenant_ids=active_tenant_ids,
-        today=today_str,
-    )
-    return HTMLResponse(content=html)
+    return templates.TemplateResponse("contracts.html", {
+        "request": request,
+        "tenants": tenants,
+        "rooms": rooms,
+        "active_room_ids": active_room_ids,
+        "active_tenant_ids": active_tenant_ids,
+        "today": today_str,
+    })
 
 # 2. API Trả về dữ liệu JSON (Đã Tối ưu hóa N+1 Query triệt để)
 @router.get("/_data")

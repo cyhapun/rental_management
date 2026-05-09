@@ -3,7 +3,7 @@ from fastapi.responses import HTMLResponse
 from core.deps import get_db
 from bson import ObjectId
 import os
-from jinja2 import Environment, FileSystemLoader
+from fastapi.templating import Jinja2Templates
 
 from core.security import decrypt_value
 from core.template_filters import money
@@ -12,8 +12,8 @@ from core.flash import redirect_with_flash
 router = APIRouter(prefix="/rooms", tags=["rooms"])
 
 TEMPLATES_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "templates"))
-env = Environment(loader=FileSystemLoader(TEMPLATES_DIR))
-env.filters["money"] = money
+templates = Jinja2Templates(directory=TEMPLATES_DIR)
+templates.env.filters["money"] = money
 
 
 def _fix_id(doc):
@@ -55,9 +55,7 @@ async def list_rooms(request: Request, q: str = ""):
                 serializable["id"] = None
             serializable.pop("_id", None)
         rooms.append(serializable)
-    tpl = env.get_template("rooms.html")
-    html = tpl.render(request=request, rooms=rooms, q=q or "")
-    return HTMLResponse(content=html)
+    return templates.TemplateResponse("rooms.html", {"request": request, "rooms": rooms, "q": q or ""})
 
 
 @router.get("/_list")

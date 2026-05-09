@@ -3,7 +3,7 @@ from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import HTMLResponse, StreamingResponse
 from core.deps import get_db
 import os
-from jinja2 import Environment, FileSystemLoader
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 import io
 import datetime
 
@@ -17,7 +17,7 @@ router = APIRouter(prefix="/invoice", tags=["invoice"])
 
 def render_template(name: str, context: dict):
     base = os.path.join(os.path.dirname(__file__), "..", "templates")
-    env = Environment(loader=FileSystemLoader(base))
+    env = Environment(loader=FileSystemLoader(base), autoescape=select_autoescape(['html', 'xml']))
     env.filters["money"] = money
     tpl = env.get_template(name)
     return tpl.render(**context)

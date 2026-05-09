@@ -2,7 +2,7 @@ from fastapi import APIRouter, Request, Form
 from fastapi.responses import HTMLResponse
 from core.deps import get_db
 from bson import ObjectId
-from jinja2 import Environment, FileSystemLoader
+from fastapi.templating import Jinja2Templates
 from datetime import datetime
 
 from core.security import hash_password
@@ -11,7 +11,7 @@ from core.flash import redirect_with_flash
 router = APIRouter(prefix="/accounts", tags=["accounts"])
 
 TEMPLATES_DIR = __import__('os').path.abspath(__import__('os').path.join(__import__('os').path.dirname(__file__), '..', 'templates'))
-env = Environment(loader=FileSystemLoader(TEMPLATES_DIR))
+templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
 
 def _fix(doc):
@@ -28,9 +28,7 @@ def _fix(doc):
 # 1. API Trả về khung HTML siêu nhẹ
 @router.get("/", response_class=HTMLResponse)
 async def list_accounts(request: Request):
-    tpl = env.get_template("accounts.html")
-    html = tpl.render(request=request)
-    return HTMLResponse(content=html)
+    return templates.TemplateResponse("accounts.html", {"request": request})
 
 
 # 2. API Trả về dữ liệu JSON (để Javascript gọi ngầm)

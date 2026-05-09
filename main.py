@@ -82,40 +82,37 @@ async def auth_middleware(request: Request, call_next):
         try:
             session_csrf = session_doc.get('csrf_token')
             content_type = request.headers.get('content-type', '')
-            token_match = False
 
+            # 1) Prefer header token for non-form requests
             header_token = request.headers.get('x-csrf-token') or request.headers.get('x-xsrf-token')
             if header_token and session_csrf and header_token == session_csrf:
-                token_match = True
                 return await call_next(request)
 
+            # 2) For form submissions (including multipart), parse form safely via Request.form()
             if 'application/x-www-form-urlencoded' in content_type or 'multipart/form-data' in content_type:
                 body = await request.body()
+
+                async def _receive():
+                    return {"type": "http.request", "body": body, "more_body": False}
+
+                # create temporary Request to parse form data (works for urlencoded and multipart)
+                parse_req = Request(request.scope, _receive)
                 try:
-                    from urllib.parse import parse_qs
-                    params = parse_qs(body.decode('utf-8', errors='ignore'))
-                    form_token = params.get('csrf_token', [None])[0]
+                    form = await parse_req.form()
+                    form_token = form.get('csrf_token')
                 except Exception:
                     form_token = None
 
                 if form_token and session_csrf and form_token == session_csrf:
-                    token_match = True
+                    # recreate Request with the original body for downstream handlers
+                    new_request = Request(request.scope, _receive)
+                    return await call_next(new_request)
 
-                async def receive():
-                    return {"type": "http.request", "body": body, "more_body": False}
-
-                if not token_match:
-                    from fastapi.responses import JSONResponse
-                    return JSONResponse({"detail": "CSRF token missing or invalid"}, status_code=403)
-
-                new_request = Request(request.scope, receive)
-                return await call_next(new_request)
-
-            if not token_match:
-                from fastapi.responses import JSONResponse
                 return JSONResponse({"detail": "CSRF token missing or invalid"}, status_code=403)
+
+            # 3) For other content types (JSON, etc), header token is required
+            return JSONResponse({"detail": "CSRF token missing or invalid"}, status_code=403)
         except Exception:
-            from fastapi.responses import JSONResponse
             return JSONResponse({"detail": "CSRF validation failed"}, status_code=403)
 
     admin_only_prefixes = ("/accounts",)
