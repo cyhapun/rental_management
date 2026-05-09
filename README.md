@@ -169,30 +169,4 @@ Run these scripts as separate CLI processes (do NOT call them inside the FastAPI
 
 ---
 
-## Recommendations & Roadmap
-
-1. Add automated tests (unit + integration) for `routers/` and `core/security.py`.
-2. Add a `docker-compose.yml` for local development (app + Mongo) and a `Dockerfile` for containerization.
-3. Add CI (GitHub Actions) to run linting and tests on pushes/PRs.
-4. Replace any remaining synchronous `pymongo` usage with `motor` (wrappers already added to preserve CLI compatibility).
-5. Integrate structured logging and monitoring (e.g., JSON logs, sent to ELK/Datadog) for production.
-
----
-
-## Troubleshooting
-
-- `DATA_ENCRYPTION_KEY not configured` on startup: ensure `.env` contains the variable and `cryptography` is installed.
-- `MongoDB connection` errors: verify `MONGO_URI` and that MongoDB accepts connections from your host.
-- `PDF generation errors`: WeasyPrint has platform-specific dependencies — install system packages required (fonts, Cairo) as needed.
-
----
-
-If you want, I can next:
-
-- Add a `docker-compose.yml` for full local dev (app + Mongo + optional SPs),
-- Add a small CI workflow that installs deps and runs basic checks, or
-- Start converting other remaining sync utilities to async and remove wrappers when ready.
-
----
-
 File reference: main entrypoint is [main.py](main.py#L1).
