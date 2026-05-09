@@ -417,9 +417,15 @@ async def list_contracts_data(request: Request):
                                 next_first = datetime.date(year, month + 1, 1)
                             due_this_month = next_first - datetime.timedelta(days=1)
 
-                        if due_this_month == today:
+                        # compute days left until due date
+                        delta_days = (due_this_month - today).days
+                        if delta_days == 0:
                             display_status = "Tới kì hạn"
                             display_badge_class = "bg-info-subtle text-info border border-info-subtle"
+                        elif 1 <= delta_days <= 2:
+                            # Approaching due date within 1-2 days
+                            display_status = "Gần tới kì hạn"
+                            display_badge_class = "bg-warning-subtle text-warning border border-warning-subtle"
                         elif due_this_month < today:
                             # no bill for current month -> overdue
                             if c.get("rent_payment_month") != current_month:
