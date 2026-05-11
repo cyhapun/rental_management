@@ -241,7 +241,6 @@
         <div class="total-box">
           <div class="total-label">Tổng hóa đơn</div>
           <div class="total-amount">{{ bill.total | money }}</div>
-          <div class="mt-2" style="font-size:0.95rem; color:var(--muted);">Đã thu: <strong style="color:var(--success);">{{ (bill.paid_amount or 0) | money }}</strong> &nbsp;|&nbsp; Còn nợ: <strong style="color:#dc2626;">{{ (bill.amount_due or 0) | money }}</strong></div>
         </div>
 
         {% if (bill.amount_due or 0) > 0 %}
